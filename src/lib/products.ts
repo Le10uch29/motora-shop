@@ -2,7 +2,7 @@ import type { Locale } from "@/i18n/locales";
 
 export type LocalizedText = Record<Locale, string>;
 
-export type CategoryId = "motorcycles" | "scooters" | "gear" | "parts";
+export type CategoryId = "cars" | "trucks" | "vans";
 
 export type ProductSpec = { label: LocalizedText; value: LocalizedText };
 
@@ -16,7 +16,8 @@ export type Product = {
   oldPrice?: number;
   description: LocalizedText;
   specs: ProductSpec[];
-  inStock: boolean;
+  /** Units currently in stock. 0 means made-to-order. */
+  stock: number;
   badge?: LocalizedText;
 };
 
@@ -24,38 +25,30 @@ export function t(text: LocalizedText, locale: Locale): string {
   return text[locale];
 }
 
-export const categoryIds: CategoryId[] = [
-  "motorcycles",
-  "scooters",
-  "gear",
-  "parts",
-];
+export const categoryIds: CategoryId[] = ["cars", "trucks", "vans"];
 
 export const categoryLabels: Record<CategoryId, LocalizedText> = {
-  motorcycles: { ru: "Мотоциклы", az: "Motosikletlər", ka: "მოტოციკლები" },
-  scooters: { ru: "Скутеры", az: "Skuterlər", ka: "სკუტერები" },
-  gear: { ru: "Экипировка", az: "Ekipirovka", ka: "ეკიპირება" },
-  parts: { ru: "Запчасти", az: "Ehtiyat hissələri", ka: "ნაწილები" },
+  cars: { ru: "Легковые авто", az: "Yüngül avtomobillər", ka: "მსუბუქი ავტომობილები" },
+  trucks: { ru: "Грузовики", az: "Yük maşınları", ka: "სატვირთოები" },
+  vans: {
+    ru: "Спринтеры / микроавтобусы",
+    az: "Sprinterlər / mikroavtobuslar",
+    ka: "სპრინტერები / მიკროავტობუსები",
+  },
 };
 
 // Reusable spec labels
-const engine: LocalizedText = { ru: "Двигатель", az: "Mühərrik", ka: "ძრავი" };
-const power: LocalizedText = { ru: "Мощность", az: "Güc", ka: "სიმძლავრე" };
-const weight: LocalizedText = { ru: "Масса", az: "Çəki", ka: "წონა" };
-const tank: LocalizedText = { ru: "Бак", az: "Bak", ka: "ბაკი" };
-const consumption: LocalizedText = { ru: "Расход", az: "Sərfiyyat", ka: "ხარჯვა" };
-const cargo: LocalizedText = { ru: "Багаж", az: "Baqaj", ka: "ბარგი" };
-const type_: LocalizedText = { ru: "Тип", az: "Tip", ka: "ტიპი" };
+const partNumber: LocalizedText = { ru: "Артикул", az: "Artikul", ka: "არტიკული" };
+const compatibility: LocalizedText = { ru: "Совместимость", az: "Uyğunluq", ka: "თავსებადობა" };
+const position: LocalizedText = { ru: "Расположение", az: "Yerləşmə", ka: "მდებარეობა" };
 const material: LocalizedText = { ru: "Материал", az: "Material", ka: "მასალა" };
-const protection: LocalizedText = { ru: "Защита", az: "Qoruma", ka: "დაცვა" };
-const season: LocalizedText = { ru: "Сезон", az: "Mövsüm", ka: "სეზონი" };
-const sizes: LocalizedText = { ru: "Размеры", az: "Ölçülər", ka: "ზომები" };
-const pitch: LocalizedText = { ru: "Шаг", az: "Addım", ka: "ბიჯი" };
-const links: LocalizedText = { ru: "Звенья", az: "Halqalar", ka: "რგოლები" };
 const composition: LocalizedText = { ru: "Состав", az: "Tərkib", ka: "შემადგენლობა" };
 const kit: LocalizedText = { ru: "Комплект", az: "Dəst", ka: "კომპლექტი" };
+const type_: LocalizedText = { ru: "Тип", az: "Tip", ka: "ტიპი" };
 const voltage: LocalizedText = { ru: "Напряжение", az: "Gərginlik", ka: "ძაბვა" };
 const capacity: LocalizedText = { ru: "Ёмкость", az: "Tutum", ka: "ტევადობა" };
+const output: LocalizedText = { ru: "Выходной ток", az: "Çıxış cərəyanı", ka: "გამომავალი დენი" };
+const size: LocalizedText = { ru: "Размер", az: "Ölçü", ka: "ზომა" };
 
 // Reusable badges
 const bestseller: LocalizedText = { ru: "Хит продаж", az: "Ən çox satılan", ka: "გაყიდვების ლიდერი" };
@@ -64,238 +57,308 @@ const newBadge: LocalizedText = { ru: "Новинка", az: "Yenilik", ka: "ს�
 
 export const products: Product[] = [
   {
-    id: "1",
-    slug: "motora-gt-650",
-    name: { ru: "Motora GT 650", az: "Motora GT 650", ka: "Motora GT 650" },
-    category: "motorcycles",
-    price: 7900,
-    description: {
-      ru: "Спортивный мотоцикл среднего класса с рядным двухцилиндровым двигателем. Отзывчивая динамика и уверенное поведение на трассе.",
-      az: "Orta sinif idman motosikleti, sıralı ikisilindrli mühərriklə. Həssas dinamika və trekdə etibarlı davranış.",
-      ka: "საშუალო კლასის სპორტული მოტოციკლი რიგითი ორცილინდრიანი ძრავით. მგრძნობიარე დინამიკა და თავდაჯერებული ქცევა ტრასაზე.",
-    },
-    specs: [
-      { label: engine, value: { ru: "649 см³, 2 цил.", az: "649 sm³, 2 silindr", ka: "649 სმ³, 2 ცილინდრი" } },
-      { label: power, value: { ru: "68 л.с.", az: "68 a.g.", ka: "68 ცხ.ძ." } },
-      { label: weight, value: { ru: "202 кг", az: "202 kq", ka: "202 კგ" } },
-      { label: tank, value: { ru: "14.5 л", az: "14.5 L", ka: "14.5 ლ" } },
-    ],
-    inStock: true,
-    badge: bestseller,
-  },
-  {
-    id: "2",
-    slug: "motora-cruiser-500",
-    name: { ru: "Motora Cruiser 500", az: "Motora Cruiser 500", ka: "Motora Cruiser 500" },
-    category: "motorcycles",
-    price: 5900,
-    oldPrice: 6500,
-    description: {
-      ru: "Классический круизёр для комфортных дальних поездок. Низкая посадка, мягкая подвеска, богатая комплектация.",
-      az: "Uzaq səyahətlər üçün klassik kruzer. Alçaq oturacaq, yumşaq asqı, zəngin komplektasiya.",
-      ka: "კლასიკური კრუიზერი კომფორტული შორ მანძილზე მოგზაურობისთვის. დაბალი ჯდომა, რბილი შეკიდვა, მდიდარი კომპლექტაცია.",
-    },
-    specs: [
-      { label: engine, value: { ru: "471 см³, V2", az: "471 sm³, V2", ka: "471 სმ³, V2" } },
-      { label: power, value: { ru: "45 л.с.", az: "45 a.g.", ka: "45 ცხ.ძ." } },
-      { label: weight, value: { ru: "215 кг", az: "215 kq", ka: "215 კგ" } },
-      { label: tank, value: { ru: "16 л", az: "16 L", ka: "16 ლ" } },
-    ],
-    inStock: true,
-    badge: discount,
-  },
-  {
-    id: "3",
-    slug: "motora-enduro-300",
-    name: { ru: "Motora Enduro 300", az: "Motora Enduro 300", ka: "Motora Enduro 300" },
-    category: "motorcycles",
-    price: 3800,
-    description: {
-      ru: "Лёгкий эндуро для города и бездорожья. Длинноходная подвеска и низкий вес облегчают управление в любых условиях.",
-      az: "Şəhər və bezyol üçün yüngül endurо. Uzunhodlu asqı və az çəki idarəetməni asanlaşdırır.",
-      ka: "მსუბუქი ენდურო ქალაქისა და უსავალო გზისთვის. გრძელი სვლის შეკიდვა და მცირე წონა აადვილებს მართვას ნებისმიერ პირობებში.",
-    },
-    specs: [
-      { label: engine, value: { ru: "293 см³, 1 цил.", az: "293 sm³, 1 silindr", ka: "293 სმ³, 1 ცილინდრი" } },
-      { label: power, value: { ru: "27 л.с.", az: "27 a.g.", ka: "27 ცხ.ძ." } },
-      { label: weight, value: { ru: "142 кг", az: "142 kq", ka: "142 კგ" } },
-      { label: tank, value: { ru: "9.5 л", az: "9.5 L", ka: "9.5 ლ" } },
-    ],
-    inStock: true,
-  },
-  {
-    id: "4",
-    slug: "motora-city-125",
-    name: { ru: "Motora City 125", az: "Motora City 125", ka: "Motora City 125" },
-    category: "scooters",
-    price: 1450,
-    description: {
-      ru: "Городской скутер с экономичным расходом топлива и вместительным багажным отделением под сиденьем.",
-      az: "Qənaətli yanacaq sərfiyyatı və oturacaq altında geniş baqaj bölməsi olan şəhər skuteri.",
-      ka: "ქალაქის სკუტერი ეკონომიური საწვავის ხარჯვითა და ტევადი ბარგის განყოფილებით სავარძლის ქვეშ.",
-    },
-    specs: [
-      { label: engine, value: { ru: "125 см³", az: "125 sm³", ka: "125 სმ³" } },
-      { label: consumption, value: { ru: "2.1 л/100км", az: "2.1 L/100km", ka: "2.1 ლ/100კმ" } },
-      { label: weight, value: { ru: "108 кг", az: "108 kq", ka: "108 კგ" } },
-      { label: cargo, value: { ru: "22 л", az: "22 L", ka: "22 ლ" } },
-    ],
-    inStock: true,
-  },
-  {
-    id: "5",
-    slug: "motora-sport-150",
-    name: { ru: "Motora Sport 150", az: "Motora Sport 150", ka: "Motora Sport 150" },
-    category: "scooters",
-    price: 1650,
-    description: {
-      ru: "Спортивный скутер с агрессивным обвесом и увеличенной мощностью для динамичной езды по городу.",
-      az: "Aqressiv dizaynlı və artırılmış güclü idman skuteri, şəhərdə dinamik sürüş üçün.",
-      ka: "სპორტული სკუტერი აგრესიული ტანსაცმლითა და გაზრდილი სიმძლავრით ქალაქში დინამიური სვლისთვის.",
-    },
-    specs: [
-      { label: engine, value: { ru: "149 см³", az: "149 sm³", ka: "149 სმ³" } },
-      { label: power, value: { ru: "14 л.с.", az: "14 a.g.", ka: "14 ცხ.ძ." } },
-      { label: weight, value: { ru: "118 кг", az: "118 kq", ka: "118 კგ" } },
-      { label: cargo, value: { ru: "18 л", az: "18 L", ka: "18 ლ" } },
-    ],
-    inStock: false,
-  },
-  {
-    id: "6",
-    slug: "motora-race-helmet",
+    id: "AP-1001",
+    slug: "brake-pads-front-camry",
     name: {
-      ru: "Шлем Motora Race",
-      az: "Motora Race dəbilqəsi",
-      ka: "Motora Race-ის ჩაფხუტი",
+      ru: "Тормозные колодки передние Motora для Toyota Camry",
+      az: "Toyota Camry üçün ön əyləc kolodkaları Motora",
+      ka: "წინა სამუხრუჭე ხუნდები Motora Toyota Camry-სთვის",
     },
-    category: "gear",
-    price: 219,
+    category: "cars",
+    price: 89,
     description: {
-      ru: "Интеграл для трека и города. Аэродинамическая форма, двойной визор, вентиляционная система из 5 каналов.",
-      az: "Trek və şəhər üçün inteqral dəbilqə. Aerodinamik forma, ikiqat vizor, 5 kanallı ventilyasiya sistemi.",
-      ka: "ინტეგრალური ჩაფხუტი ტრასისა და ქალაქისთვის. აეროდინამიკული ფორმა, ორმაგი ვიზორი, 5 არხიანი ვენტილაციის სისტემა.",
+      ru: "Комплект передних тормозных колодок с керамическим составом. Пониженный шум и минимум пыли на дисках.",
+      az: "Keramik tərkibli ön əyləc kolodkaları dəsti. Aşağı səviyyəli səs-küy və disklərdə minimum toz.",
+      ka: "წინა სამუხრუჭე ხუნდების ნაკრები კერამიკული შემადგენლობით. დაბალი ხმაური და მინიმალური მტვერი დისკებზე.",
     },
     specs: [
-      { label: type_, value: { ru: "Интеграл", az: "İnteqral", ka: "ინტეგრალური" } },
-      { label: material, value: { ru: "Поликарбонат", az: "Polikarbonat", ka: "პოლიკარბონატი" } },
-      { label: weight, value: { ru: "1.45 кг", az: "1.45 kq", ka: "1.45 კგ" } },
-      { label: sizes, value: { ru: "S–XXL", az: "S–XXL", ka: "S–XXL" } },
-    ],
-    inStock: true,
-    badge: newBadge,
-  },
-  {
-    id: "7",
-    slug: "motora-touring-jacket",
-    name: {
-      ru: "Куртка Motora Touring",
-      az: "Motora Touring gödəkçəsi",
-      ka: "Motora Touring-ის ქურთუკი",
-    },
-    category: "gear",
-    price: 165,
-    description: {
-      ru: "Текстильная куртка для дальних поездок в любую погоду. Съёмная мембрана, защита плеч, локтей и спины.",
-      az: "İstənilən hava şəraitində uzun səyahətlər üçün tekstil gödəkçə. Çıxarıla bilən membran, çiyin, dirsək və bel qorunması.",
-      ka: "ტექსტილის ქურთუკი შორ მანძილზე მოგზაურობისთვის ნებისმიერ ამინდში. მოსახსნელი მემბრანა, მხრების, იდაყვებისა და ზურგის დაცვა.",
-    },
-    specs: [
-      { label: material, value: { ru: "Кордура 600D", az: "Kordura 600D", ka: "კორდურა 600D" } },
-      { label: protection, value: { ru: "CE плечи/локти/спина", az: "CE çiyin/dirsək/bel", ka: "CE მხრები/იდაყვები/ზურგი" } },
-      { label: season, value: { ru: "Всесезонная", az: "Hər mövsüm üçün", ka: "ყველა სეზონისთვის" } },
-      { label: sizes, value: { ru: "M–3XL", az: "M–3XL", ka: "M–3XL" } },
-    ],
-    inStock: true,
-  },
-  {
-    id: "8",
-    slug: "motora-grip-gloves",
-    name: {
-      ru: "Перчатки Motora Grip",
-      az: "Motora Grip əlcəkləri",
-      ka: "Motora Grip-ის ხელთათმანები",
-    },
-    category: "gear",
-    price: 38,
-    description: {
-      ru: "Кожаные перчатки с защитными вставками на костяшках и усиленной ладонью для надёжного хвата руля.",
-      az: "Sükanı etibarlı tutmaq üçün biləklərdə qoruyucu detalları və möhkəmləndirilmiş ovucu olan dəri əlcəklər.",
-      ka: "ტყავის ხელთათმანები დამცავი ჩანართებით მუწუკებზე და გამაგრებული ხელისგულით საჭის საიმედო ჩასაჭიდად.",
-    },
-    specs: [
-      { label: material, value: { ru: "Кожа/текстиль", az: "Dəri/tekstil", ka: "ტყავი/ტექსტილი" } },
-      { label: protection, value: { ru: "Костяшки, ладонь", az: "Biləklər, ovuc", ka: "მუწუკები, ხელისგული" } },
-      { label: sizes, value: { ru: "S–XL", az: "S–XL", ka: "S–XL" } },
-    ],
-    inStock: true,
-  },
-  {
-    id: "9",
-    slug: "motora-drive-chain-520",
-    name: {
-      ru: "Цепь привода Motora 520",
-      az: "Motora 520 ötürücü zənciri",
-      ka: "Motora 520 გადამცემი ჯაჭვი",
-    },
-    category: "parts",
-    price: 34,
-    description: {
-      ru: "Усиленная приводная цепь с сальниковыми кольцами для повышенного ресурса и снижения трения.",
-      az: "Artırılmış resurs və sürtünmənin azaldılması üçün sallnik halqalı gücləndirilmiş ötürücü zəncir.",
-      ka: "გაძლიერებული გადამცემი ჯაჭვი საკუთარი რგოლებით რესურსის გაზრდისა და ხახუნის შემცირებისთვის.",
-    },
-    specs: [
-      { label: pitch, value: { ru: "520", az: "520", ka: "520" } },
-      { label: links, value: { ru: "120", az: "120", ka: "120" } },
-      { label: type_, value: { ru: "X-ring", az: "X-ring", ka: "X-ring" } },
-    ],
-    inStock: true,
-  },
-  {
-    id: "10",
-    slug: "motora-brake-pads-sport",
-    name: {
-      ru: "Тормозные колодки Motora Sport",
-      az: "Motora Sport əyləc kolodkaları",
-      ka: "Motora Sport სამუხრუჭე ხუნდები",
-    },
-    category: "parts",
-    price: 19,
-    description: {
-      ru: "Спортивные колодки с керамическим составом для стабильного торможения и низкого износа диска.",
-      az: "Stabil əyləc və diskin aşağı aşınması üçün keramik tərkibli idman kolodkaları.",
-      ka: "სპორტული ხუნდები კერამიკული შემადგენლობით სტაბილური დამუხრუჭებისა და დისკის დაბალი ცვეთისთვის.",
-    },
-    specs: [
+      { label: partNumber, value: { ru: "MTP-4302", az: "MTP-4302", ka: "MTP-4302" } },
+      { label: compatibility, value: { ru: "Toyota Camry XV70, 2018–2024", az: "Toyota Camry XV70, 2018–2024", ka: "Toyota Camry XV70, 2018–2024" } },
       { label: composition, value: { ru: "Керамика", az: "Keramika", ka: "კერამიკა" } },
       { label: kit, value: { ru: "Передняя ось", az: "Ön ox", ka: "წინა ღერძი" } },
     ],
-    inStock: true,
+    stock: 24,
+    badge: bestseller,
   },
   {
-    id: "11",
-    slug: "motora-powercell-12v",
+    id: "AP-1002",
+    slug: "battery-60ah",
     name: {
-      ru: "Аккумулятор Motora PowerCell 12V",
-      az: "Motora PowerCell 12V akkumulyatoru",
-      ka: "Motora PowerCell 12V აკუმულატორი",
+      ru: "Аккумулятор Motora PowerCell 60Ач",
+      az: "Motora PowerCell 60Ah akkumulyatoru",
+      ka: "Motora PowerCell 60Ah აკუმულატორი",
     },
-    category: "parts",
-    price: 49,
-    oldPrice: 56,
+    category: "cars",
+    price: 72,
+    oldPrice: 82,
     description: {
-      ru: "Необслуживаемый гелевый аккумулятор с увеличенным пусковым током для надёжного запуска в мороз.",
-      az: "Şaxtada etibarlı işə salınma üçün artırılmış işə salma cərəyanlı, xidmətsiz gel akkumulyator.",
-      ka: "მოუვლელი გელის აკუმულატორი გაზრდილი გაშვების დენით ყინვაში საიმედო გასაშვებად.",
+      ru: "Необслуживаемый аккумулятор увеличенной ёмкости для легковых автомобилей. Устойчив к глубокому разряду, надёжный пуск в мороз.",
+      az: "Yüngül avtomobillər üçün artırılmış tutumlu, xidmətsiz akkumulyator. Dərin boşalmaya davamlıdır, şaxtada etibarlı işə salınma təmin edir.",
+      ka: "მსუბუქი ავტომობილებისთვის განკუთვნილი გაზრდილი ტევადობის მოუვლელი აკუმულატორი. მდგრადია ღრმა განმუხტვის მიმართ და უზრუნველყოფს საიმედო გაშვებას ყინვაში.",
     },
     specs: [
       { label: voltage, value: { ru: "12 В", az: "12 V", ka: "12 ვ" } },
-      { label: capacity, value: { ru: "8 Ач", az: "8 Ah", ka: "8 ა.სთ." } },
-      { label: type_, value: { ru: "Гелевый, AGM", az: "Gel, AGM", ka: "გელური, AGM" } },
+      { label: capacity, value: { ru: "60 Ач", az: "60 Ah", ka: "60 ა.სთ." } },
+      { label: type_, value: { ru: "Необслуживаемый, AGM", az: "Xidmətsiz, AGM", ka: "მოუვლელი, AGM" } },
     ],
-    inStock: true,
+    stock: 15,
     badge: discount,
+  },
+  {
+    id: "AP-1003",
+    slug: "shock-absorber-front-solaris",
+    name: {
+      ru: "Амортизатор передний Motora Ride для Hyundai Solaris",
+      az: "Hyundai Solaris üçün ön amortizator Motora Ride",
+      ka: "წინა ამორტიზატორი Motora Ride Hyundai Solaris-ისთვის",
+    },
+    category: "cars",
+    price: 118,
+    description: {
+      ru: "Газомасляный амортизатор для передней подвески. Стабильное поведение автомобиля на неровностях и увеличенный ресурс.",
+      az: "Ön asqı üçün qaz-yağlı amortizator. Nahamar yollarda avtomobilin sabit davranışı və artırılmış resurs.",
+      ka: "წინა შეკიდვისთვის გაზ-ზეთის ამორტიზატორი. ავტომობილის სტაბილური ქცევა უსწორმასწორო გზაზე და გაზრდილი რესურსი.",
+    },
+    specs: [
+      { label: partNumber, value: { ru: "MSA-2210", az: "MSA-2210", ka: "MSA-2210" } },
+      { label: compatibility, value: { ru: "Hyundai Solaris / Accent, 2017+", az: "Hyundai Solaris / Accent, 2017+", ka: "Hyundai Solaris / Accent, 2017+" } },
+      { label: type_, value: { ru: "Газомасляный", az: "Qaz-yağlı", ka: "გაზ-ზეთის" } },
+      { label: position, value: { ru: "Передний", az: "Ön", ka: "წინა" } },
+    ],
+    stock: 9,
+  },
+  {
+    id: "AP-1004",
+    slug: "oil-filter-universal",
+    name: {
+      ru: "Масляный фильтр Motora OilGuard",
+      az: "Motora OilGuard yağ filtri",
+      ka: "Motora OilGuard ზეთის ფილტრი",
+    },
+    category: "cars",
+    price: 19,
+    description: {
+      ru: "Масляный фильтр с антидренажным клапаном для бензиновых и дизельных двигателей объёмом 1.4–2.0 л.",
+      az: "1.4–2.0 L həcmli benzin və dizel mühərriklər üçün əks-drenaj klapanlı yağ filtri.",
+      ka: "ანტიდრენაჟის სარქველიანი ზეთის ფილტრი 1.4–2.0 ლ მოცულობის ბენზინისა და დიზელის ძრავებისთვის.",
+    },
+    specs: [
+      { label: partNumber, value: { ru: "MOF-1120", az: "MOF-1120", ka: "MOF-1120" } },
+      { label: compatibility, value: { ru: "VAG / PSA 1.4–2.0 TSI/TDI/HDi", az: "VAG / PSA 1.4–2.0 TSI/TDI/HDi", ka: "VAG / PSA 1.4–2.0 TSI/TDI/HDi" } },
+      { label: material, value: { ru: "Бумажный фильтрующий элемент", az: "Kağız filtrləyici element", ka: "ქაღალდის ფილტრის ელემენტი" } },
+      { label: type_, value: { ru: "Резьбовой", az: "Yivli", ka: "სახრახნისებრი" } },
+    ],
+    stock: 60,
+  },
+  {
+    id: "AP-1005",
+    slug: "air-filter-corolla",
+    name: {
+      ru: "Воздушный фильтр Motora AirFlow для Toyota Corolla",
+      az: "Toyota Corolla üçün Motora AirFlow hava filtri",
+      ka: "Motora AirFlow ჰაერის ფილტრი Toyota Corolla-სთვის",
+    },
+    category: "cars",
+    price: 24,
+    description: {
+      ru: "Панельный воздушный фильтр из синтетического волокна. Эффективная защита двигателя от пыли и абразива.",
+      az: "Sintetik lifdən hazırlanmış panel hava filtri. Mühərriki toz və abraziv hissəciklərdən effektiv qoruyur.",
+      ka: "სინთეტური ბოჭკოსგან დამზადებული პანელური ჰაერის ფილტრი. ძრავის ეფექტური დაცვა მტვერისა და აბრაზივისგან.",
+    },
+    specs: [
+      { label: partNumber, value: { ru: "MAF-3305", az: "MAF-3305", ka: "MAF-3305" } },
+      { label: compatibility, value: { ru: "Toyota Corolla E210, 2019+", az: "Toyota Corolla E210, 2019+", ka: "Toyota Corolla E210, 2019+" } },
+      { label: material, value: { ru: "Синтетическое волокно", az: "Sintetik lif", ka: "სინთეტური ბოჭკო" } },
+      { label: type_, value: { ru: "Панельный", az: "Panel", ka: "პანელური" } },
+    ],
+    stock: 40,
+  },
+  {
+    id: "AP-1006",
+    slug: "brake-pads-heavy-kamaz",
+    name: {
+      ru: "Тормозные колодки Motora HD для КАМАЗ",
+      az: "KamAZ üçün Motora HD əyləc kolodkaları",
+      ka: "Motora HD სამუხრუჭე ხუნდები КАМАЗ-ისთვის",
+    },
+    category: "trucks",
+    price: 145,
+    description: {
+      ru: "Усиленные тормозные колодки для грузовой техники. Повышенная термостойкость и стабильное торможение под нагрузкой.",
+      az: "Yük texnikası üçün gücləndirilmiş əyləc kolodkaları. Artırılmış istiliyə davamlılıq və yük altında sabit əyləc.",
+      ka: "სატვირთო ტექნიკისთვის გაძლიერებული სამუხრუჭე ხუნდები. გაზრდილი თერმომედეგობა და სტაბილური დამუხრუჭება დატვირთვის ქვეშ.",
+    },
+    specs: [
+      { label: partNumber, value: { ru: "MTH-5010", az: "MTH-5010", ka: "MTH-5010" } },
+      { label: compatibility, value: { ru: "КАМАЗ 5320 / 65115", az: "KamAZ 5320 / 65115", ka: "КАМАЗ 5320 / 65115" } },
+      { label: composition, value: { ru: "Керамика/металл", az: "Keramika/metal", ka: "კერამიკა/მეტალი" } },
+      { label: kit, value: { ru: "Передняя ось", az: "Ön ox", ka: "წინა ღერძი" } },
+    ],
+    stock: 12,
+  },
+  {
+    id: "AP-1007",
+    slug: "timing-belt-kit-actros",
+    name: {
+      ru: "Ремень ГРМ Motora TimeBelt HD для Mercedes Actros",
+      az: "Mercedes Actros üçün Motora TimeBelt HD qayış dəsti",
+      ka: "Motora TimeBelt HD დროშის ღვედი Mercedes Actros-ისთვის",
+    },
+    category: "trucks",
+    price: 235,
+    description: {
+      ru: "Комплект ремня ГРМ с роликами для двигателей OM 501/502. Армированная резина повышенной прочности.",
+      az: "OM 501/502 mühərrikləri üçün diyircəkli qayış dəsti. Artırılmış möhkəmlikli armaturlu rezin.",
+      ka: "OM 501/502 ძრავებისთვის დროშის ღვედის ნაკრები რგოლებით. გამაგრებული, გაზრდილი სიმტკიცის რეზინი.",
+    },
+    specs: [
+      { label: partNumber, value: { ru: "MTB-6100", az: "MTB-6100", ka: "MTB-6100" } },
+      { label: compatibility, value: { ru: "Mercedes-Benz Actros, OM 501/502", az: "Mercedes-Benz Actros, OM 501/502", ka: "Mercedes-Benz Actros, OM 501/502" } },
+      { label: kit, value: { ru: "Комплект с роликами", az: "Diyircəklərlə dəst", ka: "ნაკრები რგოლებით" } },
+      { label: material, value: { ru: "Армированная резина", az: "Armaturlu rezin", ka: "გამაგრებული რეზინი" } },
+    ],
+    stock: 6,
+  },
+  {
+    id: "AP-1008",
+    slug: "alternator-24v-man",
+    name: {
+      ru: "Генератор Motora Dynamo 24V для MAN TGX",
+      az: "MAN TGX üçün Motora Dynamo 24V generatoru",
+      ka: "Motora Dynamo 24V გენერატორი MAN TGX-ისთვის",
+    },
+    category: "trucks",
+    price: 380,
+    oldPrice: 420,
+    description: {
+      ru: "Генератор на 24 В для магистральных тягачей. Высокий выходной ток для стабильной работы бортовой электроники.",
+      az: "Magistral qatarlar üçün 24 V generator. Bort elektronikasının sabit işləməsi üçün yüksək çıxış cərəyanı.",
+      ka: "სატვირთო სატრანსპორტო საშუალებებისთვის 24 ვ გენერატორი. მაღალი გამომავალი დენი ბორტული ელექტრონიკის სტაბილური მუშაობისთვის.",
+    },
+    specs: [
+      { label: partNumber, value: { ru: "MDY-7040", az: "MDY-7040", ka: "MDY-7040" } },
+      { label: compatibility, value: { ru: "MAN TGX / TGS", az: "MAN TGX / TGS", ka: "MAN TGX / TGS" } },
+      { label: voltage, value: { ru: "24 В", az: "24 V", ka: "24 ვ" } },
+      { label: output, value: { ru: "120 А", az: "120 A", ka: "120 ა" } },
+    ],
+    stock: 0,
+    badge: discount,
+  },
+  {
+    id: "AP-1009",
+    slug: "leaf-spring-rear-zil",
+    name: {
+      ru: "Рессора задняя Motora Leaf Spring для ЗИЛ/КАМАЗ",
+      az: "ZİL/KamAZ üçün arxa Motora Leaf Spring resorası",
+      ka: "უკანა ზამბარა Motora Leaf Spring ЗИЛ/КАМАЗ-ისთვის",
+    },
+    category: "trucks",
+    price: 168,
+    description: {
+      ru: "Многолистовая рессора задней подвески из рессорной стали. Выдерживает высокие нагрузки при перевозке грузов.",
+      az: "Resor poladından hazırlanmış arxa asqı üçün çoxvərəqli resora. Yük daşınarkən yüksək yükə davam gətirir.",
+      ka: "ზამბარის ფოლადისგან დამზადებული უკანა შეკიდვის მრავალფურცლიანი ზამბარა. უძლებს მაღალ დატვირთვას ტვირთის გადაზიდვისას.",
+    },
+    specs: [
+      { label: partNumber, value: { ru: "MLS-8020", az: "MLS-8020", ka: "MLS-8020" } },
+      { label: compatibility, value: { ru: "ЗИЛ-130, КАМАЗ 4308", az: "ZİL-130, KamAZ 4308", ka: "ЗИЛ-130, КАМАЗ 4308" } },
+      { label: position, value: { ru: "Задняя", az: "Arxa", ka: "უკანა" } },
+      { label: material, value: { ru: "Рессорная сталь", az: "Resor poladı", ka: "ზამბარის ფოლადი" } },
+    ],
+    stock: 8,
+  },
+  {
+    id: "AP-1010",
+    slug: "fuel-filter-sprinter",
+    name: {
+      ru: "Топливный фильтр Motora Sprinter FuelGuard",
+      az: "Motora Sprinter FuelGuard yanacaq filtri",
+      ka: "Motora Sprinter FuelGuard საწვავის ფილტრი",
+    },
+    category: "vans",
+    price: 32,
+    description: {
+      ru: "Топливный фильтр тонкой очистки для дизельных двигателей 2.2 CDI. Защищает форсунки от загрязнений и воды.",
+      az: "2.2 CDI dizel mühərriklər üçün incə təmizləmə yanacaq filtri. Forsunkaları çirklənmə və sudan qoruyur.",
+      ka: "2.2 CDI დიზელის ძრავებისთვის წვრილი გაწმენდის საწვავის ფილტრი. იცავს ინჟექტორებს დაბინძურებისა და წყლისგან.",
+    },
+    specs: [
+      { label: partNumber, value: { ru: "MFG-9012", az: "MFG-9012", ka: "MFG-9012" } },
+      { label: compatibility, value: { ru: "Mercedes Sprinter / VW Crafter 2.2 CDI", az: "Mercedes Sprinter / VW Crafter 2.2 CDI", ka: "Mercedes Sprinter / VW Crafter 2.2 CDI" } },
+      { label: type_, value: { ru: "Дизельный", az: "Dizel", ka: "დიზელის" } },
+      { label: material, value: { ru: "Бумажный элемент с водоотделителем", az: "Su ayırıcılı kağız element", ka: "წყალგამყოფიანი ქაღალდის ელემენტი" } },
+    ],
+    stock: 20,
+  },
+  {
+    id: "AP-1011",
+    slug: "serpentine-belt-sprinter",
+    name: {
+      ru: "Ремень навесного оборудования Motora Serpentine для Sprinter",
+      az: "Sprinter üçün Motora Serpentine ötürücü qayışı",
+      ka: "Motora Serpentine დამხმარე აგრეგატების ღვედი Sprinter-ისთვის",
+    },
+    category: "vans",
+    price: 27,
+    description: {
+      ru: "Поликлиновой ремень привода генератора и насосов. Устойчив к перегреву и растяжению.",
+      az: "Generator və nasosların ötürülməsi üçün polikin qayış. İstiyə və dartılmaya davamlıdır.",
+      ka: "გენერატორისა და ტუმბოების ამძრავი პოლიკლინური ღვედი. მედეგია გადახურებისა და გაწელვის მიმართ.",
+    },
+    specs: [
+      { label: partNumber, value: { ru: "MSB-1155", az: "MSB-1155", ka: "MSB-1155" } },
+      { label: compatibility, value: { ru: "Mercedes Sprinter 906/907", az: "Mercedes Sprinter 906/907", ka: "Mercedes Sprinter 906/907" } },
+      { label: material, value: { ru: "Резина с полиэстером", az: "Poliesterli rezin", ka: "პოლიესტერიანი რეზინი" } },
+      { label: size, value: { ru: "6PK1560", az: "6PK1560", ka: "6PK1560" } },
+    ],
+    stock: 18,
+  },
+  {
+    id: "AP-1012",
+    slug: "glow-plug-sprinter",
+    name: {
+      ru: "Свеча накаливания Motora GlowPlug для Sprinter CDI",
+      az: "Sprinter CDI üçün Motora GlowPlug qızdırıcı şam",
+      ka: "Motora GlowPlug გავარვარების სანთელი Sprinter CDI-სთვის",
+    },
+    category: "vans",
+    price: 38,
+    description: {
+      ru: "Комплект свечей накаливания для дизельных двигателей OM651. Быстрый прогрев и надёжный холодный пуск.",
+      az: "OM651 dizel mühərrikləri üçün qızdırıcı şam dəsti. Sürətli qızma və etibarlı soyuq start.",
+      ka: "OM651 დიზელის ძრავებისთვის გავარვარების სანთლების ნაკრები. სწრაფი გახურება და საიმედო ცივი გაშვება.",
+    },
+    specs: [
+      { label: partNumber, value: { ru: "MGP-2244", az: "MGP-2244", ka: "MGP-2244" } },
+      { label: compatibility, value: { ru: "Mercedes Sprinter, OM651", az: "Mercedes Sprinter, OM651", ka: "Mercedes Sprinter, OM651" } },
+      { label: voltage, value: { ru: "11 В", az: "11 V", ka: "11 ვ" } },
+      { label: kit, value: { ru: "Комплект 4 шт.", az: "4 ədəd dəst", ka: "4 ცალიანი ნაკრები" } },
+    ],
+    stock: 35,
+    badge: newBadge,
+  },
+  {
+    id: "AP-1013",
+    slug: "cabin-filter-sprinter",
+    name: {
+      ru: "Салонный фильтр Motora CabinPure для Sprinter/Crafter",
+      az: "Sprinter/Crafter üçün Motora CabinPure salon filtri",
+      ka: "Motora CabinPure სალონის ფილტრი Sprinter/Crafter-ისთვის",
+    },
+    category: "vans",
+    price: 23,
+    description: {
+      ru: "Угольный салонный фильтр с многослойной очисткой воздуха от пыли, пыльцы и запахов.",
+      az: "Tozu, tozcuğu və qoxuları çoxqatlı təmizləyən kömürlü salon filtri.",
+      ka: "ნახშირბადოვანი სალონის ფილტრი მრავალშრიანი გაწმენდით მტვრის, მტვრიანასა და სუნისგან.",
+    },
+    specs: [
+      { label: partNumber, value: { ru: "MCF-3390", az: "MCF-3390", ka: "MCF-3390" } },
+      { label: compatibility, value: { ru: "Mercedes Sprinter / VW Crafter", az: "Mercedes Sprinter / VW Crafter", ka: "Mercedes Sprinter / VW Crafter" } },
+      { label: type_, value: { ru: "Угольный", az: "Kömürlü", ka: "ნახშირბადოვანი" } },
+      { label: material, value: { ru: "Активированный уголь + нетканый материал", az: "Aktivləşdirilmiş kömür + toxunmamış material", ka: "გააქტიურებული ნახშირბადი + არაქსოვილი მასალა" } },
+    ],
+    stock: 28,
   },
 ];
 

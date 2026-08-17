@@ -64,9 +64,14 @@ export default async function ProductPage({
 
         <div className="flex flex-col gap-5">
           <div className="flex flex-col gap-1">
-            <span className="text-xs font-medium uppercase tracking-wide text-orange-600 dark:text-orange-500">
-              {t(categoryLabels[product.category], locale)}
-            </span>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-medium uppercase tracking-wide text-orange-600 dark:text-orange-500">
+                {t(categoryLabels[product.category], locale)}
+              </span>
+              <span className="text-xs text-zinc-400">
+                {dict.product.idLabel}: {product.id}
+              </span>
+            </div>
             <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
               {t(product.name, locale)}
             </h1>
@@ -88,19 +93,24 @@ export default async function ProductPage({
 
           <p className="text-zinc-600 dark:text-zinc-400">{t(product.description, locale)}</p>
 
-          <p
-            className={
-              product.inStock
-                ? "text-sm font-medium text-emerald-600"
-                : "text-sm font-medium text-zinc-500"
-            }
-          >
-            {product.inStock ? dict.product.inStock : dict.product.onOrder}
-          </p>
+          <div className="flex items-center gap-3">
+            <p
+              className={
+                product.stock > 0
+                  ? "text-sm font-medium text-emerald-600"
+                  : "text-sm font-medium text-zinc-500"
+              }
+            >
+              {product.stock > 0 ? dict.product.inStock : dict.product.onOrder}
+            </p>
+            {product.stock > 0 && (
+              <span className="text-sm text-zinc-500">{dict.product.stockCount(product.stock)}</span>
+            )}
+          </div>
 
           <AddToCartButton
             productId={product.id}
-            inStock={product.inStock}
+            inStock={product.stock > 0}
             labels={{
               addToCart: dict.product.addToCart,
               onOrder: dict.product.onOrder,

@@ -7,9 +7,9 @@ const az: Dictionary = {
   },
   home: {
     brand: "Motora Shop",
-    heroTitle: "Hərəkətdə olanlar üçün motosikletlər, skuterlər və ekipirovka",
+    heroTitle: "Yüngül avtomobillər, yük maşınları və mikroavtobuslar üçün ehtiyat hissələri",
     heroSubtitle:
-      "Texnikanı sürüş tərzinizə uyğun seçirik və ən çox lazım olan ehtiyat hissələrini anbarda saxlayırıq.",
+      "Ən çox tələb olunan markalar üçün orijinal və analoq hissələri anbarda saxlayırıq — sedandan Sprinter-ə qədər.",
     ctaCatalog: "Kataloqa bax",
     popular: "Populyar",
     viewAll: "Bütün kataloq →",
@@ -27,6 +27,8 @@ const az: Dictionary = {
     onOrder: "Sifarişlə",
     addToCart: "Səbətə at",
     added: "Əlavə edildi ✓",
+    idLabel: "Məhsul ID",
+    stockCount: (n) => `Anbarda ${n} ədəd`,
   },
   cart: {
     title: "Səbət",

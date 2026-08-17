@@ -26,16 +26,19 @@ export default function ProductCard({
             {t(product.badge, locale)}
           </span>
         )}
-        {!product.inStock && (
+        {product.stock <= 0 && (
           <span className="absolute right-3 top-3 rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-600">
             {dict.product.onOrder}
           </span>
         )}
       </div>
       <div className="flex flex-1 flex-col gap-2 p-4">
-        <span className="text-xs font-medium uppercase tracking-wide text-orange-600 dark:text-orange-500">
-          {t(categoryLabels[product.category], locale)}
-        </span>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs font-medium uppercase tracking-wide text-orange-600 dark:text-orange-500">
+            {t(categoryLabels[product.category], locale)}
+          </span>
+          <span className="text-xs text-zinc-400">{product.id}</span>
+        </div>
         <h3 className="font-semibold text-zinc-900 group-hover:text-orange-600 dark:text-zinc-50">
           {t(product.name, locale)}
         </h3>
@@ -51,6 +54,9 @@ export default function ProductCard({
             )}
           </div>
           <span className="text-sm text-zinc-500">{formatUsd(product.price, locale)}</span>
+          {product.stock > 0 && (
+            <span className="text-xs text-zinc-400">{dict.product.stockCount(product.stock)}</span>
+          )}
         </div>
       </div>
     </Link>

@@ -24,6 +24,8 @@ export type Dictionary = {
     onOrder: string;
     addToCart: string;
     added: string;
+    idLabel: string;
+    stockCount: (count: number) => string;
   };
   cart: {
     title: string;
