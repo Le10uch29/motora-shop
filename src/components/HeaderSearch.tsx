@@ -44,7 +44,7 @@ export default function HeaderSearch({
 }: {
   locale: Locale;
   dict: Dictionary["search"];
-  carMakes: string[];
+  carMakes: { id: string; label: string }[];
   brands: Brand[];
 }) {
   const router = useRouter();
@@ -229,8 +229,8 @@ export default function HeaderSearch({
               >
                 <option value="">{dict.allMakes}</option>
                 {carMakes.map((make) => (
-                  <option key={make} value={make}>
-                    {make}
+                  <option key={make.id} value={make.id}>
+                    {make.label}
                   </option>
                 ))}
               </select>

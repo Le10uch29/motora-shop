@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getProductBySlug, products, categoryLabels, t } from "@/lib/products";
+import { getProductBySlug, products, categoryLabels, makeLabel, t } from "@/lib/products";
 import { formatGel, formatUsd } from "@/lib/currency";
 import { getBrandBySlug } from "@/lib/brands";
 import { locales, isLocale } from "@/i18n/locales";
@@ -146,7 +146,7 @@ export default async function ProductPage({
                 {dict.product.makeLabel}
               </dt>
               <dd className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
-                {product.make}
+                {makeLabel(product.make, locale)}
               </dd>
             </div>
             {product.specs.map((spec) => (

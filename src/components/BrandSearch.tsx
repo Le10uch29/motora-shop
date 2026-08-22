@@ -43,7 +43,7 @@ export default function BrandSearch({
 }: {
   basePath: string;
   dict: Dictionary["search"];
-  carMakes: string[];
+  carMakes: { id: string; label: string }[];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -213,8 +213,8 @@ export default function BrandSearch({
                   >
                     <option value="">{dict.allMakes}</option>
                     {carMakes.map((make) => (
-                      <option key={make} value={make}>
-                        {make}
+                      <option key={make.id} value={make.id}>
+                        {make.label}
                       </option>
                     ))}
                   </select>

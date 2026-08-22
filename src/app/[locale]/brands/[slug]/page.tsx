@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { filterProducts } from "@/lib/products";
+import { filterProducts, localizedMakes } from "@/lib/products";
 import { brands, getBrandBySlug } from "@/lib/brands";
 import { locales, isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
@@ -40,11 +40,10 @@ export default async function BrandDetailPage({
     locale
   );
 
-  const brandMakes = Array.from(
-    new Set(
-      filterProducts({ brand: brand.slug }, locale).map((p) => p.make)
-    )
-  ).sort((a, b) => a.localeCompare(b));
+  const brandMakeIds = Array.from(
+    new Set(filterProducts({ brand: brand.slug }, locale).map((p) => p.make))
+  );
+  const brandMakes = localizedMakes(brandMakeIds, locale);
 
   const basePath = `/${locale}/brands/${slug}`;
 

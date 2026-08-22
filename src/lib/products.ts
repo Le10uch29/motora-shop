@@ -12,7 +12,7 @@ export type Product = {
   slug: string;
   name: LocalizedText;
   category: CategoryId;
-  /** Vehicle make this part fits, e.g. "Toyota". "Universal" if not make-specific. */
+  /** Vehicle make this part fits, as a key into {@link makeLabels}. "universal" if not make-specific. */
   make: string;
   /** Parts brand carried by the shop. */
   brand: BrandSlug;
@@ -40,6 +40,32 @@ export function t(text: LocalizedText, locale: Locale): string {
 }
 
 export const categoryIds: CategoryId[] = ["cars", "trucks", "vans"];
+
+/** Vehicle makes referenced by {@link Product.make}, keyed by a stable locale-independent id. */
+export const makeLabels: Record<string, LocalizedText> = {
+  toyota: { ru: "Toyota", az: "Toyota", ka: "Toyota" },
+  hyundai: { ru: "Hyundai", az: "Hyundai", ka: "Hyundai" },
+  "mercedes-benz": { ru: "Mercedes-Benz", az: "Mercedes-Benz", ka: "Mercedes-Benz" },
+  man: { ru: "MAN", az: "MAN", ka: "MAN" },
+  kamaz: { ru: "КАМАЗ", az: "KamAZ", ka: "КАМАЗ" },
+  zil: { ru: "ЗИЛ", az: "ZİL", ka: "ЗИЛ" },
+  universal: { ru: "Универсальный", az: "Universal", ka: "უნივერსალური" },
+};
+
+export function makeLabel(makeId: string, locale: Locale): string {
+  const label = makeLabels[makeId];
+  return label ? t(label, locale) : makeId;
+}
+
+/** Localizes and alphabetically sorts a list of make ids for display (e.g. in a filter dropdown). */
+export function localizedMakes(
+  makeIds: string[],
+  locale: Locale
+): { id: string; label: string }[] {
+  return makeIds
+    .map((id) => ({ id, label: makeLabel(id, locale) }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+}
 
 export const categoryLabels: Record<CategoryId, LocalizedText> = {
   cars: { ru: "Легковые авто", az: "Yüngül avtomobillər", ka: "მსუბუქი ავტომობილები" },
@@ -73,7 +99,7 @@ export const products: Product[] = [
   {
     id: "AP-1001",
     slug: "brake-pads-front-camry",
-    make: "Toyota",
+    make: "toyota",
     brand: "aplus-automotive",
     yearFrom: 2018,
     yearTo: 2024,
@@ -101,7 +127,7 @@ export const products: Product[] = [
   {
     id: "AP-1002",
     slug: "battery-60ah",
-    make: "Universal",
+    make: "universal",
     brand: "aplus-automotive",
     yearFrom: 2000,
     yearTo: 2030,
@@ -129,7 +155,7 @@ export const products: Product[] = [
   {
     id: "AP-1003",
     slug: "shock-absorber-front-solaris",
-    make: "Hyundai",
+    make: "hyundai",
     brand: "aplus-automotive",
     yearFrom: 2017,
     yearTo: 2030,
@@ -156,7 +182,7 @@ export const products: Product[] = [
   {
     id: "AP-1004",
     slug: "oil-filter-universal",
-    make: "Universal",
+    make: "universal",
     brand: "elring",
     yearFrom: 2000,
     yearTo: 2030,
@@ -183,7 +209,7 @@ export const products: Product[] = [
   {
     id: "AP-1005",
     slug: "air-filter-corolla",
-    make: "Toyota",
+    make: "toyota",
     brand: "elring",
     yearFrom: 2019,
     yearTo: 2030,
@@ -210,7 +236,7 @@ export const products: Product[] = [
   {
     id: "AP-1006",
     slug: "brake-pads-heavy-kamaz",
-    make: "КАМАЗ",
+    make: "kamaz",
     brand: "aplus-automotive",
     yearFrom: 1990,
     yearTo: 2024,
@@ -237,7 +263,7 @@ export const products: Product[] = [
   {
     id: "AP-1007",
     slug: "timing-belt-kit-actros",
-    make: "Mercedes-Benz",
+    make: "mercedes-benz",
     brand: "elring",
     yearFrom: 2000,
     yearTo: 2024,
@@ -264,7 +290,7 @@ export const products: Product[] = [
   {
     id: "AP-1008",
     slug: "alternator-24v-man",
-    make: "MAN",
+    make: "man",
     brand: "aplus-automotive",
     yearFrom: 2000,
     yearTo: 2024,
@@ -293,7 +319,7 @@ export const products: Product[] = [
   {
     id: "AP-1009",
     slug: "leaf-spring-rear-zil",
-    make: "ЗИЛ",
+    make: "zil",
     brand: "aplus-automotive",
     yearFrom: 1970,
     yearTo: 2010,
@@ -320,7 +346,7 @@ export const products: Product[] = [
   {
     id: "AP-1010",
     slug: "fuel-filter-sprinter",
-    make: "Mercedes-Benz",
+    make: "mercedes-benz",
     brand: "elring",
     yearFrom: 2006,
     yearTo: 2018,
@@ -347,7 +373,7 @@ export const products: Product[] = [
   {
     id: "AP-1011",
     slug: "serpentine-belt-sprinter",
-    make: "Mercedes-Benz",
+    make: "mercedes-benz",
     brand: "aplus-automotive",
     yearFrom: 2006,
     yearTo: 2018,
@@ -374,7 +400,7 @@ export const products: Product[] = [
   {
     id: "AP-1012",
     slug: "glow-plug-sprinter",
-    make: "Mercedes-Benz",
+    make: "mercedes-benz",
     brand: "elring",
     yearFrom: 2009,
     yearTo: 2018,
@@ -402,7 +428,7 @@ export const products: Product[] = [
   {
     id: "AP-1013",
     slug: "cabin-filter-sprinter",
-    make: "Mercedes-Benz",
+    make: "mercedes-benz",
     brand: "elring",
     yearFrom: 2006,
     yearTo: 2018,

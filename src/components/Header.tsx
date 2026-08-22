@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import type { Locale } from "@/i18n/locales";
 import type { Dictionary } from "@/i18n/dictionary";
-import { carMakes } from "@/lib/products";
+import { carMakes, localizedMakes } from "@/lib/products";
 import { catalogBrands } from "@/lib/brands";
 import CartIndicator from "@/components/CartIndicator";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
@@ -40,7 +40,7 @@ export default function Header({
             <HeaderSearch
               locale={locale}
               dict={dict.search}
-              carMakes={carMakes}
+              carMakes={localizedMakes(carMakes, locale)}
               brands={catalogBrands}
             />
           </Suspense>
