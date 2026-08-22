@@ -3,12 +3,14 @@ import { notFound } from "next/navigation";
 import {
   categoryIds,
   categoryLabels,
-  getProductsByCategory,
+  filterProducts,
   t,
   type CategoryId,
 } from "@/lib/products";
+import { isBrandSlug } from "@/lib/brands";
 import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
+import { single, toNumber } from "@/lib/searchParams";
 import ProductCard from "@/components/ProductCard";
 
 function isCategoryId(value: string | undefined): value is CategoryId {
@@ -23,10 +25,35 @@ export default async function CatalogPage({
   if (!isLocale(locale)) notFound();
   const dict = await getDictionary(locale);
 
-  const { category: rawCategory } = await searchParams;
-  const singleCategory = Array.isArray(rawCategory) ? rawCategory[0] : rawCategory;
-  const category = isCategoryId(singleCategory) ? singleCategory : undefined;
-  const items = getProductsByCategory(category);
+  const sp = await searchParams;
+  const category = isCategoryId(single(sp.category)) ? (single(sp.category) as CategoryId) : undefined;
+  const query = single(sp.q)?.trim() || undefined;
+  const make = single(sp.make) || undefined;
+  const rawBrand = single(sp.brand);
+  const brand = rawBrand && isBrandSlug(rawBrand) ? rawBrand : undefined;
+  const priceMin = toNumber(single(sp.priceMin));
+  const priceMax = toNumber(single(sp.priceMax));
+  const yearFrom = toNumber(single(sp.yearFrom));
+  const yearTo = toNumber(single(sp.yearTo));
+
+  const hasActiveFilters = Boolean(make || brand || priceMin !== undefined || priceMax !== undefined || yearFrom !== undefined || yearTo !== undefined);
+
+  function hrefForCategory(target?: CategoryId): string {
+    const searchParamsObj = new URLSearchParams();
+    for (const [key, value] of Object.entries(sp)) {
+      if (key === "category") continue;
+      const v = single(value);
+      if (v) searchParamsObj.set(key, v);
+    }
+    if (target) searchParamsObj.set("category", target);
+    const qs = searchParamsObj.toString();
+    return qs ? `/${locale}/catalog?${qs}` : `/${locale}/catalog`;
+  }
+
+  const items = filterProducts(
+    { category, query, make, brand, priceMin, priceMax, yearFrom, yearTo },
+    locale
+  );
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-6 py-10">
@@ -37,12 +64,24 @@ export default async function CatalogPage({
         <p className="text-zinc-600 dark:text-zinc-400">
           {dict.catalog.productCount(items.length)}
           {category ? dict.catalog.inCategory(t(categoryLabels[category], locale)) : ""}
+          {query ? ` ${dict.catalog.forQuery(query)}` : ""}
+          {hasActiveFilters && (
+            <>
+              {" · "}
+              <Link
+                href={category ? `/${locale}/catalog?category=${category}` : `/${locale}/catalog`}
+                className="text-orange-600 hover:underline"
+              >
+                {dict.catalog.clearFilters}
+              </Link>
+            </>
+          )}
         </p>
       </div>
 
       <div className="flex flex-wrap gap-2">
         <Link
-          href={`/${locale}/catalog`}
+          href={hrefForCategory()}
           className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
             !category
               ? "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900"
@@ -54,7 +93,7 @@ export default async function CatalogPage({
         {categoryIds.map((c) => (
           <Link
             key={c}
-            href={`/${locale}/catalog?category=${c}`}
+            href={hrefForCategory(c)}
             className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
               category === c
                 ? "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900"

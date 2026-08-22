@@ -1,4 +1,5 @@
 import type { Locale } from "@/i18n/locales";
+import type { BrandSlug } from "@/lib/brands";
 
 export type LocalizedText = Record<Locale, string>;
 
@@ -11,6 +12,13 @@ export type Product = {
   slug: string;
   name: LocalizedText;
   category: CategoryId;
+  /** Vehicle make this part fits, e.g. "Toyota". "Universal" if not make-specific. */
+  make: string;
+  /** Parts brand carried by the shop. */
+  brand: BrandSlug;
+  /** Inclusive vehicle model-year range this part fits. */
+  yearFrom: number;
+  yearTo: number;
   /** Base price in Georgian Lari (GEL) */
   price: number;
   oldPrice?: number;
@@ -19,6 +27,12 @@ export type Product = {
   /** Units currently in stock. 0 means made-to-order. */
   stock: number;
   badge?: LocalizedText;
+  /** Up to 4 photo URLs. Populated later via the admin panel; falls back to a placeholder illustration when empty. */
+  images?: string[];
+  /** Manufacturer's original reference code. Populated later via the admin panel. */
+  originCode?: string;
+  /** Shop's internal product code. Populated later via the admin panel. */
+  productCode?: string;
 };
 
 export function t(text: LocalizedText, locale: Locale): string {
@@ -59,10 +73,14 @@ export const products: Product[] = [
   {
     id: "AP-1001",
     slug: "brake-pads-front-camry",
+    make: "Toyota",
+    brand: "aplus-automotive",
+    yearFrom: 2018,
+    yearTo: 2024,
     name: {
-      ru: "Тормозные колодки передние Motora для Toyota Camry",
-      az: "Toyota Camry üçün ön əyləc kolodkaları Motora",
-      ka: "წინა სამუხრუჭე ხუნდები Motora Toyota Camry-სთვის",
+      ru: "Тормозные колодки передние для Toyota Camry",
+      az: "Toyota Camry üçün ön əyləc kolodkaları",
+      ka: "წინა სამუხრუჭე ხუნდები Toyota Camry-სთვის",
     },
     category: "cars",
     price: 89,
@@ -83,10 +101,14 @@ export const products: Product[] = [
   {
     id: "AP-1002",
     slug: "battery-60ah",
+    make: "Universal",
+    brand: "aplus-automotive",
+    yearFrom: 2000,
+    yearTo: 2030,
     name: {
-      ru: "Аккумулятор Motora PowerCell 60Ач",
-      az: "Motora PowerCell 60Ah akkumulyatoru",
-      ka: "Motora PowerCell 60Ah აკუმულატორი",
+      ru: "Аккумулятор PowerCell 60Ач",
+      az: "PowerCell 60Ah akkumulyatoru",
+      ka: "PowerCell 60Ah აკუმულატორი",
     },
     category: "cars",
     price: 72,
@@ -107,10 +129,14 @@ export const products: Product[] = [
   {
     id: "AP-1003",
     slug: "shock-absorber-front-solaris",
+    make: "Hyundai",
+    brand: "aplus-automotive",
+    yearFrom: 2017,
+    yearTo: 2030,
     name: {
-      ru: "Амортизатор передний Motora Ride для Hyundai Solaris",
-      az: "Hyundai Solaris üçün ön amortizator Motora Ride",
-      ka: "წინა ამორტიზატორი Motora Ride Hyundai Solaris-ისთვის",
+      ru: "Амортизатор передний Ride для Hyundai Solaris",
+      az: "Hyundai Solaris üçün ön amortizator Ride",
+      ka: "წინა ამორტიზატორი Ride Hyundai Solaris-ისთვის",
     },
     category: "cars",
     price: 118,
@@ -130,10 +156,14 @@ export const products: Product[] = [
   {
     id: "AP-1004",
     slug: "oil-filter-universal",
+    make: "Universal",
+    brand: "elring",
+    yearFrom: 2000,
+    yearTo: 2030,
     name: {
-      ru: "Масляный фильтр Motora OilGuard",
-      az: "Motora OilGuard yağ filtri",
-      ka: "Motora OilGuard ზეთის ფილტრი",
+      ru: "Масляный фильтр OilGuard",
+      az: "OilGuard yağ filtri",
+      ka: "OilGuard ზეთის ფილტრი",
     },
     category: "cars",
     price: 19,
@@ -153,10 +183,14 @@ export const products: Product[] = [
   {
     id: "AP-1005",
     slug: "air-filter-corolla",
+    make: "Toyota",
+    brand: "elring",
+    yearFrom: 2019,
+    yearTo: 2030,
     name: {
-      ru: "Воздушный фильтр Motora AirFlow для Toyota Corolla",
-      az: "Toyota Corolla üçün Motora AirFlow hava filtri",
-      ka: "Motora AirFlow ჰაერის ფილტრი Toyota Corolla-სთვის",
+      ru: "Воздушный фильтр AirFlow для Toyota Corolla",
+      az: "Toyota Corolla üçün AirFlow hava filtri",
+      ka: "AirFlow ჰაერის ფილტრი Toyota Corolla-სთვის",
     },
     category: "cars",
     price: 24,
@@ -176,10 +210,14 @@ export const products: Product[] = [
   {
     id: "AP-1006",
     slug: "brake-pads-heavy-kamaz",
+    make: "КАМАЗ",
+    brand: "aplus-automotive",
+    yearFrom: 1990,
+    yearTo: 2024,
     name: {
-      ru: "Тормозные колодки Motora HD для КАМАЗ",
-      az: "KamAZ üçün Motora HD əyləc kolodkaları",
-      ka: "Motora HD სამუხრუჭე ხუნდები КАМАЗ-ისთვის",
+      ru: "Тормозные колодки HD для КАМАЗ",
+      az: "KamAZ üçün HD əyləc kolodkaları",
+      ka: "HD სამუხრუჭე ხუნდები КАМАЗ-ისთვის",
     },
     category: "trucks",
     price: 145,
@@ -199,10 +237,14 @@ export const products: Product[] = [
   {
     id: "AP-1007",
     slug: "timing-belt-kit-actros",
+    make: "Mercedes-Benz",
+    brand: "elring",
+    yearFrom: 2000,
+    yearTo: 2024,
     name: {
-      ru: "Ремень ГРМ Motora TimeBelt HD для Mercedes Actros",
-      az: "Mercedes Actros üçün Motora TimeBelt HD qayış dəsti",
-      ka: "Motora TimeBelt HD დროშის ღვედი Mercedes Actros-ისთვის",
+      ru: "Ремень ГРМ TimeBelt HD для Mercedes Actros",
+      az: "Mercedes Actros üçün TimeBelt HD qayış dəsti",
+      ka: "TimeBelt HD დროშის ღვედი Mercedes Actros-ისთვის",
     },
     category: "trucks",
     price: 235,
@@ -222,10 +264,14 @@ export const products: Product[] = [
   {
     id: "AP-1008",
     slug: "alternator-24v-man",
+    make: "MAN",
+    brand: "aplus-automotive",
+    yearFrom: 2000,
+    yearTo: 2024,
     name: {
-      ru: "Генератор Motora Dynamo 24V для MAN TGX",
-      az: "MAN TGX üçün Motora Dynamo 24V generatoru",
-      ka: "Motora Dynamo 24V გენერატორი MAN TGX-ისთვის",
+      ru: "Генератор Dynamo 24V для MAN TGX",
+      az: "MAN TGX üçün Dynamo 24V generatoru",
+      ka: "Dynamo 24V გენერატორი MAN TGX-ისთვის",
     },
     category: "trucks",
     price: 380,
@@ -247,10 +293,14 @@ export const products: Product[] = [
   {
     id: "AP-1009",
     slug: "leaf-spring-rear-zil",
+    make: "ЗИЛ",
+    brand: "aplus-automotive",
+    yearFrom: 1970,
+    yearTo: 2010,
     name: {
-      ru: "Рессора задняя Motora Leaf Spring для ЗИЛ/КАМАЗ",
-      az: "ZİL/KamAZ üçün arxa Motora Leaf Spring resorası",
-      ka: "უკანა ზამბარა Motora Leaf Spring ЗИЛ/КАМАЗ-ისთვის",
+      ru: "Рессора задняя для ЗИЛ/КАМАЗ",
+      az: "ZİL/KamAZ üçün arxa resorası",
+      ka: "უკანა ზამბარა ЗИЛ/КАМАЗ-ისთვის",
     },
     category: "trucks",
     price: 168,
@@ -270,10 +320,14 @@ export const products: Product[] = [
   {
     id: "AP-1010",
     slug: "fuel-filter-sprinter",
+    make: "Mercedes-Benz",
+    brand: "elring",
+    yearFrom: 2006,
+    yearTo: 2018,
     name: {
-      ru: "Топливный фильтр Motora Sprinter FuelGuard",
-      az: "Motora Sprinter FuelGuard yanacaq filtri",
-      ka: "Motora Sprinter FuelGuard საწვავის ფილტრი",
+      ru: "Топливный фильтр Sprinter FuelGuard",
+      az: "Sprinter FuelGuard yanacaq filtri",
+      ka: "Sprinter FuelGuard საწვავის ფილტრი",
     },
     category: "vans",
     price: 32,
@@ -293,10 +347,14 @@ export const products: Product[] = [
   {
     id: "AP-1011",
     slug: "serpentine-belt-sprinter",
+    make: "Mercedes-Benz",
+    brand: "aplus-automotive",
+    yearFrom: 2006,
+    yearTo: 2018,
     name: {
-      ru: "Ремень навесного оборудования Motora Serpentine для Sprinter",
-      az: "Sprinter üçün Motora Serpentine ötürücü qayışı",
-      ka: "Motora Serpentine დამხმარე აგრეგატების ღვედი Sprinter-ისთვის",
+      ru: "Ремень навесного оборудования Serpentine для Sprinter",
+      az: "Sprinter üçün Serpentine ötürücü qayışı",
+      ka: "Serpentine დამხმარე აგრეგატების ღვედი Sprinter-ისთვის",
     },
     category: "vans",
     price: 27,
@@ -316,10 +374,14 @@ export const products: Product[] = [
   {
     id: "AP-1012",
     slug: "glow-plug-sprinter",
+    make: "Mercedes-Benz",
+    brand: "elring",
+    yearFrom: 2009,
+    yearTo: 2018,
     name: {
-      ru: "Свеча накаливания Motora GlowPlug для Sprinter CDI",
-      az: "Sprinter CDI üçün Motora GlowPlug qızdırıcı şam",
-      ka: "Motora GlowPlug გავარვარების სანთელი Sprinter CDI-სთვის",
+      ru: "Свеча накаливания GlowPlug для Sprinter CDI",
+      az: "Sprinter CDI üçün GlowPlug qızdırıcı şam",
+      ka: "GlowPlug გავარვარების სანთელი Sprinter CDI-სთვის",
     },
     category: "vans",
     price: 38,
@@ -340,10 +402,14 @@ export const products: Product[] = [
   {
     id: "AP-1013",
     slug: "cabin-filter-sprinter",
+    make: "Mercedes-Benz",
+    brand: "elring",
+    yearFrom: 2006,
+    yearTo: 2018,
     name: {
-      ru: "Салонный фильтр Motora CabinPure для Sprinter/Crafter",
-      az: "Sprinter/Crafter üçün Motora CabinPure salon filtri",
-      ka: "Motora CabinPure სალონის ფილტრი Sprinter/Crafter-ისთვის",
+      ru: "Салонный фильтр CabinPure для Sprinter/Crafter",
+      az: "Sprinter/Crafter üçün CabinPure salon filtri",
+      ka: "CabinPure სალონის ფილტრი Sprinter/Crafter-ისთვის",
     },
     category: "vans",
     price: 23,
@@ -366,7 +432,45 @@ export function getProductBySlug(slug: string): Product | undefined {
   return products.find((p) => p.slug === slug);
 }
 
-export function getProductsByCategory(category?: CategoryId): Product[] {
-  if (!category) return products;
-  return products.filter((p) => p.category === category);
+export const carMakes: string[] = Array.from(new Set(products.map((p) => p.make))).sort((a, b) =>
+  a.localeCompare(b)
+);
+
+export const priceBounds = {
+  min: Math.min(...products.map((p) => p.price)),
+  max: Math.max(...products.map((p) => p.price)),
+};
+
+export const yearBounds = {
+  min: Math.min(...products.map((p) => p.yearFrom)),
+  max: Math.max(...products.map((p) => p.yearTo)),
+};
+
+export type ProductFilters = {
+  category?: CategoryId;
+  make?: string;
+  brand?: BrandSlug;
+  priceMin?: number;
+  priceMax?: number;
+  yearFrom?: number;
+  yearTo?: number;
+  query?: string;
+};
+
+export function filterProducts(filters: ProductFilters, locale: Locale): Product[] {
+  const query = filters.query?.trim().toLowerCase();
+  return products.filter((p) => {
+    if (filters.category && p.category !== filters.category) return false;
+    if (filters.make && p.make !== filters.make) return false;
+    if (filters.brand && p.brand !== filters.brand) return false;
+    if (filters.priceMin !== undefined && p.price < filters.priceMin) return false;
+    if (filters.priceMax !== undefined && p.price > filters.priceMax) return false;
+    if (filters.yearFrom !== undefined && p.yearTo < filters.yearFrom) return false;
+    if (filters.yearTo !== undefined && p.yearFrom > filters.yearTo) return false;
+    if (query) {
+      const haystack = `${t(p.name, locale)} ${t(p.description, locale)}`.toLowerCase();
+      if (!haystack.includes(query)) return false;
+    }
+    return true;
+  });
 }

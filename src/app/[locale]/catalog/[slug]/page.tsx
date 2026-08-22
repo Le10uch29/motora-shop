@@ -3,9 +3,11 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getProductBySlug, products, categoryLabels, t } from "@/lib/products";
 import { formatGel, formatUsd } from "@/lib/currency";
+import { getBrandBySlug } from "@/lib/brands";
 import { locales, isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
-import ProductVisual from "@/components/ProductVisual";
+import ProductGallery from "@/components/ProductGallery";
+import BrandLogo from "@/components/BrandLogo";
 import AddToCartButton from "@/components/AddToCartButton";
 
 export function generateStaticParams() {
@@ -20,7 +22,7 @@ export async function generateMetadata({
   const { locale, slug } = await params;
   if (!isLocale(locale)) return {};
   const product = getProductBySlug(slug);
-  return { title: product ? `${t(product.name, locale)} — Motora Shop` : "Motora Shop" };
+  return { title: product ? `${t(product.name, locale)} — Araz Motors` : "Araz Motors" };
 }
 
 export default async function ProductPage({
@@ -53,14 +55,21 @@ export default async function ProductPage({
       </nav>
 
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
-        <div className="relative overflow-hidden rounded-2xl">
-          <ProductVisual category={product.category} className="aspect-square w-full" />
-          {product.badge && (
-            <span className="absolute left-4 top-4 rounded-full bg-black/80 px-3 py-1 text-xs font-medium text-white">
-              {t(product.badge, locale)}
-            </span>
-          )}
-        </div>
+        <ProductGallery
+          images={product.images}
+          category={product.category}
+          alt={t(product.name, locale)}
+          overlay={
+            <>
+              {product.badge && (
+                <span className="absolute left-4 top-4 rounded-full bg-black/80 px-3 py-1 text-xs font-medium text-white">
+                  {t(product.badge, locale)}
+                </span>
+              )}
+              <BrandLogo brand={product.brand} className="absolute bottom-4 left-4" />
+            </>
+          }
+        />
 
         <div className="flex flex-col gap-5">
           <div className="flex flex-col gap-1">
@@ -68,8 +77,13 @@ export default async function ProductPage({
               <span className="text-xs font-medium uppercase tracking-wide text-orange-600 dark:text-orange-500">
                 {t(categoryLabels[product.category], locale)}
               </span>
-              <span className="text-xs text-zinc-400">
-                {dict.product.idLabel}: {product.id}
+              <span className="flex flex-wrap items-center gap-x-3 text-xs text-zinc-400">
+                <span>
+                  {dict.product.originCodeLabel}: {product.originCode ?? "—"}
+                </span>
+                <span>
+                  {dict.product.productCodeLabel}: {product.productCode ?? "—"}
+                </span>
               </span>
             </div>
             <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
@@ -119,6 +133,22 @@ export default async function ProductPage({
           />
 
           <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 border-t border-zinc-200 pt-5 dark:border-zinc-800">
+            <div className="flex flex-col gap-0.5">
+              <dt className="text-xs uppercase tracking-wide text-zinc-500">
+                {dict.product.brandLabel}
+              </dt>
+              <dd className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                {getBrandBySlug(product.brand)?.name ?? product.brand}
+              </dd>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <dt className="text-xs uppercase tracking-wide text-zinc-500">
+                {dict.product.makeLabel}
+              </dt>
+              <dd className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                {product.make}
+              </dd>
+            </div>
             {product.specs.map((spec) => (
               <div key={t(spec.label, locale)} className="flex flex-col gap-0.5">
                 <dt className="text-xs uppercase tracking-wide text-zinc-500">
