@@ -30,6 +30,8 @@ export type Product = {
   /** Units currently in stock. 0 means made-to-order. */
   stock: number;
   badge?: LocalizedText;
+  /** Shown in the "Popular" section on the home page. */
+  isPopular: boolean;
   /** Up to 4 photo URLs. */
   images?: string[];
   /** Manufacturer's original reference code. */
@@ -98,11 +100,12 @@ type ProductRow = {
   images: string[] | null;
   origin_code: string | null;
   product_code: string | null;
+  is_popular: boolean;
   brands: { slug: string } | { slug: string }[] | null;
 };
 
 const SELECT_COLUMNS =
-  "id, slug, name, category, make, model, year_from, year_to, price, old_price, description, specs, stock, badge, images, origin_code, product_code, brands(slug)";
+  "id, slug, name, category, make, model, year_from, year_to, price, old_price, description, specs, stock, badge, images, origin_code, product_code, is_popular, brands(slug)";
 
 function mapRow(row: ProductRow): Product {
   const brand = Array.isArray(row.brands) ? row.brands[0] : row.brands;
@@ -125,7 +128,14 @@ function mapRow(row: ProductRow): Product {
     images: row.images ?? undefined,
     originCode: row.origin_code ?? undefined,
     productCode: row.product_code ?? undefined,
+    isPopular: row.is_popular,
   };
+}
+
+/** Percent off, rounded, when `oldPrice` is a valid crossed-out reference price. Undefined otherwise. */
+export function discountPercent(product: Product): number | undefined {
+  if (!product.oldPrice || product.oldPrice <= product.price) return undefined;
+  return Math.round((1 - product.price / product.oldPrice) * 100);
 }
 
 export async function getAllProducts(): Promise<Product[]> {

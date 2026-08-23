@@ -38,6 +38,8 @@ create table if not exists products (
 );
 -- Модель автомобиля (и код шасси, где уместно), к которому подходит деталь.
 alter table products add column if not exists model text;
+-- Показывать товар в блоке "Популярное" на главной странице.
+alter table products add column if not exists is_popular boolean not null default false;
 
 create table if not exists pages (
   slug text primary key,

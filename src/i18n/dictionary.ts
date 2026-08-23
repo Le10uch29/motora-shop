@@ -126,6 +126,18 @@ export type Dictionary = {
     productImagesLabel: string;
     productImagesHint: string;
     confirmDeleteProduct: string;
+    productPopularLabel: string;
+    productDiscountPercentLabel: string;
+    productDiscountHint: string;
+    badgePresetLabel: string;
+    badgePresetNone: string;
+    badgePresetCustom: string;
+    badgePresetBestseller: string;
+    badgePresetDiscount: string;
+    badgePresetNew: string;
+    badgePresetOnOrder: string;
+    badgePresetComingSoon: string;
+    badgePresetExclusive: string;
   };
   search: {
     placeholder: string;

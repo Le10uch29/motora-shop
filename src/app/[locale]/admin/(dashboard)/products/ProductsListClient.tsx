@@ -56,6 +56,7 @@ export default function ProductsListClient({
         description: row.description,
         badge: row.badge,
         images: row.images,
+        isPopular: row.isPopular,
       },
     });
   }

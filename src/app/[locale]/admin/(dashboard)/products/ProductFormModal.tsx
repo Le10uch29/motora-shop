@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { createProductAction, updateProductAction, type ProductActionState } from "./actions";
 import { categoryIds, categoryLabels, t, type LocalizedText } from "@/lib/products";
@@ -25,9 +25,20 @@ export type ProductFormValues = {
   description: LocalizedText;
   badge: LocalizedText | null;
   images: string[];
+  isPopular: boolean;
 };
 
 const initialState: ProductActionState = { error: null };
+
+const BADGE_PRESETS: Record<string, LocalizedText> = {
+  bestseller: { ru: "Хит продаж", az: "Ən çox satılan", ka: "გაყიდვების ლიდერი" },
+  discount: { ru: "Скидка", az: "Endirim", ka: "ფასდაკლება" },
+  new: { ru: "Новинка", az: "Yenilik", ka: "სიახლე" },
+  onOrder: { ru: "Под заказ", az: "Sifarişlə", ka: "შეკვეთით" },
+  comingSoon: { ru: "Скоро будет", az: "Tezliklə", ka: "მალე" },
+  exclusive: { ru: "Эксклюзив", az: "Eksklüziv", ka: "ექსკლუზივი" },
+  none: { ru: "", az: "", ka: "" },
+};
 
 export default function ProductFormModal({
   locale,
@@ -51,6 +62,39 @@ export default function ProductFormModal({
   useEffect(() => {
     if (submitted && !pending && !state.error) onClose();
   }, [submitted, pending, state.error, onClose]);
+
+  const [price, setPrice] = useState(initialValues ? String(initialValues.price) : "");
+  const [oldPrice, setOldPrice] = useState(
+    initialValues?.oldPrice != null ? String(initialValues.oldPrice) : ""
+  );
+  const [discountPercent, setDiscountPercent] = useState("");
+
+  function recomputePrice(nextOldPrice: string, nextPercent: string) {
+    const base = Number(nextOldPrice);
+    const percent = Number(nextPercent);
+    if (
+      nextPercent &&
+      Number.isFinite(base) &&
+      base > 0 &&
+      Number.isFinite(percent) &&
+      percent > 0 &&
+      percent < 100
+    ) {
+      setPrice(String(Math.round(base * (1 - percent / 100) * 100) / 100));
+    }
+  }
+
+  const badgeRuRef = useRef<HTMLInputElement>(null);
+  const badgeAzRef = useRef<HTMLInputElement>(null);
+  const badgeKaRef = useRef<HTMLInputElement>(null);
+
+  function applyBadgePreset(key: string) {
+    const preset = BADGE_PRESETS[key];
+    if (!preset) return;
+    if (badgeRuRef.current) badgeRuRef.current.value = preset.ru;
+    if (badgeAzRef.current) badgeAzRef.current.value = preset.az;
+    if (badgeKaRef.current) badgeKaRef.current.value = preset.ka;
+  }
 
   const inputClass =
     "rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50";
@@ -181,6 +225,39 @@ export default function ProductFormModal({
           </div>
 
           <div className="flex flex-col gap-1.5">
+            <label htmlFor="product-old-price" className={labelClass}>{dict.productOldPriceLabel}</label>
+            <input
+              id="product-old-price"
+              name="oldPrice"
+              type="number"
+              step="0.01"
+              value={oldPrice}
+              onChange={(e) => {
+                setOldPrice(e.target.value);
+                recomputePrice(e.target.value, discountPercent);
+              }}
+              className={inputClass}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="product-discount-percent" className={labelClass}>{dict.productDiscountPercentLabel}</label>
+            <input
+              id="product-discount-percent"
+              type="number"
+              min="0"
+              max="99"
+              value={discountPercent}
+              onChange={(e) => {
+                setDiscountPercent(e.target.value);
+                recomputePrice(oldPrice, e.target.value);
+              }}
+              className={inputClass}
+            />
+            <span className="text-xs text-zinc-400">{dict.productDiscountHint}</span>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
             <label htmlFor="product-price" className={labelClass}>{dict.productPriceLabel}</label>
             <input
               id="product-price"
@@ -188,19 +265,8 @@ export default function ProductFormModal({
               type="number"
               step="0.01"
               required
-              defaultValue={initialValues?.price}
-              className={inputClass}
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="product-old-price" className={labelClass}>{dict.productOldPriceLabel}</label>
-            <input
-              id="product-old-price"
-              name="oldPrice"
-              type="number"
-              step="0.01"
-              defaultValue={initialValues?.oldPrice ?? undefined}
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
               className={inputClass}
             />
           </div>
@@ -227,12 +293,42 @@ export default function ProductFormModal({
           </div>
         </div>
 
+        <label className="flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          <input
+            type="checkbox"
+            name="isPopular"
+            defaultChecked={initialValues?.isPopular}
+            className="h-4 w-4 rounded border-zinc-300"
+          />
+          {dict.productPopularLabel}
+        </label>
+
         <div className="flex flex-col gap-1.5">
           <span className={labelClass}>{dict.productBadgeSectionLabel}</span>
+          <select
+            defaultValue=""
+            onChange={(e) => {
+              applyBadgePreset(e.target.value);
+              e.target.value = "";
+            }}
+            className={inputClass}
+          >
+            <option value="" disabled>
+              {dict.badgePresetLabel}
+            </option>
+            <option value="none">{dict.badgePresetNone}</option>
+            <option value="bestseller">{dict.badgePresetBestseller}</option>
+            <option value="discount">{dict.badgePresetDiscount}</option>
+            <option value="new">{dict.badgePresetNew}</option>
+            <option value="onOrder">{dict.badgePresetOnOrder}</option>
+            <option value="comingSoon">{dict.badgePresetComingSoon}</option>
+            <option value="exclusive">{dict.badgePresetExclusive}</option>
+            <option value="custom">{dict.badgePresetCustom}</option>
+          </select>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            <input name="badgeRu" placeholder="RU" defaultValue={initialValues?.badge?.ru} className={inputClass} />
-            <input name="badgeAz" placeholder="AZ" defaultValue={initialValues?.badge?.az} className={inputClass} />
-            <input name="badgeKa" placeholder="KA" defaultValue={initialValues?.badge?.ka} className={inputClass} />
+            <input ref={badgeRuRef} name="badgeRu" placeholder="RU" defaultValue={initialValues?.badge?.ru} className={inputClass} />
+            <input ref={badgeAzRef} name="badgeAz" placeholder="AZ" defaultValue={initialValues?.badge?.az} className={inputClass} />
+            <input ref={badgeKaRef} name="badgeKa" placeholder="KA" defaultValue={initialValues?.badge?.ka} className={inputClass} />
           </div>
         </div>
 

@@ -13,7 +13,7 @@ export default async function Home({ params }: PageProps<"/[locale]">) {
   const brands = await getBrands();
   const products = await getAllProducts();
 
-  const featured = products.filter((p) => p.badge).slice(0, 4);
+  const featured = products.filter((p) => p.isPopular).slice(0, 4);
 
   return (
     <main className="flex flex-1 flex-col">

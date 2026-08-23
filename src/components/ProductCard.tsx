@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { t, categoryLabels, type Product } from "@/lib/products";
+import { t, categoryLabels, discountPercent, type Product } from "@/lib/products";
 import { formatGel, formatUsd } from "@/lib/currency";
 import type { Locale } from "@/i18n/locales";
 import type { Dictionary } from "@/i18n/dictionary";
@@ -19,6 +19,7 @@ export default function ProductCard({
   brands?: Brand[];
 }) {
   const brand = brands.find((b) => b.slug === product.brand);
+  const percent = discountPercent(product);
 
   return (
     <Link
@@ -70,6 +71,11 @@ export default function ProductCard({
             {product.oldPrice && (
               <span className="text-sm text-zinc-400 line-through">
                 {formatGel(product.oldPrice, locale)}
+              </span>
+            )}
+            {percent !== undefined && (
+              <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-semibold text-white">
+                −{percent}%
               </span>
             )}
           </div>

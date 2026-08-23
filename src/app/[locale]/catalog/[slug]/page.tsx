@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getProductBySlug, getAllProducts, categoryLabels, makeLabel, t } from "@/lib/products";
+import { getProductBySlug, getAllProducts, categoryLabels, makeLabel, discountPercent, t } from "@/lib/products";
 import { formatGel, formatUsd } from "@/lib/currency";
 import { getBrandBySlug } from "@/lib/brands";
 import { locales, isLocale } from "@/i18n/locales";
@@ -39,6 +39,7 @@ export default async function ProductPage({
   }
 
   const brand = await getBrandBySlug(product.brand);
+  const percent = discountPercent(product);
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-6 py-10">
@@ -106,6 +107,11 @@ export default async function ProductPage({
               {product.oldPrice && (
                 <span className="text-lg text-zinc-400 line-through">
                   {formatGel(product.oldPrice, locale)}
+                </span>
+              )}
+              {percent !== undefined && (
+                <span className="rounded-full bg-red-600 px-2.5 py-1 text-sm font-semibold text-white">
+                  −{percent}%
                 </span>
               )}
             </div>

@@ -51,6 +51,7 @@ type ParsedFields = {
   name: { ru: string; az: string; ka: string };
   description: { ru: string; az: string; ka: string };
   badge: { ru: string; az: string; ka: string } | null;
+  isPopular: boolean;
 };
 
 function readFields(formData: FormData): ParsedFields | null {
@@ -69,6 +70,7 @@ function readFields(formData: FormData): ParsedFields | null {
   const originCode = String(formData.get("originCode") ?? "").trim();
   const productCode = String(formData.get("productCode") ?? "").trim();
   const badge = readLocalizedField(formData, "badge");
+  const isPopular = formData.get("isPopular") === "on";
 
   if (
     !name ||
@@ -106,6 +108,7 @@ function readFields(formData: FormData): ParsedFields | null {
     name,
     description,
     badge,
+    isPopular,
   };
 }
 
@@ -166,6 +169,7 @@ export async function createProductAction(
     specs: [],
     badge: fields.badge,
     images,
+    is_popular: fields.isPopular,
   });
 
   if (error) return { error: error.message };
@@ -173,6 +177,7 @@ export async function createProductAction(
   await logAction(actor, "create", "product", fields.name.ru);
   revalidatePath(`/${locale}/admin/products`);
   revalidatePath(`/${locale}/catalog`);
+  revalidatePath(`/${locale}`);
   return { error: null };
 }
 
@@ -218,6 +223,7 @@ export async function updateProductAction(
     name: fields.name,
     description: fields.description,
     badge: fields.badge,
+    is_popular: fields.isPopular,
   };
   if (images) updates.images = images;
 
@@ -228,6 +234,7 @@ export async function updateProductAction(
   revalidatePath(`/${locale}/admin/products`);
   revalidatePath(`/${locale}/catalog`);
   revalidatePath(`/${locale}/catalog/${fields.slug}`);
+  revalidatePath(`/${locale}`);
   return { error: null };
 }
 
@@ -245,5 +252,6 @@ export async function deleteProductAction(
   await logAction(actor, "delete", "product", label);
   revalidatePath(`/${locale}/admin/products`);
   revalidatePath(`/${locale}/catalog`);
+  revalidatePath(`/${locale}`);
   return { error: null };
 }

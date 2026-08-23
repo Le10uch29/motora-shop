@@ -23,6 +23,7 @@ export type AdminProductRow = {
   specs: ProductSpec[];
   badge: LocalizedText | null;
   images: string[];
+  isPopular: boolean;
   displayName: string;
 };
 
@@ -45,6 +46,7 @@ type ProductRow = {
   specs: ProductSpec[] | null;
   badge: LocalizedText | null;
   images: string[] | null;
+  is_popular: boolean;
   brands: { name: string } | { name: string }[] | null;
 };
 
@@ -63,7 +65,7 @@ export async function getAdminProducts(
   const { data } = await supabase
     .from("products")
     .select(
-      "id, slug, category, make, model, brand_id, year_from, year_to, price, old_price, stock, origin_code, product_code, name, description, specs, badge, images, brands(name)"
+      "id, slug, category, make, model, brand_id, year_from, year_to, price, old_price, stock, origin_code, product_code, name, description, specs, badge, images, is_popular, brands(name)"
     )
     .order("created_at", { ascending: false });
 
@@ -89,6 +91,7 @@ export async function getAdminProducts(
       specs: p.specs ?? [],
       badge: p.badge,
       images: p.images ?? [],
+      isPopular: p.is_popular,
       displayName: p.name?.[locale] ?? p.name?.ru ?? "",
     };
   });
