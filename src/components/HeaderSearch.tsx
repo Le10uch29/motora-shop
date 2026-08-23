@@ -10,7 +10,6 @@ import type { Brand } from "@/lib/brands";
 type FilterFieldsState = {
   make: string;
   brand: string;
-  priceMin: string;
   priceMax: string;
   yearFrom: string;
   yearTo: string;
@@ -19,7 +18,6 @@ type FilterFieldsState = {
 const EMPTY_FILTERS: FilterFieldsState = {
   make: "",
   brand: "",
-  priceMin: "",
   priceMax: "",
   yearFrom: "",
   yearTo: "",
@@ -29,7 +27,6 @@ function filtersFromSearchParams(searchParams: URLSearchParams): FilterFieldsSta
   return {
     make: searchParams.get("make") ?? "",
     brand: searchParams.get("brand") ?? "",
-    priceMin: searchParams.get("priceMin") ?? "",
     priceMax: searchParams.get("priceMax") ?? "",
     yearFrom: searchParams.get("yearFrom") ?? "",
     yearTo: searchParams.get("yearTo") ?? "",
@@ -41,11 +38,13 @@ export default function HeaderSearch({
   dict,
   carMakes,
   brands,
+  maxPrice,
 }: {
   locale: Locale;
   dict: Dictionary["search"];
   carMakes: { id: string; label: string }[];
   brands: Brand[];
+  maxPrice: number;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -93,7 +92,6 @@ export default function HeaderSearch({
     navigateWith({
       make: filters.make || undefined,
       brand: filters.brand || undefined,
-      priceMin: filters.priceMin || undefined,
       priceMax: filters.priceMax || undefined,
       yearFrom: filters.yearFrom || undefined,
       yearTo: filters.yearTo || undefined,
@@ -106,7 +104,6 @@ export default function HeaderSearch({
     navigateWith({
       make: undefined,
       brand: undefined,
-      priceMin: undefined,
       priceMax: undefined,
       yearFrom: undefined,
       yearTo: undefined,
@@ -124,14 +121,12 @@ export default function HeaderSearch({
   const isOnBrandDetail = pathSegments[0] === locale && pathSegments[1] === "brands" && pathSegments.length >= 3;
   if (isOnBrandDetail) return null;
 
+  const priceMaxValue = filters.priceMax ? Number(filters.priceMax) : maxPrice;
+
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-2">
-      <form
-        onSubmit={handleSearchSubmit}
-        role="search"
-        className="flex min-w-0 flex-1 items-center"
-      >
-        <div className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1.5 focus-within:border-orange-500 dark:border-zinc-700 dark:bg-zinc-900">
+    <div className="flex items-center gap-2">
+      <form onSubmit={handleSearchSubmit} role="search" className="flex items-center">
+        <div className="flex w-36 items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1.5 focus-within:border-orange-500 dark:border-zinc-700 dark:bg-zinc-900 sm:w-48 md:w-64">
           <svg
             viewBox="0 0 24 24"
             fill="none"
@@ -186,142 +181,139 @@ export default function HeaderSearch({
       {filtersOpen &&
         createPortal(
           <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-16">
-          <div
-            className="absolute inset-0"
-            onClick={() => setFiltersOpen(false)}
-            aria-hidden="true"
-          />
-          <form
-            onSubmit={handleFiltersApply}
-            className="relative flex w-full max-w-md flex-col gap-5 rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900"
-          >
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
-                {dict.filtersTitle}
-              </h2>
-              <button
-                type="button"
-                onClick={() => setFiltersOpen(false)}
-                aria-label={dict.closeFiltersAriaLabel}
-                className="flex h-8 w-8 items-center justify-center rounded-full text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={1.8}
-                  strokeLinecap="round"
-                  className="h-4 w-4"
+            <div
+              className="absolute inset-0"
+              onClick={() => setFiltersOpen(false)}
+              aria-hidden="true"
+            />
+            <form
+              onSubmit={handleFiltersApply}
+              className="relative flex w-full max-w-md flex-col gap-5 rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900"
+            >
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
+                  {dict.filtersTitle}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setFiltersOpen(false)}
+                  aria-label={dict.closeFiltersAriaLabel}
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 >
-                  <path d="M6 6l12 12M18 6L6 18" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                {dict.makeLabel}
-              </span>
-              <select
-                value={filters.make}
-                onChange={(event) => setFilters((f) => ({ ...f, make: event.target.value }))}
-                className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-              >
-                <option value="">{dict.allMakes}</option>
-                {carMakes.map((make) => (
-                  <option key={make.id} value={make.id}>
-                    {make.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                {dict.brandLabel}
-              </span>
-              <select
-                value={filters.brand}
-                onChange={(event) => setFilters((f) => ({ ...f, brand: event.target.value }))}
-                className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-              >
-                <option value="">{dict.allBrands}</option>
-                {brands.map((brand) => (
-                  <option key={brand.slug} value={brand.slug}>
-                    {brand.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                {dict.yearLabel}
-              </span>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  placeholder={dict.yearFrom}
-                  value={filters.yearFrom}
-                  onChange={(event) => setFilters((f) => ({ ...f, yearFrom: event.target.value }))}
-                  className="w-full min-w-0 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-                />
-                <span className="text-zinc-400">—</span>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  placeholder={dict.yearTo}
-                  value={filters.yearTo}
-                  onChange={(event) => setFilters((f) => ({ ...f, yearTo: event.target.value }))}
-                  className="w-full min-w-0 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-                />
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={1.8}
+                    strokeLinecap="round"
+                    className="h-4 w-4"
+                  >
+                    <path d="M6 6l12 12M18 6L6 18" />
+                  </svg>
+                </button>
               </div>
-            </div>
 
-            <div className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                {dict.priceLabel}
-              </span>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  {dict.makeLabel}
+                </span>
+                <select
+                  value={filters.make}
+                  onChange={(event) => setFilters((f) => ({ ...f, make: event.target.value }))}
+                  className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                >
+                  <option value="">{dict.allMakes}</option>
+                  {carMakes.map((make) => (
+                    <option key={make.id} value={make.id}>
+                      {make.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  {dict.brandLabel}
+                </span>
+                <select
+                  value={filters.brand}
+                  onChange={(event) => setFilters((f) => ({ ...f, brand: event.target.value }))}
+                  className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                >
+                  <option value="">{dict.allBrands}</option>
+                  {brands.map((brand) => (
+                    <option key={brand.slug} value={brand.slug}>
+                      {brand.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  {dict.yearLabel}
+                </span>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    placeholder={dict.yearFrom}
+                    value={filters.yearFrom}
+                    onChange={(event) => setFilters((f) => ({ ...f, yearFrom: event.target.value }))}
+                    className="w-full min-w-0 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                  />
+                  <span className="text-zinc-400">—</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    placeholder={dict.yearTo}
+                    value={filters.yearTo}
+                    onChange={(event) => setFilters((f) => ({ ...f, yearTo: event.target.value }))}
+                    className="w-full min-w-0 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    {dict.priceLabel}
+                  </span>
+                  <span className="text-sm text-zinc-500">
+                    {dict.priceTo} {priceMaxValue} GEL
+                  </span>
+                </div>
                 <input
-                  type="number"
-                  inputMode="numeric"
+                  type="range"
                   min={0}
-                  placeholder={dict.priceFrom}
-                  value={filters.priceMin}
-                  onChange={(event) => setFilters((f) => ({ ...f, priceMin: event.target.value }))}
-                  className="w-full min-w-0 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-                />
-                <span className="text-zinc-400">—</span>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  placeholder={dict.priceTo}
-                  value={filters.priceMax}
+                  max={maxPrice}
+                  step={1}
+                  value={priceMaxValue}
                   onChange={(event) => setFilters((f) => ({ ...f, priceMax: event.target.value }))}
-                  className="w-full min-w-0 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                  className="w-full accent-orange-600"
                 />
+                <div className="flex justify-between text-xs text-zinc-400">
+                  <span>0 GEL</span>
+                  <span>{maxPrice} GEL</span>
+                </div>
               </div>
-            </div>
 
-            <div className="mt-2 flex items-center gap-3">
-              <button
-                type="button"
-                onClick={handleFiltersReset}
-                className="flex-1 rounded-full border border-zinc-200 px-4 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:border-orange-500 hover:text-orange-600 dark:border-zinc-700 dark:text-zinc-300"
-              >
-                {dict.reset}
-              </button>
-              <button
-                type="submit"
-                className="flex-1 rounded-full bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-orange-500"
-              >
-                {dict.apply}
-              </button>
-            </div>
-          </form>
+              <div className="mt-2 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleFiltersReset}
+                  className="flex-1 rounded-full border border-zinc-200 px-4 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:border-orange-500 hover:text-orange-600 dark:border-zinc-700 dark:text-zinc-300"
+                >
+                  {dict.reset}
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 rounded-full bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-orange-500"
+                >
+                  {dict.apply}
+                </button>
+              </div>
+            </form>
           </div>,
           document.body
         )}

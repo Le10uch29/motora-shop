@@ -3,6 +3,7 @@ import { t, categoryLabels, type Product } from "@/lib/products";
 import { formatGel, formatUsd } from "@/lib/currency";
 import type { Locale } from "@/i18n/locales";
 import type { Dictionary } from "@/i18n/dictionary";
+import type { Brand } from "@/lib/brands";
 import ProductVisual from "@/components/ProductVisual";
 import BrandLogo from "@/components/BrandLogo";
 
@@ -10,11 +11,15 @@ export default function ProductCard({
   product,
   locale,
   dict,
+  brands = [],
 }: {
   product: Product;
   locale: Locale;
   dict: Dictionary;
+  brands?: Brand[];
 }) {
+  const brand = brands.find((b) => b.slug === product.brand);
+
   return (
     <Link
       href={`/${locale}/catalog/${product.slug}`}
@@ -31,17 +36,21 @@ export default function ProductCard({
         ) : (
           <ProductVisual category={product.category} className="aspect-[4/3] w-full" />
         )}
-        {product.badge && (
-          <span className="absolute left-3 top-3 rounded-full bg-black/80 px-2.5 py-1 text-xs font-medium text-white">
-            {t(product.badge, locale)}
-          </span>
-        )}
         {product.stock <= 0 && (
           <span className="absolute right-3 top-3 rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-600">
             {dict.product.onOrder}
           </span>
         )}
-        <BrandLogo brand={product.brand} className="absolute bottom-3 left-3" />
+        <BrandLogo
+          logoUrl={brand?.badgeLogoUrl}
+          name={brand?.name ?? product.brand}
+          className="absolute left-3 top-3"
+        />
+        {product.badge && (
+          <span className="absolute bottom-3 right-3 rounded-full bg-black/80 px-2.5 py-1 text-xs font-medium text-white">
+            {t(product.badge, locale)}
+          </span>
+        )}
       </div>
       <div className="flex flex-1 flex-col gap-2 p-4">
         <div className="flex items-center justify-between gap-2">

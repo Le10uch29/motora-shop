@@ -9,7 +9,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { products } from "@/lib/products";
 
 export type CartItem = {
   productId: string;
@@ -23,7 +22,6 @@ type CartContextValue = {
   setQuantity: (productId: string, quantity: number) => void;
   clear: () => void;
   totalItems: number;
-  totalPrice: number;
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -84,15 +82,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [items]
   );
 
-  const totalPrice = useMemo(
-    () =>
-      items.reduce((sum, item) => {
-        const product = products.find((p) => p.id === item.productId);
-        return product ? sum + product.price * item.quantity : sum;
-      }, 0),
-    [items]
-  );
-
   const value = useMemo(
     () => ({
       items,
@@ -101,9 +90,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setQuantity,
       clear,
       totalItems,
-      totalPrice,
     }),
-    [items, addItem, removeItem, setQuantity, clear, totalItems, totalPrice]
+    [items, addItem, removeItem, setQuantity, clear, totalItems]
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

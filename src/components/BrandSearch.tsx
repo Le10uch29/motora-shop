@@ -7,7 +7,6 @@ import type { Dictionary } from "@/i18n/dictionary";
 
 type FilterFieldsState = {
   make: string;
-  priceMin: string;
   priceMax: string;
   yearFrom: string;
   yearTo: string;
@@ -15,7 +14,6 @@ type FilterFieldsState = {
 
 const EMPTY_FILTERS: FilterFieldsState = {
   make: "",
-  priceMin: "",
   priceMax: "",
   yearFrom: "",
   yearTo: "",
@@ -24,7 +22,6 @@ const EMPTY_FILTERS: FilterFieldsState = {
 function filtersFromSearchParams(searchParams: URLSearchParams): FilterFieldsState {
   return {
     make: searchParams.get("make") ?? "",
-    priceMin: searchParams.get("priceMin") ?? "",
     priceMax: searchParams.get("priceMax") ?? "",
     yearFrom: searchParams.get("yearFrom") ?? "",
     yearTo: searchParams.get("yearTo") ?? "",
@@ -40,10 +37,12 @@ export default function BrandSearch({
   basePath,
   dict,
   carMakes,
+  maxPrice,
 }: {
   basePath: string;
   dict: Dictionary["search"];
   carMakes: { id: string; label: string }[];
+  maxPrice: number;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -85,7 +84,6 @@ export default function BrandSearch({
     event.preventDefault();
     navigateWith({
       make: filters.make || undefined,
-      priceMin: filters.priceMin || undefined,
       priceMax: filters.priceMax || undefined,
       yearFrom: filters.yearFrom || undefined,
       yearTo: filters.yearTo || undefined,
@@ -97,7 +95,6 @@ export default function BrandSearch({
     setFilters(EMPTY_FILTERS);
     navigateWith({
       make: undefined,
-      priceMin: undefined,
       priceMax: undefined,
       yearFrom: undefined,
       yearTo: undefined,
@@ -106,6 +103,7 @@ export default function BrandSearch({
   }
 
   const hasActiveFilters = Object.values(filters).some(Boolean);
+  const priceMaxValue = filters.priceMax ? Number(filters.priceMax) : maxPrice;
 
   return (
     <div className="flex min-w-0 items-center gap-2">
@@ -246,30 +244,27 @@ export default function BrandSearch({
                 </div>
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                  {dict.priceLabel}
-                </span>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    placeholder={dict.priceFrom}
-                    value={filters.priceMin}
-                    onChange={(event) => setFilters((f) => ({ ...f, priceMin: event.target.value }))}
-                    className="w-full min-w-0 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-                  />
-                  <span className="text-zinc-400">—</span>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    placeholder={dict.priceTo}
-                    value={filters.priceMax}
-                    onChange={(event) => setFilters((f) => ({ ...f, priceMax: event.target.value }))}
-                    className="w-full min-w-0 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-                  />
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    {dict.priceLabel}
+                  </span>
+                  <span className="text-sm text-zinc-500">
+                    {dict.priceTo} {priceMaxValue} GEL
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={maxPrice}
+                  step={1}
+                  value={priceMaxValue}
+                  onChange={(event) => setFilters((f) => ({ ...f, priceMax: event.target.value }))}
+                  className="w-full accent-orange-600"
+                />
+                <div className="flex justify-between text-xs text-zinc-400">
+                  <span>0 GEL</span>
+                  <span>{maxPrice} GEL</span>
                 </div>
               </div>
 

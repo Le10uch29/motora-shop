@@ -1,15 +1,16 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { filterProducts, localizedMakes } from "@/lib/products";
-import { brands, getBrandBySlug } from "@/lib/brands";
+import { filterProducts, localizedMakes, getAllProducts, computePriceBounds } from "@/lib/products";
+import { getBrands, getBrandBySlug } from "@/lib/brands";
 import { locales, isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
 import { single, toNumber } from "@/lib/searchParams";
 import ProductCard from "@/components/ProductCard";
 import BrandSearch from "@/components/BrandSearch";
 
-export function generateStaticParams() {
+export async function generateStaticParams() {
+  const brands = await getBrands();
   return locales.flatMap((locale) => brands.map((brand) => ({ locale, slug: brand.slug })));
 }
 
@@ -19,7 +20,7 @@ export default async function BrandDetailPage({
 }: PageProps<"/[locale]/brands/[slug]">) {
   const { locale, slug } = await params;
   if (!isLocale(locale)) notFound();
-  const brand = getBrandBySlug(slug);
+  const brand = await getBrandBySlug(slug);
   if (!brand) notFound();
   const dict = await getDictionary(locale);
 
@@ -35,15 +36,20 @@ export default async function BrandDetailPage({
     query || make || priceMin !== undefined || priceMax !== undefined || yearFrom !== undefined || yearTo !== undefined
   );
 
+  const allProducts = await getAllProducts();
   const items = filterProducts(
+    allProducts,
     { brand: brand.slug, query, make, priceMin, priceMax, yearFrom, yearTo },
     locale
   );
 
   const brandMakeIds = Array.from(
-    new Set(filterProducts({ brand: brand.slug }, locale).map((p) => p.make))
+    new Set(filterProducts(allProducts, { brand: brand.slug }, locale).map((p) => p.make))
   );
   const brandMakes = localizedMakes(brandMakeIds, locale);
+
+  const brandPrices = filterProducts(allProducts, { brand: brand.slug }, locale).map((p) => p.price);
+  const maxPrice = brandPrices.length > 0 ? Math.max(...brandPrices) : computePriceBounds(allProducts).max;
 
   const basePath = `/${locale}/brands/${slug}`;
 
@@ -68,14 +74,14 @@ export default async function BrandDetailPage({
           </p>
         </div>
         <Suspense fallback={<div className="h-9 w-full max-w-sm rounded-full bg-zinc-100 dark:bg-zinc-800" />}>
-          <BrandSearch basePath={basePath} dict={dict.search} carMakes={brandMakes} />
+          <BrandSearch basePath={basePath} dict={dict.search} carMakes={brandMakes} maxPrice={maxPrice} />
         </Suspense>
       </div>
 
       {items.length > 0 ? (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((product) => (
-            <ProductCard key={product.id} product={product} locale={locale} dict={dict} />
+            <ProductCard key={product.id} product={product} locale={locale} dict={dict} brands={[brand]} />
           ))}
         </div>
       ) : (

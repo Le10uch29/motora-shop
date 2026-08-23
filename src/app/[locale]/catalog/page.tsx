@@ -4,10 +4,11 @@ import {
   categoryIds,
   categoryLabels,
   filterProducts,
+  getAllProducts,
   t,
   type CategoryId,
 } from "@/lib/products";
-import { isBrandSlug } from "@/lib/brands";
+import { getBrands } from "@/lib/brands";
 import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
 import { single, toNumber } from "@/lib/searchParams";
@@ -24,13 +25,13 @@ export default async function CatalogPage({
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
   const dict = await getDictionary(locale);
+  const brands = await getBrands();
 
   const sp = await searchParams;
   const category = isCategoryId(single(sp.category)) ? (single(sp.category) as CategoryId) : undefined;
   const query = single(sp.q)?.trim() || undefined;
   const make = single(sp.make) || undefined;
-  const rawBrand = single(sp.brand);
-  const brand = rawBrand && isBrandSlug(rawBrand) ? rawBrand : undefined;
+  const brand = single(sp.brand) || undefined;
   const priceMin = toNumber(single(sp.priceMin));
   const priceMax = toNumber(single(sp.priceMax));
   const yearFrom = toNumber(single(sp.yearFrom));
@@ -50,7 +51,9 @@ export default async function CatalogPage({
     return qs ? `/${locale}/catalog?${qs}` : `/${locale}/catalog`;
   }
 
+  const allProducts = await getAllProducts();
   const items = filterProducts(
+    allProducts,
     { category, query, make, brand, priceMin, priceMax, yearFrom, yearTo },
     locale
   );
@@ -108,7 +111,7 @@ export default async function CatalogPage({
       {items.length > 0 ? (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((product) => (
-            <ProductCard key={product.id} product={product} locale={locale} dict={dict} />
+            <ProductCard key={product.id} product={product} locale={locale} dict={dict} brands={brands} />
           ))}
         </div>
       ) : (

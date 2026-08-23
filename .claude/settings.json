@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node verify-product-crud.mjs)",
+      "Bash(python3 -c ' *)",
+      "Bash(node -e ' *)",
+      "Bash(node verify-key-warning.mjs)",
+      "Bash(node verify-key-warning2.mjs)",
+      "Bash(node verify-key-warning3.mjs)",
+      "Bash(rm -f 'C:\\\\Users\\\\Shadow Monarch\\\\AppData\\\\Local\\\\npm-cache\\\\_npx\\\\e41f203b7505f1fb\\\\verify-product-crud.mjs' 'C:\\\\Users\\\\Shadow Monarch\\\\AppData\\\\Local\\\\npm-cache\\\\_npx\\\\e41f203b7505f1fb\\\\verify-key-warning.mjs' 'C:\\\\Users\\\\Shadow Monarch\\\\AppData\\\\Local\\\\npm-cache\\\\_npx\\\\e41f203b7505f1fb\\\\verify-key-warning2.mjs' 'C:\\\\Users\\\\Shadow Monarch\\\\AppData\\\\Local\\\\npm-cache\\\\_npx\\\\e41f203b7505f1fb\\\\verify-key-warning3.mjs')",
+      "Bash(rm -f 'C:\\\\Users\\\\SHADOW~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-Shadow-Monarch-Desktop-frilans-NewLife-motora-shop\\\\0e0b702a-f8e3-4345-8578-42cebf3eb958\\\\scratchpad\\\\test-image.png' 'C:\\\\Users\\\\SHADOW~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-Shadow-Monarch-Desktop-frilans-NewLife-motora-shop\\\\0e0b702a-f8e3-4345-8578-42cebf3eb958\\\\scratchpad\\\\login-result.png' 'C:\\\\Users\\\\SHADOW~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-Shadow-Monarch-Desktop-frilans-NewLife-motora-shop\\\\0e0b702a-f8e3-4345-8578-42cebf3eb958\\\\scratchpad\\\\product-form-filled.png' 'C:\\\\Users\\\\SHADOW~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-Shadow-Monarch-Desktop-frilans-NewLife-motora-shop\\\\0e0b702a-f8e3-4345-8578-42cebf3eb958\\\\scratchpad\\\\product-after-create.png' 'C:\\\\Users\\\\SHADOW~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-Shadow-Monarch-Desktop-frilans-NewLife-motora-shop\\\\0e0b702a-f8e3-4345-8578-42cebf3eb958\\\\scratchpad\\\\admin-list-after-create.png' 'C:\\\\Users\\\\SHADOW~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-Shadow-Monarch-Desktop-frilans-NewLife-motora-shop\\\\0e0b702a-f8e3-4345-8578-42cebf3eb958\\\\scratchpad\\\\storefront-product-detail.png')"
+    ]
+  }
+}

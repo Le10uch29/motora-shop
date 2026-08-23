@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { products, categoryIds, categoryLabels, t } from "@/lib/products";
+import { getAllProducts, categoryIds, categoryLabels, t } from "@/lib/products";
+import { getBrands } from "@/lib/brands";
 import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
 import ProductCard from "@/components/ProductCard";
@@ -9,6 +10,8 @@ export default async function Home({ params }: PageProps<"/[locale]">) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
   const dict = await getDictionary(locale);
+  const brands = await getBrands();
+  const products = await getAllProducts();
 
   const featured = products.filter((p) => p.badge).slice(0, 4);
 
@@ -63,7 +66,7 @@ export default async function Home({ params }: PageProps<"/[locale]">) {
           </div>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {featured.map((product) => (
-              <ProductCard key={product.id} product={product} locale={locale} dict={dict} />
+              <ProductCard key={product.id} product={product} locale={locale} dict={dict} brands={brands} />
             ))}
           </div>
         </section>

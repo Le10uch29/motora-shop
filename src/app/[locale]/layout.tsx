@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 import "../globals.css";
 import { CartProvider } from "@/context/CartContext";
 import Header from "@/components/Header";
@@ -41,6 +42,10 @@ export default async function LocaleLayout({
   if (!isLocale(locale)) notFound();
   const dict = await getDictionary(locale);
 
+  const pathname = (await headers()).get("x-pathname") ?? "";
+  const adminPrefix = `/${locale}/admin`;
+  const isAdminRoute = pathname === adminPrefix || pathname.startsWith(`${adminPrefix}/`);
+
   return (
     <html
       lang={locale}
@@ -48,7 +53,7 @@ export default async function LocaleLayout({
     >
       <body className="flex min-h-full flex-col bg-zinc-50 dark:bg-black">
         <CartProvider>
-          <Header locale={locale} dict={dict} />
+          {!isAdminRoute && <Header locale={locale} dict={dict} />}
           {children}
         </CartProvider>
       </body>

@@ -2,8 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
-import { catalogBrands } from "@/lib/brands";
-import { products } from "@/lib/products";
+import { getCatalogBrands } from "@/lib/brands";
+import { getAllProducts } from "@/lib/products";
 
 function initials(name: string): string {
   return name
@@ -20,6 +20,8 @@ export default async function BrandsPage({
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
   const dict = await getDictionary(locale);
+  const catalogBrands = await getCatalogBrands();
+  const products = await getAllProducts();
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-6 py-16">
@@ -36,10 +38,10 @@ export default async function BrandsPage({
               className="flex flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white transition-shadow hover:shadow-lg dark:border-zinc-800 dark:bg-zinc-900"
             >
               <div className="flex aspect-[4/3] w-full items-center justify-center bg-zinc-100 dark:bg-zinc-800">
-                {brand.logo ? (
+                {brand.logoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={brand.logo}
+                    src={brand.logoUrl}
                     alt={brand.name}
                     className="h-full w-full object-contain p-8"
                   />

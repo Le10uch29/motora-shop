@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getProductBySlug, products, categoryLabels, makeLabel, t } from "@/lib/products";
+import { getProductBySlug, getAllProducts, categoryLabels, makeLabel, t } from "@/lib/products";
 import { formatGel, formatUsd } from "@/lib/currency";
 import { getBrandBySlug } from "@/lib/brands";
 import { locales, isLocale } from "@/i18n/locales";
@@ -10,7 +10,8 @@ import ProductGallery from "@/components/ProductGallery";
 import BrandLogo from "@/components/BrandLogo";
 import AddToCartButton from "@/components/AddToCartButton";
 
-export function generateStaticParams() {
+export async function generateStaticParams() {
+  const products = await getAllProducts();
   return locales.flatMap((locale) =>
     products.map((product) => ({ locale, slug: product.slug }))
   );
@@ -21,7 +22,7 @@ export async function generateMetadata({
 }: PageProps<"/[locale]/catalog/[slug]">): Promise<Metadata> {
   const { locale, slug } = await params;
   if (!isLocale(locale)) return {};
-  const product = getProductBySlug(slug);
+  const product = await getProductBySlug(slug);
   return { title: product ? `${t(product.name, locale)} — Araz Motors` : "Araz Motors" };
 }
 
@@ -31,11 +32,13 @@ export default async function ProductPage({
   const { locale, slug } = await params;
   if (!isLocale(locale)) notFound();
   const dict = await getDictionary(locale);
-  const product = getProductBySlug(slug);
+  const product = await getProductBySlug(slug);
 
   if (!product) {
     notFound();
   }
+
+  const brand = await getBrandBySlug(product.brand);
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-6 py-10">
@@ -54,19 +57,23 @@ export default async function ProductPage({
         <span className="text-zinc-700 dark:text-zinc-300">{t(product.name, locale)}</span>
       </nav>
 
-      <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
+      <div className="grid grid-cols-1 items-start gap-10 lg:grid-cols-2">
         <ProductGallery
           images={product.images}
           category={product.category}
           alt={t(product.name, locale)}
           overlay={
             <>
+              <BrandLogo
+                logoUrl={brand?.badgeLogoUrl}
+                name={brand?.name ?? product.brand}
+                className="absolute left-4 top-4"
+              />
               {product.badge && (
-                <span className="absolute left-4 top-4 rounded-full bg-black/80 px-3 py-1 text-xs font-medium text-white">
+                <span className="absolute bottom-4 right-4 rounded-full bg-black/80 px-3 py-1 text-xs font-medium text-white">
                   {t(product.badge, locale)}
                 </span>
               )}
-              <BrandLogo brand={product.brand} className="absolute bottom-4 left-4" />
             </>
           }
         />
@@ -125,12 +132,43 @@ export default async function ProductPage({
           <AddToCartButton
             productId={product.id}
             inStock={product.stock > 0}
+            stock={product.stock}
             labels={{
               addToCart: dict.product.addToCart,
               onOrder: dict.product.onOrder,
               added: dict.product.added,
+              quantityLabel: dict.product.quantityLabel,
+              quantityDecreaseAria: dict.product.quantityDecreaseAria,
+              quantityIncreaseAria: dict.product.quantityIncreaseAria,
             }}
           />
+
+          <dl className="grid grid-cols-3 gap-x-6 gap-y-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+            <div className="flex flex-col gap-0.5">
+              <dt className="text-xs uppercase tracking-wide text-zinc-500">
+                {dict.product.makeLabel}
+              </dt>
+              <dd className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                {makeLabel(product.make, locale)}
+              </dd>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <dt className="text-xs uppercase tracking-wide text-zinc-500">
+                {dict.product.modelLabel}
+              </dt>
+              <dd className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                {product.model || "—"}
+              </dd>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <dt className="text-xs uppercase tracking-wide text-zinc-500">
+                {dict.product.yearLabel}
+              </dt>
+              <dd className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                {product.yearFrom}–{product.yearTo}
+              </dd>
+            </div>
+          </dl>
 
           <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 border-t border-zinc-200 pt-5 dark:border-zinc-800">
             <div className="flex flex-col gap-0.5">
@@ -138,7 +176,7 @@ export default async function ProductPage({
                 {dict.product.brandLabel}
               </dt>
               <dd className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
-                {getBrandBySlug(product.brand)?.name ?? product.brand}
+                {brand?.name ?? product.brand}
               </dd>
             </div>
             <div className="flex flex-col gap-0.5">

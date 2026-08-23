@@ -1,25 +1,28 @@
-import { getBrandBySlug, type BrandSlug } from "@/lib/brands";
-
 export default function BrandLogo({
-  brand,
+  logoUrl,
+  name,
   className = "",
 }: {
-  brand: BrandSlug;
+  logoUrl?: string | null;
+  name: string;
   className?: string;
 }) {
-  const info = getBrandBySlug(brand);
-  if (!info) return null;
-
-  if (info.logo) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={info.logo} alt={info.name} className={className} />;
+  if (logoUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={logoUrl}
+        alt={name}
+        className={`h-14 w-auto max-w-[55%] object-contain drop-shadow-sm ${className}`}
+      />
+    );
   }
 
   return (
     <span
-      className={`rounded-full bg-white/95 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-900 shadow ${className}`}
+      className={`rounded-full bg-white/95 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-900 shadow ${className}`}
     >
-      {info.name}
+      {name}
     </span>
   );
 }

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
-import { getProductBySlug, products, t } from "@/lib/products";
+import { t, type Product } from "@/lib/products";
 import { formatGel, formatUsd } from "@/lib/currency";
 import type { Locale } from "@/i18n/locales";
 import type { Dictionary } from "@/i18n/dictionary";
@@ -11,11 +11,13 @@ import ProductVisual from "@/components/ProductVisual";
 export default function CartView({
   locale,
   dict,
+  products,
 }: {
   locale: Locale;
   dict: Dictionary["cart"];
+  products: Product[];
 }) {
-  const { items, setQuantity, removeItem, totalPrice, clear } = useCart();
+  const { items, setQuantity, removeItem, clear } = useCart();
 
   const rows = items
     .map((item) => ({
@@ -23,9 +25,11 @@ export default function CartView({
       product: products.find((p) => p.id === item.productId),
     }))
     .filter(
-      (row): row is { item: (typeof items)[number]; product: NonNullable<ReturnType<typeof getProductBySlug>> } =>
+      (row): row is { item: (typeof items)[number]; product: Product } =>
         Boolean(row.product)
     );
+
+  const totalPrice = rows.reduce((sum, { item, product }) => sum + product.price * item.quantity, 0);
 
   if (rows.length === 0) {
     return (
