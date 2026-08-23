@@ -2,7 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { CurrentStaff } from "@/lib/auth";
 
 export type LogAction = "create" | "update" | "delete";
-export type LogEntityType = "staff" | "brand" | "product" | "page";
+export type LogEntityType = "staff" | "brand" | "product" | "page" | "warehouse";
 
 export async function logAction(
   actor: CurrentStaff,

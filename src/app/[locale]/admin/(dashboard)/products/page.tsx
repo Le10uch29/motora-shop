@@ -4,6 +4,7 @@ import { getDictionary } from "@/i18n/getDictionary";
 import { requireStaff } from "@/lib/auth";
 import { single } from "@/lib/searchParams";
 import { getAdminProducts, getBrandOptions } from "./data";
+import { getWarehouseOptions, getProductStockMap } from "../warehouses/data";
 import ProductsListClient from "./ProductsListClient";
 import AdminSearchBox from "@/components/admin/AdminSearchBox";
 import Pagination from "@/components/admin/Pagination";
@@ -23,6 +24,8 @@ export default async function AdminProductsPage({
 
   const { rows, total } = await getAdminProducts(locale, { query, page });
   const brands = await getBrandOptions();
+  const warehouses = await getWarehouseOptions();
+  const stockByProduct = await getProductStockMap();
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-6 py-10">
@@ -32,6 +35,8 @@ export default async function AdminProductsPage({
         isAdmin={staff.role === "admin"}
         rows={rows}
         brands={brands}
+        warehouses={warehouses}
+        stockByProduct={stockByProduct}
         searchSlot={
           <form className="flex items-center gap-2">
             <AdminSearchBox defaultValue={query} placeholder={dict.admin.searchPlaceholder} />

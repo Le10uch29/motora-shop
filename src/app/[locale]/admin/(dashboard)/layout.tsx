@@ -23,6 +23,7 @@ export default async function AdminDashboardLayout({
     { href: `/${locale}/admin/staff/sellers`, label: dict.admin.navStaffSellers, show: isAdmin },
     { href: `/${locale}/admin/customers`, label: dict.admin.navCustomers, show: isAdmin },
     { href: `/${locale}/admin/brands`, label: dict.admin.navBrands, show: true },
+    { href: `/${locale}/admin/warehouses`, label: dict.admin.navWarehouses, show: true },
     { href: `/${locale}/admin/products`, label: dict.admin.navProducts, show: true },
     { href: `/${locale}/admin/logs`, label: dict.admin.navLogs, show: isAdmin },
   ];

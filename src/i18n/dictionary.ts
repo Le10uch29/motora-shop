@@ -28,6 +28,7 @@ export type Dictionary = {
     dashboardTitle: string;
     navDashboard: string;
     navProducts: string;
+    navWarehouses: string;
     navBrands: string;
     navPages: string;
     navStaff: string;
@@ -138,6 +139,25 @@ export type Dictionary = {
     badgePresetOnOrder: string;
     badgePresetComingSoon: string;
     badgePresetExclusive: string;
+    warehousesTitle: string;
+    addWarehouse: string;
+    editWarehouse: string;
+    warehouseNameLabel: string;
+    warehouseAddressLabel: string;
+    confirmDeleteWarehouse: string;
+    warehouseProductCountLabel: string;
+    backToWarehouses: string;
+    warehouseProductsTitle: string;
+    addProductToWarehouse: string;
+    warehouseSelectProductLabel: string;
+    warehouseQuantityLabel: string;
+    warehouseEmptyProducts: string;
+    tableQuantity: string;
+    actionRemove: string;
+    productWarehousesButtonLabel: string;
+    productWarehousesModalTitle: string;
+    productWarehousesHint: string;
+    warehouseNoWarehouses: string;
   };
   search: {
     placeholder: string;

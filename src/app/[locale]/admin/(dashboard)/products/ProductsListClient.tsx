@@ -3,6 +3,7 @@
 import { useState, useTransition, type ReactNode } from "react";
 import { deleteProductAction } from "./actions";
 import ProductFormModal, { type ProductFormValues } from "./ProductFormModal";
+import ProductWarehousesModal from "./ProductWarehousesModal";
 import type { AdminProductRow } from "./data";
 import { formatGel } from "@/lib/currency";
 import type { Dictionary } from "@/i18n/dictionary";
@@ -14,6 +15,8 @@ export default function ProductsListClient({
   isAdmin,
   rows,
   brands,
+  warehouses,
+  stockByProduct,
   searchSlot,
 }: {
   locale: Locale;
@@ -21,9 +24,12 @@ export default function ProductsListClient({
   isAdmin: boolean;
   rows: AdminProductRow[];
   brands: { id: string; name: string }[];
+  warehouses: { id: string; name: string }[];
+  stockByProduct: Record<string, Record<string, number>>;
   searchSlot?: ReactNode;
 }) {
   const [modal, setModal] = useState<{ mode: "create" | "edit"; values?: ProductFormValues } | null>(null);
+  const [warehouseModalRow, setWarehouseModalRow] = useState<AdminProductRow | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -120,6 +126,18 @@ export default function ProductsListClient({
                       <div className="flex items-center justify-end gap-2">
                         <button
                           type="button"
+                          title={dict.productWarehousesButtonLabel}
+                          aria-label={dict.productWarehousesButtonLabel}
+                          onClick={() => setWarehouseModalRow(row)}
+                          className="flex h-8 w-8 items-center justify-center rounded-full border border-zinc-200 text-zinc-600 transition-colors hover:border-orange-500 hover:text-orange-600 dark:border-zinc-700 dark:text-zinc-300"
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                            <path d="M3 9.5 12 4l9 5.5" />
+                            <path d="M5 10v9a1 1 0 0 0 1 1h3v-6h6v6h3a1 1 0 0 0 1-1v-9" />
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => openEdit(row)}
                           className="rounded-full border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:border-orange-500 hover:text-orange-600 dark:border-zinc-700 dark:text-zinc-300"
                         >
@@ -151,6 +169,18 @@ export default function ProductsListClient({
           brands={brands}
           initialValues={modal.values}
           onClose={() => setModal(null)}
+        />
+      )}
+
+      {warehouseModalRow && (
+        <ProductWarehousesModal
+          locale={locale}
+          dict={dict}
+          productId={warehouseModalRow.id}
+          productName={warehouseModalRow.displayName}
+          warehouses={warehouses}
+          stock={stockByProduct[warehouseModalRow.id] ?? {}}
+          onClose={() => setWarehouseModalRow(null)}
         />
       )}
     </div>

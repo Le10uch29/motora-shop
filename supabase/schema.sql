@@ -41,6 +41,27 @@ alter table products add column if not exists model text;
 -- Показывать товар в блоке "Популярное" на главной странице.
 alter table products add column if not exists is_popular boolean not null default false;
 
+-- Склады: физические точки хранения товара. Сколько и какого товара лежит
+-- на складе — отдельная таблица warehouse_stock, не влияет на product.stock
+-- (общий остаток на сайте) и не показывается на витрине.
+create table if not exists warehouses (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  address text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists warehouse_stock (
+  id uuid primary key default gen_random_uuid(),
+  warehouse_id uuid not null references warehouses(id) on delete cascade,
+  product_id uuid not null references products(id) on delete cascade,
+  quantity int not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (warehouse_id, product_id)
+);
+
 create table if not exists pages (
   slug text primary key,
   title jsonb not null,
@@ -106,6 +127,16 @@ create trigger staff_set_updated_at
   before update on staff
   for each row execute function set_updated_at();
 
+drop trigger if exists warehouses_set_updated_at on warehouses;
+create trigger warehouses_set_updated_at
+  before update on warehouses
+  for each row execute function set_updated_at();
+
+drop trigger if exists warehouse_stock_set_updated_at on warehouse_stock;
+create trigger warehouse_stock_set_updated_at
+  before update on warehouse_stock
+  for each row execute function set_updated_at();
+
 -- Проверка "текущий пользователь — админ". SECURITY DEFINER нужен, чтобы
 -- политика на самой таблице staff не зацикливалась сама на себя.
 create or replace function is_admin()
@@ -120,12 +151,27 @@ as $$
   );
 $$;
 
+-- Проверка "текущий пользователь — сотрудник" (админ или продавец).
+create or replace function is_staff()
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1 from staff where id = auth.uid()
+  );
+$$;
+
 -- Row Level Security.
 alter table brands enable row level security;
 alter table products enable row level security;
 alter table pages enable row level security;
 alter table staff enable row level security;
 alter table logs enable row level security;
+alter table warehouses enable row level security;
+alter table warehouse_stock enable row level security;
 
 -- Каталог (brands/products/pages): читать может кто угодно — витрина сайта
 -- работает без входа. Писать — только админ (не продавец: у него только
@@ -152,6 +198,18 @@ create policy "admin_manage_staff" on staff for all to authenticated using (is_a
 -- Логи — читать и очищать может только админ.
 drop policy if exists "admin_manage_logs" on logs;
 create policy "admin_manage_logs" on logs for all to authenticated using (is_admin()) with check (is_admin());
+
+-- Склады: видят все сотрудники (админ и продавец), изменяет — только админ.
+-- Не публичные — витрина сайта эти таблицы не читает.
+drop policy if exists "staff_read_warehouses" on warehouses;
+create policy "staff_read_warehouses" on warehouses for select to authenticated using (is_staff());
+drop policy if exists "admin_write_warehouses" on warehouses;
+create policy "admin_write_warehouses" on warehouses for all to authenticated using (is_admin()) with check (is_admin());
+
+drop policy if exists "staff_read_warehouse_stock" on warehouse_stock;
+create policy "staff_read_warehouse_stock" on warehouse_stock for select to authenticated using (is_staff());
+drop policy if exists "admin_write_warehouse_stock" on warehouse_stock;
+create policy "admin_write_warehouse_stock" on warehouse_stock for all to authenticated using (is_admin()) with check (is_admin());
 
 -- Storage-бакет для фото товаров и логотипов брендов.
 insert into storage.buckets (id, name, public)
