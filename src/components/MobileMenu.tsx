@@ -18,6 +18,8 @@ export default function MobileMenu({
   loginLabel,
   isLoggedIn,
   logoutLabel,
+  accountHref,
+  accountLabel,
 }: {
   locale: Locale;
   navLinks: NavLink[];
@@ -27,6 +29,8 @@ export default function MobileMenu({
   loginLabel: string;
   isLoggedIn: boolean;
   logoutLabel: string;
+  accountHref?: string;
+  accountLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
@@ -74,6 +78,24 @@ export default function MobileMenu({
                 {link.label}
               </Link>
             ))}
+            {isLoggedIn && accountHref && (
+              <Link
+                href={accountHref}
+                className="flex items-center gap-2 rounded-lg px-3 py-3 transition-colors hover:bg-zinc-100 hover:text-orange-600 dark:hover:bg-zinc-900"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                  className="h-5 w-5"
+                >
+                  <circle cx="12" cy="8" r="3.2" />
+                  <path strokeLinecap="round" d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6" />
+                </svg>
+                {accountLabel}
+              </Link>
+            )}
             {isLoggedIn ? (
               <form action={signOutAction}>
                 <input type="hidden" name="locale" value={locale} />

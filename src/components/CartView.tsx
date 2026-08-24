@@ -1,12 +1,22 @@
 "use client";
 
 import Link from "next/link";
+import { useState, useTransition } from "react";
 import { useCart } from "@/context/CartContext";
+import { placeOrderAction } from "@/app/[locale]/cart/actions";
 import { t, type Product } from "@/lib/products";
 import { formatGel, formatUsd } from "@/lib/currency";
 import type { Locale } from "@/i18n/locales";
 import type { Dictionary } from "@/i18n/dictionary";
 import ProductVisual from "@/components/ProductVisual";
+
+const ORDER_ERROR_CODES = new Set(["empty_cart", "not_authenticated", "products_not_found"]);
+
+// Known error codes get the friendly translated message; anything else is a
+// raw DB error message, shown as-is so it's actually diagnosable.
+function orderErrorText(code: string, dict: Dictionary["cart"]): string {
+  return ORDER_ERROR_CODES.has(code) ? dict.orderError : code;
+}
 
 export default function CartView({
   locale,
@@ -17,7 +27,9 @@ export default function CartView({
   dict: Dictionary["cart"];
   products: Product[];
 }) {
-  const { items, setQuantity, removeItem, clear } = useCart();
+  const { items, setQuantity, removeItem, clear, orderPlaced, markOrdered } = useCart();
+  const [orderError, setOrderError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
 
   const rows = items
     .map((item) => ({
@@ -30,6 +42,18 @@ export default function CartView({
     );
 
   const totalPrice = rows.reduce((sum, { item, product }) => sum + product.price * item.quantity, 0);
+
+  function handleCheckout() {
+    setOrderError(null);
+    startTransition(async () => {
+      const result = await placeOrderAction(items);
+      if (result.error) {
+        setOrderError(orderErrorText(result.error, dict));
+        return;
+      }
+      markOrdered();
+    });
+  }
 
   if (rows.length === 0) {
     return (
@@ -118,6 +142,8 @@ export default function CartView({
           </span>
           <span className="text-sm text-zinc-500">{formatUsd(totalPrice, locale)}</span>
         </div>
+        {orderError && <p className="text-sm text-red-600">{orderError}</p>}
+
         <div className="flex gap-3">
           <button
             type="button"
@@ -128,9 +154,15 @@ export default function CartView({
           </button>
           <button
             type="button"
-            className="rounded-full bg-orange-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-orange-500"
+            onClick={handleCheckout}
+            disabled={pending || orderPlaced}
+            className={
+              orderPlaced
+                ? "cursor-default rounded-full bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white"
+                : "rounded-full bg-orange-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-orange-500 disabled:opacity-60"
+            }
           >
-            {dict.checkout}
+            {orderPlaced ? dict.orderPlaced : dict.checkout}
           </button>
         </div>
       </div>

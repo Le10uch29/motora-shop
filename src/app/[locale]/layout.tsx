@@ -7,6 +7,7 @@ import { CartProvider } from "@/context/CartContext";
 import Header from "@/components/Header";
 import { locales, isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
+import { createClient } from "@/lib/supabase/server";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -46,13 +47,18 @@ export default async function LocaleLayout({
   const adminPrefix = `/${locale}/admin`;
   const isAdminRoute = pathname === adminPrefix || pathname.startsWith(`${adminPrefix}/`);
 
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   return (
     <html
       lang={locale}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-zinc-50 dark:bg-black">
-        <CartProvider>
+        <CartProvider userId={user?.id ?? null}>
           {!isAdminRoute && <Header locale={locale} dict={dict} />}
           {children}
         </CartProvider>

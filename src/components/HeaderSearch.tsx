@@ -124,9 +124,9 @@ export default function HeaderSearch({
   const priceMaxValue = filters.priceMax ? Number(filters.priceMax) : maxPrice;
 
   return (
-    <div className="flex items-center gap-2">
-      <form onSubmit={handleSearchSubmit} role="search" className="flex items-center">
-        <div className="flex w-36 items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1.5 focus-within:border-orange-500 dark:border-zinc-700 dark:bg-zinc-900 sm:w-48 md:w-64">
+    <div className="flex w-full items-center gap-2">
+      <form onSubmit={handleSearchSubmit} role="search" className="min-w-0 flex-1">
+        <div className="flex w-full min-w-0 items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1.5 focus-within:border-orange-500 dark:border-zinc-700 dark:bg-zinc-900">
           <svg
             viewBox="0 0 24 24"
             fill="none"

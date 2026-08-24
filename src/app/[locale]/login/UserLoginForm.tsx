@@ -1,37 +1,40 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useActionState } from "react";
+import { signInAction, type SignInState } from "@/lib/actions/auth";
 
-export default function AuthForm({
+const initialState: SignInState = { error: null };
+
+export default function UserLoginForm({
+  locale,
   title,
   emailLabel,
   passwordLabel,
   submitLabel,
-  note,
+  invalidCredentialsMessage,
 }: {
+  locale: string;
   title: string;
   emailLabel: string;
   passwordLabel: string;
   submitLabel: string;
-  note: string;
+  invalidCredentialsMessage: string;
 }) {
-  const [submitted, setSubmitted] = useState(false);
-
-  function handleSubmit(event: FormEvent) {
-    event.preventDefault();
-    setSubmitted(true);
-  }
+  const [state, formAction, pending] = useActionState(signInAction, initialState);
 
   return (
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-6 px-6 py-16">
       <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">{title}</h1>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form action={formAction} className="flex flex-col gap-4">
+        <input type="hidden" name="locale" value={locale} />
+        <input type="hidden" name="invalidCredentialsMessage" value={invalidCredentialsMessage} />
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="auth-email" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          <label htmlFor="user-email" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
             {emailLabel}
           </label>
           <input
-            id="auth-email"
+            id="user-email"
+            name="email"
             type="email"
             required
             autoComplete="email"
@@ -40,13 +43,14 @@ export default function AuthForm({
         </div>
         <div className="flex flex-col gap-1.5">
           <label
-            htmlFor="auth-password"
+            htmlFor="user-password"
             className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
           >
             {passwordLabel}
           </label>
           <input
-            id="auth-password"
+            id="user-password"
+            name="password"
             type="password"
             required
             autoComplete="current-password"
@@ -55,12 +59,13 @@ export default function AuthForm({
         </div>
         <button
           type="submit"
-          className="rounded-full bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-orange-500"
+          disabled={pending}
+          className="rounded-full bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-orange-500 disabled:opacity-60"
         >
           {submitLabel}
         </button>
       </form>
-      {submitted && <p className="text-sm text-zinc-500">{note}</p>}
+      {state.error && <p className="text-sm text-red-600">{state.error}</p>}
     </main>
   );
 }

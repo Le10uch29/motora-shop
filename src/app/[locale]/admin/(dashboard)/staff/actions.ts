@@ -73,7 +73,9 @@ export async function createStaffAction(
     return { error: profileError.message };
   }
 
-  await logAction(actor, "create", "staff", `${fields.firstName} ${fields.lastName} (${fields.role})`);
+  await logAction(actor, "create", "staff", `${fields.firstName} ${fields.lastName} (${fields.role})`, {
+    entityId: created.user.id,
+  });
   revalidateStaffPaths(locale);
   return { error: null };
 }
@@ -121,7 +123,8 @@ export async function updateStaffAction(
     actor,
     "update",
     "staff",
-    `${fields.firstName} ${fields.lastName} (${fields.role})${newPassword ? " + пароль" : ""}`
+    `${fields.firstName} ${fields.lastName} (${fields.role})${newPassword ? " + пароль" : ""}`,
+    { entityId: id }
   );
   revalidateStaffPaths(locale, id);
   return { error: null };
@@ -141,7 +144,7 @@ export async function deleteStaffAction(
   await admin.from("staff").delete().eq("id", id);
   await admin.auth.admin.deleteUser(id);
 
-  await logAction(actor, "delete", "staff", label);
+  await logAction(actor, "delete", "staff", label, { entityId: id });
   revalidateStaffPaths(locale);
   return { error: null };
 }

@@ -51,10 +51,20 @@ export async function proxy(request: NextRequest) {
   const adminPrefix = `/${matchedLocale}/admin`;
   const isAdminRoute = pathname === adminPrefix || pathname.startsWith(`${adminPrefix}/`);
   const isAdminLoginRoute = pathname === `${adminPrefix}/login`;
+  const loginRoute = `/${matchedLocale}/login`;
+  const isLoginRoute = pathname === loginRoute;
 
-  if (isAdminRoute && !isAdminLoginRoute && !user) {
+  if (isAdminRoute) {
+    if (!isAdminLoginRoute && !user) {
+      const url = request.nextUrl.clone();
+      url.pathname = `${adminPrefix}/login`;
+      return NextResponse.redirect(url);
+    }
+  } else if (!isLoginRoute && !user) {
+    // The storefront isn't public — only staff and admin-provisioned
+    // customers may browse it, so anyone unauthenticated gets sent to login.
     const url = request.nextUrl.clone();
-    url.pathname = `${adminPrefix}/login`;
+    url.pathname = loginRoute;
     return NextResponse.redirect(url);
   }
 

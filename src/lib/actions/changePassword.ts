@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export type ChangePasswordState = { error: string | null; success: boolean };
 
+/** Lets any logged-in user (staff or customer) change their own password. */
 export async function changePasswordAction(
   prevState: ChangePasswordState,
   formData: FormData

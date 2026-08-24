@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { actionLabel } from "./labels";
 import ClearLogsButton from "./ClearLogsButton";
+import DetailsToggle, { type LogDetails } from "./DetailsToggle";
 
 export default async function LogsPage({
   params,
@@ -17,7 +18,7 @@ export default async function LogsPage({
   const admin = createAdminClient();
   const { data: entries } = await admin
     .from("logs")
-    .select("id, staff_name, action, entity_type, entity_label, created_at")
+    .select("id, staff_name, action, entity_type, entity_label, details, created_at")
     .order("created_at", { ascending: false })
     .limit(200);
 
@@ -57,7 +58,12 @@ export default async function LogsPage({
                     {actionLabel(dict.admin, entry.action)}
                   </td>
                   <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                    {entry.entity_type} · {entry.entity_label}
+                    <div className="flex flex-col gap-1">
+                      <span>
+                        {entry.entity_type} · {entry.entity_label}
+                      </span>
+                      <DetailsToggle dict={dict.admin} details={entry.details as LogDetails | null} />
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-xs text-zinc-400">
                     {new Date(entry.created_at).toLocaleString(locale)}

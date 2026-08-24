@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { changePasswordAction, type ChangePasswordState } from "./actions";
+import { changePasswordAction, type ChangePasswordState } from "@/lib/actions/changePassword";
 import type { Dictionary } from "@/i18n/dictionary";
 
 const initialState: ChangePasswordState = { error: null, success: false };

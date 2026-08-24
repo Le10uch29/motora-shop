@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
 import { requireStaff } from "@/lib/auth";
-import ChangePasswordForm from "./ChangePasswordForm";
+import ChangePasswordForm from "@/components/ChangePasswordForm";
 
 export default async function AccountPage({
   params,

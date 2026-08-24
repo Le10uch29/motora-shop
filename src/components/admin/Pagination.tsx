@@ -6,14 +6,16 @@ export default function Pagination({
   basePath,
   currentPage,
   total,
+  pageSize = ADMIN_PAGE_SIZE,
   searchParams,
 }: {
   basePath: string;
   currentPage: number;
   total: number;
+  pageSize?: number;
   searchParams: Record<string, string | undefined>;
 }) {
-  const totalPages = Math.max(1, Math.ceil(total / ADMIN_PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   if (totalPages <= 1) return null;
 
   function hrefForPage(page: number): string {
