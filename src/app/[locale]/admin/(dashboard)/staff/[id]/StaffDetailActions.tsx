@@ -9,11 +9,13 @@ export default function StaffDetailActions({
   dict,
   passwordLabel,
   values,
+  warehouses,
 }: {
   locale: string;
   dict: Dictionary["admin"];
   passwordLabel: string;
   values: StaffFormValues;
+  warehouses: { id: string; name: string }[];
 }) {
   const [open, setOpen] = useState(false);
 
@@ -34,6 +36,7 @@ export default function StaffDetailActions({
           passwordLabel={passwordLabel}
           mode="edit"
           initialValues={values}
+          warehouses={warehouses}
           onClose={() => setOpen(false)}
         />
       )}

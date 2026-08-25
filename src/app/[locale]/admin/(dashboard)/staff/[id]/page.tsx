@@ -4,6 +4,7 @@ import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getWarehouseOptions } from "../../warehouses/data";
 import { actionLabel } from "../../logs/labels";
 import DetailsToggle, { type LogDetails } from "../../logs/DetailsToggle";
 import StaffDetailActions from "./StaffDetailActions";
@@ -20,13 +21,17 @@ export default async function StaffDetailPage({
 
   const { data: row } = await admin
     .from("staff")
-    .select("id, first_name, last_name, phone, id_card_number, role, created_at")
+    .select("id, first_name, last_name, phone, id_card_number, role, warehouse_id, created_at")
     .eq("id", id)
     .single();
 
   if (!row) notFound();
 
   const { data: userData } = await admin.auth.admin.getUserById(id);
+  const warehouses = await getWarehouseOptions();
+  const warehouseName = row.warehouse_id
+    ? warehouses.find((w) => w.id === row.warehouse_id)?.name ?? ""
+    : "";
 
   const { data: entries } = await admin
     .from("logs")
@@ -43,6 +48,7 @@ export default async function StaffDetailPage({
     [dict.admin.phoneLabel, row.phone ?? "—"],
     [dict.admin.idCardLabel, row.id_card_number ?? "—"],
     [dict.admin.roleLabel, row.role === "admin" ? dict.admin.roleAdmin : dict.admin.roleSeller],
+    [dict.admin.warehouseAssignedLabel, warehouseName || "—"],
     [dict.admin.tableId, row.id],
   ];
 
@@ -71,7 +77,9 @@ export default async function StaffDetailPage({
             phone: row.phone ?? "",
             idCardNumber: row.id_card_number ?? "",
             role: row.role,
+            warehouseId: row.warehouse_id ?? "",
           }}
+          warehouses={warehouses}
         />
       </div>
 

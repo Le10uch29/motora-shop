@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth";
 import { logAction } from "@/lib/logs";
+import { normalizePhone } from "@/lib/phone";
 import type { Locale } from "@/i18n/locales";
 import { isLocale } from "@/i18n/locales";
 
@@ -16,12 +17,14 @@ function readLocale(formData: FormData): Locale {
 }
 
 function readStaffFields(formData: FormData) {
+  const rawPhone = String(formData.get("phone") ?? "").trim();
   return {
     firstName: String(formData.get("firstName") ?? "").trim(),
     lastName: String(formData.get("lastName") ?? "").trim(),
-    phone: String(formData.get("phone") ?? "").trim() || null,
+    phone: rawPhone ? normalizePhone(rawPhone) : null,
     idCardNumber: String(formData.get("idCardNumber") ?? "").trim() || null,
     role: String(formData.get("role") ?? "seller") === "admin" ? "admin" : "seller",
+    warehouseId: String(formData.get("warehouseId") ?? "").trim() || null,
   };
 }
 
@@ -42,16 +45,16 @@ export async function createStaffAction(
   const password = String(formData.get("password") ?? "");
   const fields = readStaffFields(formData);
 
-  if (!email || !password || !fields.firstName || !fields.lastName) {
+  if (!password || !fields.firstName || !fields.lastName || (!email && !fields.phone)) {
     return { error: "missing_fields" };
   }
 
   const admin = createAdminClient();
 
   const { data: created, error: createError } = await admin.auth.admin.createUser({
-    email,
     password,
-    email_confirm: true,
+    ...(email ? { email, email_confirm: true } : {}),
+    ...(fields.phone ? { phone: fields.phone, phone_confirm: true } : {}),
   });
 
   if (createError || !created.user) {
@@ -65,6 +68,7 @@ export async function createStaffAction(
     phone: fields.phone,
     id_card_number: fields.idCardNumber,
     role: fields.role,
+    warehouse_id: fields.warehouseId,
   });
 
   if (profileError) {
@@ -89,9 +93,10 @@ export async function updateStaffAction(
 
   const id = String(formData.get("id") ?? "");
   const newPassword = String(formData.get("password") ?? "");
+  const email = String(formData.get("email") ?? "").trim();
   const fields = readStaffFields(formData);
 
-  if (!id || !fields.firstName || !fields.lastName) {
+  if (!id || !fields.firstName || !fields.lastName || (!email && !fields.phone)) {
     return { error: "missing_fields" };
   }
   if (newPassword && newPassword.length < 6) {
@@ -107,10 +112,17 @@ export async function updateStaffAction(
       phone: fields.phone,
       id_card_number: fields.idCardNumber,
       role: fields.role,
+      warehouse_id: fields.warehouseId,
     })
     .eq("id", id);
 
   if (error) return { error: error.message };
+
+  const { error: contactError } = await admin.auth.admin.updateUserById(id, {
+    ...(email ? { email } : {}),
+    ...(fields.phone ? { phone: fields.phone } : {}),
+  });
+  if (contactError) return { error: contactError.message };
 
   if (newPassword) {
     const { error: passwordError } = await admin.auth.admin.updateUserById(id, {

@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useTransition, type ReactNode } from "react";
-import Link from "next/link";
 import { deleteCustomerAction } from "./actions";
 import CustomerFormModal, { type CustomerFormValues } from "./CustomerFormModal";
+import { RowActionLink, RowActionButton, EyeIcon, PencilIcon, TrashIcon } from "@/components/admin/RowActions";
 import type { Dictionary } from "@/i18n/dictionary";
 import type { Locale } from "@/i18n/locales";
 
@@ -118,27 +118,20 @@ export default function CustomerListClient({
                   <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{row.idCardNumber}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-2 whitespace-nowrap">
-                      <Link
-                        href={`/${locale}/admin/customers/${row.id}`}
-                        className="rounded-full border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:border-orange-500 hover:text-orange-600 dark:border-zinc-700 dark:text-zinc-300"
-                      >
-                        {dict.actionDetails}
-                      </Link>
-                      <button
-                        type="button"
-                        onClick={() => setModal({ mode: "edit", values: row })}
-                        className="rounded-full border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:border-orange-500 hover:text-orange-600 dark:border-zinc-700 dark:text-zinc-300"
-                      >
-                        {dict.actionEdit}
-                      </button>
-                      <button
-                        type="button"
+                      <RowActionLink href={`/${locale}/admin/customers/${row.id}`} label={dict.actionDetails}>
+                        <EyeIcon />
+                      </RowActionLink>
+                      <RowActionButton label={dict.actionEdit} onClick={() => setModal({ mode: "edit", values: row })}>
+                        <PencilIcon />
+                      </RowActionButton>
+                      <RowActionButton
+                        label={dict.actionDelete}
                         disabled={pending}
+                        danger
                         onClick={() => handleDelete(row)}
-                        className="rounded-full border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:border-red-500 disabled:opacity-60 dark:border-red-900"
                       >
-                        {dict.actionDelete}
-                      </button>
+                        <TrashIcon />
+                      </RowActionButton>
                     </div>
                   </td>
                 </tr>

@@ -6,6 +6,7 @@ import { requireStaff } from "@/lib/auth";
 import { getOrdererOrders } from "../data";
 import { formatGel } from "@/lib/currency";
 import OrdererOrderRowActions from "./OrdererOrderRowActions";
+import OrderDiscountInput from "./OrderDiscountInput";
 
 export default async function OrdererOrdersPage({
   params,
@@ -33,7 +34,7 @@ export default async function OrdererOrdersPage({
       : [];
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-6 py-10">
+    <main className="flex w-full flex-1 flex-col gap-6 px-6 py-10">
       <Link href={`/${locale}/admin/orders`} className="text-sm text-zinc-500 hover:text-orange-600">
         ← {dict.admin.ordersTitle}
       </Link>
@@ -65,48 +66,56 @@ export default async function OrdererOrdersPage({
                 <th className="px-4 py-3 font-medium">{dict.admin.orderNumberLabel}</th>
                 <th className="px-4 py-3 font-medium">{dict.admin.orderColumnProduct}</th>
                 <th className="px-4 py-3 font-medium">{dict.admin.orderColumnQuantity}</th>
+                <th className="px-4 py-3 font-medium">{dict.admin.orderColumnUnitPrice}</th>
                 <th className="px-4 py-3 font-medium">{dict.admin.orderColumnLineTotal}</th>
-                <th className="px-4 py-3 font-medium">{dict.admin.orderColumnStatus}</th>
                 <th className="px-4 py-3 font-medium">{dict.admin.orderColumnWhen}</th>
-                <th className="px-4 py-3 font-medium" />
+                <th className="px-4 py-3 font-medium">{dict.admin.orderColumnStatus}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-              {lines.map((line) => (
-                <tr key={line.id}>
-                  <td className="px-4 py-3 text-xs text-zinc-400">№{line.orderNumber}</td>
-                  <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50">{line.productName}</td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{line.quantity}</td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                    {formatGel(line.priceAtOrder * line.quantity, locale)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                        line.status === "new"
-                          ? "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300"
-                          : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
-                      }`}
-                    >
-                      {line.status === "new" ? dict.admin.orderStatusNew : dict.admin.orderStatusCancelled}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-zinc-400">
-                    {new Date(line.createdAt).toLocaleString(locale)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <OrdererOrderRowActions
-                      locale={locale}
-                      dict={dict.admin}
-                      customerId={customerId}
-                      orderId={line.id}
-                      label={`${line.productName} — ${ordererName}`}
-                      isAdmin={staff.role === "admin"}
-                      isCancellable={line.status === "new"}
-                    />
-                  </td>
-                </tr>
-              ))}
+              {lines.map((line) => {
+                const effectivePrice = line.discountedPrice ?? line.priceAtOrder;
+                return (
+                  <tr key={line.id}>
+                    <td className="px-4 py-3 text-xs text-zinc-400">№{line.orderNumber}</td>
+                    <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50">{line.productName}</td>
+                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{line.quantity}</td>
+                    <td className="px-4 py-3">
+                      {staff.role === "admin" ? (
+                        <OrderDiscountInput
+                          locale={locale}
+                          dict={dict.admin}
+                          orderId={line.id}
+                          customerId={customerId}
+                          label={`${line.productName} — ${ordererName}`}
+                          originalPrice={line.priceAtOrder}
+                          discountedPrice={line.discountedPrice}
+                        />
+                      ) : (
+                        <span className="text-zinc-600 dark:text-zinc-400">{formatGel(effectivePrice, locale)}</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                      {formatGel(effectivePrice * line.quantity, locale)}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-zinc-400">
+                      {new Date(line.createdAt).toLocaleString(locale)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <OrdererOrderRowActions
+                        locale={locale}
+                        dict={dict.admin}
+                        customerId={customerId}
+                        orderId={line.id}
+                        label={`${line.productName} — ${ordererName}`}
+                        isAdmin={staff.role === "admin"}
+                        isCancellable={line.status !== "cancelled"}
+                        currentStatus={line.status}
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

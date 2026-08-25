@@ -12,6 +12,7 @@ export type CurrentStaff = {
   phone: string | null;
   idCardNumber: string | null;
   role: StaffRole;
+  warehouseId: string | null;
 };
 
 /** The logged-in staff member (admin or seller), or null if not logged in / no staff profile. */
@@ -24,7 +25,7 @@ export async function getCurrentStaff(): Promise<CurrentStaff | null> {
 
   const { data: staff } = await supabase
     .from("staff")
-    .select("id, first_name, last_name, phone, id_card_number, role")
+    .select("id, first_name, last_name, phone, id_card_number, role, warehouse_id")
     .eq("id", user.id)
     .single();
   if (!staff) return null;
@@ -37,6 +38,7 @@ export async function getCurrentStaff(): Promise<CurrentStaff | null> {
     phone: staff.phone,
     idCardNumber: staff.id_card_number,
     role: staff.role,
+    warehouseId: staff.warehouse_id,
   };
 }
 

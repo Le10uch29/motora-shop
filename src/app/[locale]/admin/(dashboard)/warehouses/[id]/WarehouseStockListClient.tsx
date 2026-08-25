@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { removeStockAction } from "../actions";
 import AddStockModal from "./AddStockModal";
+import { RowActionButton, TrashIcon } from "@/components/admin/RowActions";
 import type { WarehouseStockRow } from "../data";
 import type { Dictionary } from "@/i18n/dictionary";
 import type { Locale } from "@/i18n/locales";
@@ -73,14 +74,14 @@ export default function WarehouseStockListClient({
                   <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{row.quantity}</td>
                   {isAdmin && (
                     <td className="px-4 py-3 text-right">
-                      <button
-                        type="button"
+                      <RowActionButton
+                        label={dict.actionRemove}
                         disabled={pending}
+                        danger
                         onClick={() => handleRemove(row.productId)}
-                        className="rounded-full border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:border-red-500 disabled:opacity-60 dark:border-red-900"
                       >
-                        {dict.actionRemove}
-                      </button>
+                        <TrashIcon />
+                      </RowActionButton>
                     </td>
                   )}
                 </tr>

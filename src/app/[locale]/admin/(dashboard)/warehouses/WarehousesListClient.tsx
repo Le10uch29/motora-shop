@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { deleteWarehouseAction } from "./actions";
 import WarehouseFormModal, { type WarehouseFormValues } from "./WarehouseFormModal";
+import { RowActionButton, PencilIcon, TrashIcon } from "@/components/admin/RowActions";
 import type { WarehouseRow } from "./data";
 import type { Dictionary } from "@/i18n/dictionary";
 import type { Locale } from "@/i18n/locales";
@@ -72,21 +73,17 @@ export default function WarehousesListClient({
 
               {isAdmin && (
                 <div className="mt-auto flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setModal({ mode: "edit", values: w })}
-                    className="flex-1 rounded-full border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:border-orange-500 hover:text-orange-600 dark:border-zinc-700 dark:text-zinc-300"
-                  >
-                    {dict.actionEdit}
-                  </button>
-                  <button
-                    type="button"
+                  <RowActionButton label={dict.actionEdit} onClick={() => setModal({ mode: "edit", values: w })}>
+                    <PencilIcon />
+                  </RowActionButton>
+                  <RowActionButton
+                    label={dict.actionDelete}
                     disabled={pending}
+                    danger
                     onClick={() => handleDelete(w)}
-                    className="flex-1 rounded-full border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:border-red-500 disabled:opacity-60 dark:border-red-900"
                   >
-                    {dict.actionDelete}
-                  </button>
+                    <TrashIcon />
+                  </RowActionButton>
                 </div>
               )}
             </div>

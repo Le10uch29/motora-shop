@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { cancelOrderAction } from "../actions";
+import { cancelOrderAction, updateOrderStatusAction } from "../actions";
+import { orderStatusLabel, orderStatusClass, PROGRESSABLE_STATUSES } from "../statusStyles";
+import type { OrderStatus } from "../data";
+import { RowActionLink, RowActionButton, EyeIcon, XCircleIcon } from "@/components/admin/RowActions";
 import type { Dictionary } from "@/i18n/dictionary";
 import type { Locale } from "@/i18n/locales";
 
@@ -15,6 +17,7 @@ export default function OrdererOrderRowActions({
   label,
   isAdmin,
   isCancellable,
+  currentStatus,
 }: {
   locale: Locale;
   dict: Dictionary["admin"];
@@ -23,6 +26,7 @@ export default function OrdererOrderRowActions({
   label: string;
   isAdmin: boolean;
   isCancellable: boolean;
+  currentStatus: OrderStatus;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -37,24 +41,48 @@ export default function OrdererOrderRowActions({
     });
   }
 
+  function handleStatusChange(status: OrderStatus) {
+    if (status === "cancelled" || !PROGRESSABLE_STATUSES.includes(status)) return;
+    startTransition(async () => {
+      const result = await updateOrderStatusAction(locale, orderId, customerId, status, label);
+      if (result.error) setError(result.error);
+      else router.refresh();
+    });
+  }
+
   return (
     <div className="flex flex-col items-end gap-1">
       <div className="flex items-center justify-end gap-2 whitespace-nowrap">
-        <Link
-          href={`/${locale}/admin/orders/${customerId}/${orderId}`}
-          className="rounded-full border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:border-orange-500 hover:text-orange-600 dark:border-zinc-700 dark:text-zinc-300"
-        >
-          {dict.actionDetails}
-        </Link>
-        {isAdmin && isCancellable && (
-          <button
-            type="button"
+        {currentStatus === "cancelled" ? (
+          <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${orderStatusClass(currentStatus)}`}>
+            {orderStatusLabel(currentStatus, dict)}
+          </span>
+        ) : (
+          <select
+            aria-label={dict.orderStatusSelectLabel}
+            value={currentStatus}
             disabled={pending}
-            onClick={handleCancel}
-            className="rounded-full border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:border-red-500 disabled:opacity-60 dark:border-red-900"
+            onChange={(event) => handleStatusChange(event.target.value as OrderStatus)}
+            className={`rounded-full border-0 px-2.5 py-1.5 text-xs font-medium ${orderStatusClass(currentStatus)}`}
           >
-            {dict.actionCancelOrder}
-          </button>
+            {PROGRESSABLE_STATUSES.map((status) => (
+              // The dropdown list itself ignores the <select>'s Tailwind
+              // classes in most browsers, so each <option> needs its own
+              // (plain, always-readable) colors — the colored pill look is
+              // only for the closed control.
+              <option key={status} value={status} className="bg-white text-zinc-900">
+                {orderStatusLabel(status, dict)}
+              </option>
+            ))}
+          </select>
+        )}
+        <RowActionLink href={`/${locale}/admin/orders/${customerId}/${orderId}`} label={dict.actionDetails}>
+          <EyeIcon />
+        </RowActionLink>
+        {isAdmin && isCancellable && (
+          <RowActionButton label={dict.actionCancelOrder} disabled={pending} danger onClick={handleCancel}>
+            <XCircleIcon />
+          </RowActionButton>
         )}
       </div>
       {error && <p className="text-xs text-red-600">{error}</p>}

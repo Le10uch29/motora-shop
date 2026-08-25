@@ -3,7 +3,16 @@ import type { Locale } from "@/i18n/locales";
 
 export const ORDERS_PAGE_SIZE = 20;
 
-export type OrderStatus = "new" | "cancelled";
+export type OrderStatus = "new" | "gathering" | "gathered" | "shipped" | "delivered" | "cancelled";
+
+// Used only to break ties when picking the "predominant" status for the
+// top orderer list's fraction — further-along wins. Independent of
+// statusStyles.ts's UI-facing PROGRESSABLE_STATUSES (which drops "gathered").
+const STATUS_PROGRESSION: OrderStatus[] = ["new", "gathering", "gathered", "shipped", "delivered"];
+
+function effectivePrice(priceAtOrder: number, discountedPrice: number | null): number {
+  return discountedPrice ?? priceAtOrder;
+}
 
 // orders.customer_id points at auth.users, not customers — a customer places
 // most orders, but staff can order too (e.g. testing checkout, or ordering
@@ -83,8 +92,11 @@ type OrderBaseRow = {
   product_name: Record<string, string>;
   quantity: number;
   price_at_order: number;
+  discounted_price: number | null;
   status: OrderStatus;
   created_at: string;
+  updated_at: string;
+  warehouse_id: string | null;
   customer_id: string;
 };
 
@@ -94,6 +106,11 @@ export type OrdererRow = {
   phone: string;
   email: string;
   totalAmount: number;
+  statusTotal: number;
+  statusCount: number;
+  status: OrderStatus | null;
+  warehouseName: string | null;
+  warehouseAddress: string | null;
 };
 
 export async function getOrderersList(
@@ -103,30 +120,81 @@ export async function getOrderersList(
   const admin = createAdminClient();
   const { data } = await admin
     .from("orders")
-    .select("customer_id, quantity, price_at_order, status")
+    .select("customer_id, quantity, price_at_order, discounted_price, status, updated_at, warehouse_id")
     .order("created_at", { ascending: false });
 
-  const baseRows = (data ?? []) as Pick<OrderBaseRow, "customer_id" | "quantity" | "price_at_order" | "status">[];
+  const baseRows = (data ?? []) as Omit<OrderBaseRow, "id" | "order_number" | "product_name" | "created_at">[];
   const ordererIds = Array.from(new Set(baseRows.map((row) => row.customer_id)));
   const orderers = await resolveOrderers(admin, ordererIds);
 
   const totalByOrderer = new Map<string, number>();
+  const statusCountsByOrderer = new Map<string, Map<OrderStatus, number>>();
+  const latestWarehouseByOrderer = new Map<string, { warehouseId: string; updatedAt: string }>();
+
   for (const row of baseRows) {
-    if (row.status !== "new") continue;
-    const current = totalByOrderer.get(row.customer_id) ?? 0;
-    totalByOrderer.set(row.customer_id, current + Number(row.price_at_order) * row.quantity);
+    if (row.status === "cancelled") continue;
+
+    const currentTotal = totalByOrderer.get(row.customer_id) ?? 0;
+    totalByOrderer.set(
+      row.customer_id,
+      currentTotal + effectivePrice(Number(row.price_at_order), row.discounted_price) * row.quantity
+    );
+
+    const statusCounts = statusCountsByOrderer.get(row.customer_id) ?? new Map<OrderStatus, number>();
+    statusCounts.set(row.status, (statusCounts.get(row.status) ?? 0) + 1);
+    statusCountsByOrderer.set(row.customer_id, statusCounts);
+
+    if (row.warehouse_id) {
+      const current = latestWarehouseByOrderer.get(row.customer_id);
+      if (!current || row.updated_at > current.updatedAt) {
+        latestWarehouseByOrderer.set(row.customer_id, { warehouseId: row.warehouse_id, updatedAt: row.updated_at });
+      }
+    }
   }
+
+  const warehouseIds = Array.from(new Set(Array.from(latestWarehouseByOrderer.values()).map((w) => w.warehouseId)));
+  const { data: warehouseRows } =
+    warehouseIds.length > 0
+      ? await admin.from("warehouses").select("id, name, address").in("id", warehouseIds)
+      : { data: [] as { id: string; name: string; address: string | null }[] };
+  const warehouseById = new Map((warehouseRows ?? []).map((w) => [w.id, w]));
 
   let rows: OrdererRow[] = ordererIds
     .map((id) => {
       const info = orderers.get(id);
       if (!info) return null;
+
+      const statusCounts = statusCountsByOrderer.get(id);
+      let predominant: { status: OrderStatus; count: number } | null = null;
+      let statusTotal = 0;
+      if (statusCounts) {
+        for (const [status, count] of statusCounts) {
+          statusTotal += count;
+          if (
+            !predominant ||
+            count > predominant.count ||
+            (count === predominant.count &&
+              STATUS_PROGRESSION.indexOf(status) > STATUS_PROGRESSION.indexOf(predominant.status))
+          ) {
+            predominant = { status, count };
+          }
+        }
+      }
+
+      const latestWarehouse = latestWarehouseByOrderer.get(id);
+      const warehouse = latestWarehouse ? warehouseById.get(latestWarehouse.warehouseId) : undefined;
+
       return {
         id,
         name: `${info.firstName} ${info.lastName}`,
         phone: info.phone,
         email: info.email,
         totalAmount: totalByOrderer.get(id) ?? 0,
+        statusTotal,
+        statusCount: predominant?.count ?? 0,
+        status: predominant?.status ?? null,
+        warehouseName: warehouse?.name ?? null,
+        warehouseAddress: warehouse?.address ?? null,
       };
     })
     .filter((row): row is OrdererRow => row !== null);
@@ -149,6 +217,7 @@ export type OrdererOrderLine = {
   productName: string;
   quantity: number;
   priceAtOrder: number;
+  discountedPrice: number | null;
   status: OrderStatus;
   createdAt: string;
 };
@@ -176,11 +245,13 @@ export async function getOrdererOrders(
 
   const { data } = await admin
     .from("orders")
-    .select("id, order_number, product_name, quantity, price_at_order, status, created_at, customer_id")
+    .select(
+      "id, order_number, product_name, quantity, price_at_order, discounted_price, status, created_at, customer_id"
+    )
     .eq("customer_id", customerId)
     .order("created_at", { ascending: false });
 
-  const baseRows = (data ?? []) as OrderBaseRow[];
+  const baseRows = (data ?? []) as Omit<OrderBaseRow, "updated_at" | "warehouse_id">[];
   if (baseRows.length === 0) return null;
 
   const orderers = await resolveOrderers(admin, [customerId]);
@@ -193,13 +264,14 @@ export async function getOrdererOrders(
     productName: row.product_name?.[locale] ?? row.product_name?.ru ?? "",
     quantity: row.quantity,
     priceAtOrder: Number(row.price_at_order),
+    discountedPrice: row.discounted_price != null ? Number(row.discounted_price) : null,
     status: row.status,
     createdAt: row.created_at,
   }));
 
   const total = lines
-    .filter((line) => line.status === "new")
-    .reduce((sum, line) => sum + line.priceAtOrder * line.quantity, 0);
+    .filter((line) => line.status !== "cancelled")
+    .reduce((sum, line) => sum + effectivePrice(line.priceAtOrder, line.discountedPrice) * line.quantity, 0);
 
   return { orderer, lines, total };
 }
@@ -210,6 +282,7 @@ export type OrderDetail = {
   status: OrderStatus;
   quantity: number;
   priceAtOrder: number;
+  discountedPrice: number | null;
   productNameSnapshot: string;
   createdAt: string;
   cancelledAt: string | null;
@@ -245,7 +318,7 @@ export async function getOrderDetail(id: string, locale: Locale): Promise<OrderD
   const { data: row } = await admin
     .from("orders")
     .select(
-      "id, order_number, status, quantity, price_at_order, product_name, created_at, cancelled_at, product_id, customer_id"
+      "id, order_number, status, quantity, price_at_order, discounted_price, product_name, created_at, cancelled_at, product_id, customer_id"
     )
     .eq("id", id)
     .single();
@@ -322,6 +395,7 @@ export async function getOrderDetail(id: string, locale: Locale): Promise<OrderD
     status: row.status,
     quantity: row.quantity,
     priceAtOrder: Number(row.price_at_order),
+    discountedPrice: row.discounted_price != null ? Number(row.discounted_price) : null,
     productNameSnapshot: row.product_name?.[locale] ?? row.product_name?.ru ?? "",
     createdAt: row.created_at,
     cancelledAt: row.cancelled_at,

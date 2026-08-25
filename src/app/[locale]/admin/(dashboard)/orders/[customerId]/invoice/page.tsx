@@ -19,7 +19,7 @@ export default async function InvoicePage({
   const { orderer, lines, total } = result;
 
   const ordererName = `${orderer.firstName} ${orderer.lastName}`;
-  const activeLines = lines.filter((line) => line.status === "new");
+  const activeLines = lines.filter((line) => line.status !== "cancelled");
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-6 py-10 print:max-w-none print:gap-6 print:px-0 print:py-0">
@@ -69,21 +69,24 @@ export default async function InvoicePage({
           </tr>
         </thead>
         <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 print:divide-zinc-300">
-          {activeLines.map((line) => (
-            <tr key={line.id}>
-              <td className="py-2 pr-3 text-zinc-500 print:text-black">№{line.orderNumber}</td>
-              <td className="py-2 pr-3 font-medium text-zinc-900 dark:text-zinc-50 print:text-black">
-                {line.productName}
-              </td>
-              <td className="py-2 pr-3 text-zinc-600 dark:text-zinc-400 print:text-black">{line.quantity}</td>
-              <td className="py-2 pr-3 text-zinc-600 dark:text-zinc-400 print:text-black">
-                {formatGel(line.priceAtOrder, locale)}
-              </td>
-              <td className="py-2 text-right font-medium text-zinc-900 dark:text-zinc-50 print:text-black">
-                {formatGel(line.priceAtOrder * line.quantity, locale)}
-              </td>
-            </tr>
-          ))}
+          {activeLines.map((line) => {
+            const unitPrice = line.discountedPrice ?? line.priceAtOrder;
+            return (
+              <tr key={line.id}>
+                <td className="py-2 pr-3 text-zinc-500 print:text-black">№{line.orderNumber}</td>
+                <td className="py-2 pr-3 font-medium text-zinc-900 dark:text-zinc-50 print:text-black">
+                  {line.productName}
+                </td>
+                <td className="py-2 pr-3 text-zinc-600 dark:text-zinc-400 print:text-black">{line.quantity}</td>
+                <td className="py-2 pr-3 text-zinc-600 dark:text-zinc-400 print:text-black">
+                  {formatGel(unitPrice, locale)}
+                </td>
+                <td className="py-2 text-right font-medium text-zinc-900 dark:text-zinc-50 print:text-black">
+                  {formatGel(unitPrice * line.quantity, locale)}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
 

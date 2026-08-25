@@ -4,6 +4,7 @@ import { useState, useTransition, type ReactNode } from "react";
 import { deleteProductAction } from "./actions";
 import ProductFormModal, { type ProductFormValues } from "./ProductFormModal";
 import ProductWarehousesModal from "./ProductWarehousesModal";
+import { RowActionLink, RowActionButton, EyeIcon, PencilIcon, TrashIcon } from "@/components/admin/RowActions";
 import type { AdminProductRow } from "./data";
 import { formatGel } from "@/lib/currency";
 import type { Dictionary } from "@/i18n/dictionary";
@@ -73,15 +74,13 @@ export default function ProductsListClient({
         <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
           {dict.productsAdminTitle}
         </h1>
-        {isAdmin && (
-          <button
-            type="button"
-            onClick={() => setModal({ mode: "create" })}
-            className="rounded-full bg-orange-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-500"
-          >
-            {dict.addProduct}
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => setModal({ mode: "create" })}
+          className="rounded-full bg-orange-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-500"
+        >
+          {dict.addProduct}
+        </button>
       </div>
 
       {searchSlot}
@@ -99,7 +98,7 @@ export default function ProductsListClient({
                 <th className="px-4 py-3 font-medium">{dict.productsColBrand}</th>
                 <th className="px-4 py-3 font-medium">{dict.productsColPrice}</th>
                 <th className="px-4 py-3 font-medium">{dict.productsColStock}</th>
-                {isAdmin && <th className="px-4 py-3 font-medium" />}
+                <th className="px-4 py-3 font-medium" />
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
@@ -121,39 +120,45 @@ export default function ProductsListClient({
                     {formatGel(row.price, locale)}
                   </td>
                   <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{row.stock}</td>
-                  {isAdmin && (
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          type="button"
-                          title={dict.productWarehousesButtonLabel}
-                          aria-label={dict.productWarehousesButtonLabel}
-                          onClick={() => setWarehouseModalRow(row)}
-                          className="flex h-8 w-8 items-center justify-center rounded-full border border-zinc-200 text-zinc-600 transition-colors hover:border-orange-500 hover:text-orange-600 dark:border-zinc-700 dark:text-zinc-300"
-                        >
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                            <path d="M3 9.5 12 4l9 5.5" />
-                            <path d="M5 10v9a1 1 0 0 0 1 1h3v-6h6v6h3a1 1 0 0 0 1-1v-9" />
-                          </svg>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openEdit(row)}
-                          className="rounded-full border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:border-orange-500 hover:text-orange-600 dark:border-zinc-700 dark:text-zinc-300"
-                        >
-                          {dict.actionEdit}
-                        </button>
-                        <button
-                          type="button"
-                          disabled={pending}
-                          onClick={() => handleDelete(row)}
-                          className="rounded-full border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:border-red-500 disabled:opacity-60 dark:border-red-900"
-                        >
-                          {dict.actionDelete}
-                        </button>
-                      </div>
-                    </td>
-                  )}
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-2">
+                      <RowActionLink href={`/${locale}/admin/products/${row.id}`} label={dict.actionDetails}>
+                        <EyeIcon />
+                      </RowActionLink>
+                      {isAdmin && (
+                        <>
+                          <RowActionButton
+                            label={dict.productWarehousesButtonLabel}
+                            onClick={() => setWarehouseModalRow(row)}
+                          >
+                            <svg
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth={1.5}
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="h-4 w-4"
+                            >
+                              <path d="M3 9.5 12 4l9 5.5" />
+                              <path d="M5 10v9a1 1 0 0 0 1 1h3v-6h6v6h3a1 1 0 0 0 1-1v-9" />
+                            </svg>
+                          </RowActionButton>
+                          <RowActionButton label={dict.actionEdit} onClick={() => openEdit(row)}>
+                            <PencilIcon />
+                          </RowActionButton>
+                          <RowActionButton
+                            label={dict.actionDelete}
+                            disabled={pending}
+                            danger
+                            onClick={() => handleDelete(row)}
+                          >
+                            <TrashIcon />
+                          </RowActionButton>
+                        </>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>

@@ -28,7 +28,7 @@ export default async function AdminProductsPage({
   const stockByProduct = await getProductStockMap();
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-6 py-10">
+    <main className="flex w-full flex-1 flex-col gap-6 px-6 py-10">
       <ProductsListClient
         locale={locale}
         dict={dict.admin}

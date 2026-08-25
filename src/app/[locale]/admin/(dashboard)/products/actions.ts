@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, requireStaff } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAction } from "@/lib/logs";
 import { isLocale, type Locale } from "@/i18n/locales";
@@ -137,7 +137,7 @@ export async function createProductAction(
   formData: FormData
 ): Promise<ProductActionState> {
   const locale = readLocale(formData);
-  const actor = await requireAdmin(locale);
+  const actor = await requireStaff(locale);
 
   const fields = readFields(formData);
   if (!fields) return { error: "missing_fields" };
@@ -151,30 +151,34 @@ export async function createProductAction(
     return { error: error instanceof Error ? error.message : "upload_failed" };
   }
 
-  const { error } = await admin.from("products").insert({
-    slug: fields.slug,
-    category: fields.category,
-    make: fields.make,
-    model: fields.model,
-    brand_id: fields.brandId,
-    year_from: fields.yearFrom,
-    year_to: fields.yearTo,
-    price: fields.price,
-    old_price: fields.oldPrice,
-    stock: fields.stock,
-    origin_code: fields.originCode,
-    product_code: fields.productCode,
-    name: fields.name,
-    description: fields.description,
-    specs: [],
-    badge: fields.badge,
-    images,
-    is_popular: fields.isPopular,
-  });
+  const { data: created, error } = await admin
+    .from("products")
+    .insert({
+      slug: fields.slug,
+      category: fields.category,
+      make: fields.make,
+      model: fields.model,
+      brand_id: fields.brandId,
+      year_from: fields.yearFrom,
+      year_to: fields.yearTo,
+      price: fields.price,
+      old_price: fields.oldPrice,
+      stock: fields.stock,
+      origin_code: fields.originCode,
+      product_code: fields.productCode,
+      name: fields.name,
+      description: fields.description,
+      specs: [],
+      badge: fields.badge,
+      images,
+      is_popular: fields.isPopular,
+    })
+    .select("id")
+    .single();
 
   if (error) return { error: error.message };
 
-  await logAction(actor, "create", "product", fields.name.ru);
+  await logAction(actor, "create", "product", fields.name.ru, { entityId: created.id });
   revalidatePath(`/${locale}/admin/products`);
   revalidatePath(`/${locale}/catalog`);
   revalidatePath(`/${locale}`);
@@ -230,7 +234,7 @@ export async function updateProductAction(
   const { error } = await admin.from("products").update(updates).eq("id", id);
   if (error) return { error: error.message };
 
-  await logAction(actor, "update", "product", fields.name.ru);
+  await logAction(actor, "update", "product", fields.name.ru, { entityId: id });
   revalidatePath(`/${locale}/admin/products`);
   revalidatePath(`/${locale}/catalog`);
   revalidatePath(`/${locale}/catalog/${fields.slug}`);
@@ -249,7 +253,7 @@ export async function deleteProductAction(
   const { error } = await admin.from("products").delete().eq("id", id);
   if (error) return { error: error.message };
 
-  await logAction(actor, "delete", "product", label);
+  await logAction(actor, "delete", "product", label, { entityId: id });
   revalidatePath(`/${locale}/admin/products`);
   revalidatePath(`/${locale}/catalog`);
   revalidatePath(`/${locale}`);

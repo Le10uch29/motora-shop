@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ADMIN_PAGE_SIZE } from "@/components/admin/Pagination";
+import { getWarehouseOptions } from "../warehouses/data";
 import type { StaffRow } from "./StaffListClient";
 
 export async function getStaffList(
@@ -10,12 +11,14 @@ export async function getStaffList(
 
   const { data: staffRows } = await admin
     .from("staff")
-    .select("id, first_name, last_name, phone, id_card_number, role")
+    .select("id, first_name, last_name, phone, id_card_number, role, warehouse_id")
     .eq("role", role)
     .order("created_at", { ascending: false });
 
   const { data: usersList } = await admin.auth.admin.listUsers();
   const emailById = new Map(usersList.users.map((u) => [u.id, u.email ?? ""]));
+  const warehouses = await getWarehouseOptions();
+  const warehouseNameById = new Map(warehouses.map((w) => [w.id, w.name]));
 
   let rows: StaffRow[] = (staffRows ?? []).map((row) => ({
     id: row.id,
@@ -25,6 +28,8 @@ export async function getStaffList(
     phone: row.phone ?? "",
     idCardNumber: row.id_card_number ?? "",
     role: row.role,
+    warehouseId: row.warehouse_id ?? "",
+    warehouseName: row.warehouse_id ? warehouseNameById.get(row.warehouse_id) ?? "" : "",
   }));
 
   const query = options.query?.trim().toLowerCase();

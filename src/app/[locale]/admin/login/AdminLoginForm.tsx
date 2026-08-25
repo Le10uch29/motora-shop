@@ -8,14 +8,14 @@ const initialState: SignInState = { error: null };
 export default function AdminLoginForm({
   locale,
   title,
-  emailLabel,
+  identifierLabel,
   passwordLabel,
   submitLabel,
   invalidCredentialsMessage,
 }: {
   locale: string;
   title: string;
-  emailLabel: string;
+  identifierLabel: string;
   passwordLabel: string;
   submitLabel: string;
   invalidCredentialsMessage: string;
@@ -29,15 +29,14 @@ export default function AdminLoginForm({
         <input type="hidden" name="locale" value={locale} />
         <input type="hidden" name="invalidCredentialsMessage" value={invalidCredentialsMessage} />
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="admin-email" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            {emailLabel}
+          <label htmlFor="admin-identifier" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            {identifierLabel}
           </label>
           <input
-            id="admin-email"
-            name="email"
-            type="email"
+            id="admin-identifier"
+            name="identifier"
             required
-            autoComplete="email"
+            autoComplete="username"
             className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
           />
         </div>

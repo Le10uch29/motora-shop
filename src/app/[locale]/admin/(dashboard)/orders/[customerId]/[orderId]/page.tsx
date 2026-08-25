@@ -4,6 +4,7 @@ import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
 import { requireStaff } from "@/lib/auth";
 import { getOrderDetail } from "../../data";
+import { orderStatusLabel, orderStatusClass } from "../../statusStyles";
 import { formatGel } from "@/lib/currency";
 import OrderDetailActions from "./OrderDetailActions";
 
@@ -39,17 +40,11 @@ export default async function OrderDetailPage({
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
             {dict.admin.orderDetailsTitle} №{order.orderNumber}
           </h1>
-          <span
-            className={`mt-1 inline-block rounded-full px-2.5 py-1 text-xs font-medium ${
-              order.status === "new"
-                ? "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300"
-                : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
-            }`}
-          >
-            {order.status === "new" ? dict.admin.orderStatusNew : dict.admin.orderStatusCancelled}
+          <span className={`mt-1 inline-block rounded-full px-2.5 py-1 text-xs font-medium ${orderStatusClass(order.status)}`}>
+            {orderStatusLabel(order.status, dict.admin)}
           </span>
         </div>
-        {staff.role === "admin" && order.status === "new" && (
+        {staff.role === "admin" && order.status !== "cancelled" && (
           <OrderDetailActions
             locale={locale}
             dict={dict.admin}
@@ -79,8 +74,13 @@ export default async function OrderDetailPage({
           </div>
           <div className="flex flex-col gap-0.5">
             <dt className="text-xs uppercase tracking-wide text-zinc-500">{dict.admin.priceAtOrderLabel}</dt>
-            <dd className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
-              {formatGel(order.priceAtOrder, locale)}
+            <dd className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-50">
+              {formatGel(order.discountedPrice ?? order.priceAtOrder, locale)}
+              {order.discountedPrice != null && (
+                <span className="text-xs font-normal text-zinc-400 line-through">
+                  {formatGel(order.priceAtOrder, locale)}
+                </span>
+              )}
             </dd>
           </div>
           {order.product && (

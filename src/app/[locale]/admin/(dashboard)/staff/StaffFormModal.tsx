@@ -14,6 +14,7 @@ export type StaffFormValues = {
   phone: string;
   idCardNumber: string;
   role: StaffRole;
+  warehouseId: string;
 };
 
 const EMPTY_VALUES: StaffFormValues = {
@@ -24,6 +25,7 @@ const EMPTY_VALUES: StaffFormValues = {
   phone: "",
   idCardNumber: "",
   role: "seller",
+  warehouseId: "",
 };
 
 const initialState: StaffActionState = { error: null };
@@ -41,6 +43,7 @@ export default function StaffFormModal({
   passwordLabel,
   mode,
   initialValues,
+  warehouses,
   onClose,
 }: {
   locale: string;
@@ -48,6 +51,7 @@ export default function StaffFormModal({
   passwordLabel: string;
   mode: "create" | "edit";
   initialValues?: StaffFormValues;
+  warehouses: { id: string; name: string }[];
   onClose: () => void;
 }) {
   const action = mode === "create" ? createStaffAction : updateStaffAction;
@@ -125,25 +129,19 @@ export default function StaffFormModal({
           />
         </div>
 
-        {mode === "create" ? (
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="staff-email" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Email
-            </label>
-            <input
-              id="staff-email"
-              name="email"
-              type="email"
-              required
-              className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-            />
-          </div>
-        ) : (
-          <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Email</span>
-            <span className="text-sm text-zinc-500">{values.email}</span>
-          </div>
-        )}
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="staff-email" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Email
+          </label>
+          <input
+            id="staff-email"
+            name="email"
+            type="email"
+            defaultValue={values.email}
+            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+          />
+          <span className="text-xs text-zinc-500">{dict.phoneOrEmailHint}</span>
+        </div>
 
         <div className="flex flex-col gap-1.5">
           <label htmlFor="staff-idCard" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
@@ -198,6 +196,24 @@ export default function StaffFormModal({
           >
             <option value="seller">{dict.roleSeller}</option>
             <option value="admin">{dict.roleAdmin}</option>
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            {dict.warehouseAssignedLabel}
+          </span>
+          <select
+            name="warehouseId"
+            defaultValue={values.warehouseId}
+            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+          >
+            <option value="">—</option>
+            {warehouses.map((w) => (
+              <option key={w.id} value={w.id}>
+                {w.name}
+              </option>
+            ))}
           </select>
         </div>
 

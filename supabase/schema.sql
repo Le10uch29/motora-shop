@@ -88,6 +88,8 @@ create table if not exists staff (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+-- Склад/магазин, за которым закреплён сотрудник (в основном для продавцов).
+alter table staff add column if not exists warehouse_id uuid references warehouses(id) on delete set null;
 
 -- Журнал действий: кто что добавил/изменил/удалил. staff_id обнуляется (не
 -- каскадно удаляется), чтобы запись в логе пережила увольнение сотрудника —
@@ -391,3 +393,25 @@ create policy "orderer_read_own_orders" on orders for select to authenticated us
 -- существующих строк, так что безопасно накатывать повторно.
 create sequence if not exists order_number_seq start 100000;
 alter table orders add column if not exists order_number int not null default nextval('order_number_seq');
+
+-- Этапы выполнения заказа. ALTER TYPE ... ADD VALUE не может идти внутри
+-- do $$ ... $$ вместе с другим DDL в одной транзакции на старых Postgres,
+-- поэтому это простые верхнеуровневые команды — их безопасно повторять
+-- благодаря IF NOT EXISTS.
+alter type order_status add value if not exists 'gathering';
+alter type order_status add value if not exists 'gathered';
+alter type order_status add value if not exists 'shipped';
+alter type order_status add value if not exists 'delivered';
+
+-- Продавец может двигать статус заказа по этапам выполнения, но не отменять
+-- его — отмена (admin_manage_orders выше) остаётся только у админа.
+drop policy if exists "staff_update_order_status" on orders;
+create policy "staff_update_order_status" on orders for update to authenticated
+  using (is_staff()) with check (is_staff() and status <> 'cancelled');
+
+-- Склад, который сейчас обрабатывает заказ — проставляется автоматически
+-- (склад сотрудника, который последним подвинул статус), не выбирается
+-- вручную. Скидочная цена — необязательное переопределение price_at_order,
+-- как old_price у products: null значит "используем обычную цену".
+alter table orders add column if not exists warehouse_id uuid references warehouses(id) on delete set null;
+alter table orders add column if not exists discounted_price numeric;

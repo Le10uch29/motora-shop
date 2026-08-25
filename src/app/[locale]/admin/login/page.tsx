@@ -14,7 +14,7 @@ export default async function AdminLoginPage({
     <AdminLoginForm
       locale={locale}
       title={dict.auth.adminLoginTitle}
-      emailLabel={dict.auth.emailLabel}
+      identifierLabel={dict.admin.identifierLabel}
       passwordLabel={dict.auth.passwordLabel}
       submitLabel={dict.auth.submit}
       invalidCredentialsMessage={dict.auth.invalidCredentials}

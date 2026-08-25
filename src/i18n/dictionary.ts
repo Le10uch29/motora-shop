@@ -47,6 +47,9 @@ export type Dictionary = {
     roleLabel: string;
     roleAdmin: string;
     roleSeller: string;
+    identifierLabel: string;
+    phoneOrEmailHint: string;
+    warehouseAssignedLabel: string;
     tableName: string;
     tablePhone: string;
     tableEmail: string;
@@ -104,7 +107,13 @@ export type Dictionary = {
     ordersTitle: string;
     emptyOrders: string;
     orderStatusNew: string;
+    orderStatusGathering: string;
+    orderStatusGathered: string;
+    orderStatusShipped: string;
+    orderStatusDelivered: string;
     orderStatusCancelled: string;
+    orderStatusSelectLabel: string;
+    discountedPriceInvalid: string;
     actionCancelOrder: string;
     confirmCancelOrder: string;
     orderDetailsTitle: string;
@@ -132,6 +141,10 @@ export type Dictionary = {
     priceAtOrderLabel: string;
     productsAdminTitle: string;
     productsAdminComingSoon: string;
+    productDetailsTitle: string;
+    productAddedByLabel: string;
+    productLastEditedByLabel: string;
+    productHistoryEmpty: string;
     logsTitle: string;
     logsEmpty: string;
     logsClear: string;
