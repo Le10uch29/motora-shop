@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin, requireStaff } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAction } from "@/lib/logs";
 import { isLocale, type Locale } from "@/i18n/locales";
@@ -137,7 +137,7 @@ export async function createProductAction(
   formData: FormData
 ): Promise<ProductActionState> {
   const locale = readLocale(formData);
-  const actor = await requireStaff(locale);
+  const actor = await requireAdmin(locale);
 
   const fields = readFields(formData);
   if (!fields) return { error: "missing_fields" };

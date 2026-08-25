@@ -114,6 +114,12 @@ export type Dictionary = {
     orderStatusCancelled: string;
     orderStatusSelectLabel: string;
     discountedPriceInvalid: string;
+    discountedPriceLabel: string;
+    companyPhoneLabel: string;
+    personalNumberLabel: string;
+    invoiceCustomerSignatureLabel: string;
+    invoiceSellerSignatureLabel: string;
+    invoiceStampLabel: string;
     actionCancelOrder: string;
     confirmCancelOrder: string;
     orderDetailsTitle: string;

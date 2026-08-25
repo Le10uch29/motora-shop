@@ -18,6 +18,7 @@ const FIELD_LABEL_KEYS = {
   photoUrl: "photoLabel",
   password: "resetPasswordLabel",
   deliveryMethod: "passwordDeliveryLabel",
+  discountedPrice: "discountedPriceLabel",
 } as const satisfies Record<string, keyof Dictionary["admin"]>;
 
 function fieldLabel(key: string, dict: Dictionary["admin"]): string {

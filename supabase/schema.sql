@@ -415,3 +415,8 @@ create policy "staff_update_order_status" on orders for update to authenticated
 -- как old_price у products: null значит "используем обычную цену".
 alter table orders add column if not exists warehouse_id uuid references warehouses(id) on delete set null;
 alter table orders add column if not exists discounted_price numeric;
+
+-- Момент списания склада при переходе в "отправлен" (once) — не сам факт
+-- списания, а метка "уже списали", чтобы повторный выбор статуса "отправлен"
+-- не вычитал остаток дважды.
+alter table orders add column if not exists stock_deducted_at timestamptz;

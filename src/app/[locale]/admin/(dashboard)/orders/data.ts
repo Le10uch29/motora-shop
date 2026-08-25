@@ -215,6 +215,7 @@ export type OrdererOrderLine = {
   id: string;
   orderNumber: number;
   productName: string;
+  productImage: string | null;
   quantity: number;
   priceAtOrder: number;
   discountedPrice: number | null;
@@ -240,28 +241,66 @@ export type OrdererProfile =
 export async function getOrdererOrders(
   customerId: string,
   locale: Locale
-): Promise<{ orderer: OrdererProfile; lines: OrdererOrderLine[]; total: number } | null> {
+): Promise<{
+  orderer: OrdererProfile;
+  lines: OrdererOrderLine[];
+  total: number;
+  warehouseName: string | null;
+  warehouseAddress: string | null;
+} | null> {
   const admin = createAdminClient();
 
   const { data } = await admin
     .from("orders")
     .select(
-      "id, order_number, product_name, quantity, price_at_order, discounted_price, status, created_at, customer_id"
+      "id, order_number, product_id, product_name, quantity, price_at_order, discounted_price, status, created_at, updated_at, warehouse_id, customer_id"
     )
     .eq("customer_id", customerId)
     .order("created_at", { ascending: false });
 
-  const baseRows = (data ?? []) as Omit<OrderBaseRow, "updated_at" | "warehouse_id">[];
+  const baseRows = (data ?? []) as (OrderBaseRow & { product_id: string | null })[];
   if (baseRows.length === 0) return null;
 
   const orderers = await resolveOrderers(admin, [customerId]);
   const orderer = orderers.get(customerId);
   if (!orderer) return null;
 
+  const productIds = Array.from(
+    new Set(baseRows.map((row) => row.product_id).filter((id): id is string => Boolean(id)))
+  );
+  const { data: productRows } =
+    productIds.length > 0
+      ? await admin.from("products").select("id, images").in("id", productIds)
+      : { data: [] as { id: string; images: string[] | null }[] };
+  const imageByProductId = new Map((productRows ?? []).map((p) => [p.id, p.images?.[0] ?? null]));
+
+  // Representative warehouse for the whole invoice — the one attached to
+  // whichever active order was touched most recently (mirrors the top
+  // orderer list's logic in getOrderersList).
+  let latestWarehouse: { warehouseId: string; updatedAt: string } | null = null;
+  for (const row of baseRows) {
+    if (row.status === "cancelled" || !row.warehouse_id) continue;
+    if (!latestWarehouse || row.updated_at > latestWarehouse.updatedAt) {
+      latestWarehouse = { warehouseId: row.warehouse_id, updatedAt: row.updated_at };
+    }
+  }
+  let warehouseName: string | null = null;
+  let warehouseAddress: string | null = null;
+  if (latestWarehouse) {
+    const { data: warehouseRow } = await admin
+      .from("warehouses")
+      .select("name, address")
+      .eq("id", latestWarehouse.warehouseId)
+      .maybeSingle();
+    warehouseName = warehouseRow?.name ?? null;
+    warehouseAddress = warehouseRow?.address ?? null;
+  }
+
   const lines: OrdererOrderLine[] = baseRows.map((row) => ({
     id: row.id,
     orderNumber: row.order_number,
     productName: row.product_name?.[locale] ?? row.product_name?.ru ?? "",
+    productImage: row.product_id ? imageByProductId.get(row.product_id) ?? null : null,
     quantity: row.quantity,
     priceAtOrder: Number(row.price_at_order),
     discountedPrice: row.discounted_price != null ? Number(row.discounted_price) : null,
@@ -273,7 +312,7 @@ export async function getOrdererOrders(
     .filter((line) => line.status !== "cancelled")
     .reduce((sum, line) => sum + effectivePrice(line.priceAtOrder, line.discountedPrice) * line.quantity, 0);
 
-  return { orderer, lines, total };
+  return { orderer, lines, total, warehouseName, warehouseAddress };
 }
 
 export type OrderDetail = {

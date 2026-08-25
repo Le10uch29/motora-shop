@@ -41,8 +41,12 @@ export default async function Header({
           href={`/${locale}`}
           className="shrink-0 text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50"
         >
-          <span className="sm:hidden">ARAZ</span>
-          <span className="hidden sm:inline">ARAZ MOTORS</span>
+          <span className="sm:hidden">
+            ARAZ<span className="text-xs font-normal text-zinc-500 dark:text-zinc-400">-2026</span>
+          </span>
+          <span className="hidden sm:inline">
+            ARAZ MOTORS<span className="text-xs font-normal text-zinc-500 dark:text-zinc-400">-2026</span>
+          </span>
         </Link>
         <div className="min-w-0 flex-1">
           <Suspense fallback={<div className="h-9 w-full rounded-full bg-zinc-100 dark:bg-zinc-800" />}>

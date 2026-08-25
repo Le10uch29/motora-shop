@@ -74,13 +74,15 @@ export default function ProductsListClient({
         <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
           {dict.productsAdminTitle}
         </h1>
-        <button
-          type="button"
-          onClick={() => setModal({ mode: "create" })}
-          className="rounded-full bg-orange-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-500"
-        >
-          {dict.addProduct}
-        </button>
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={() => setModal({ mode: "create" })}
+            className="rounded-full bg-orange-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-500"
+          >
+            {dict.addProduct}
+          </button>
+        )}
       </div>
 
       {searchSlot}

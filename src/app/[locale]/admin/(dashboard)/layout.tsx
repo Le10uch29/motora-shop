@@ -36,7 +36,7 @@ export default async function AdminDashboardLayout({
           href={`/${locale}`}
           className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50"
         >
-          ARAZ MOTORS
+          ARAZ MOTORS<span className="text-xs font-normal text-zinc-500 dark:text-zinc-400">-2026</span>
         </Link>
         <div className="flex items-center gap-3">
           <Suspense fallback={<div className="h-8 w-[104px]" />}>

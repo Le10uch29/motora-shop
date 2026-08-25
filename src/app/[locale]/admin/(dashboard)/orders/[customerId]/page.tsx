@@ -81,19 +81,15 @@ export default async function OrdererOrdersPage({
                     <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50">{line.productName}</td>
                     <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{line.quantity}</td>
                     <td className="px-4 py-3">
-                      {staff.role === "admin" ? (
-                        <OrderDiscountInput
-                          locale={locale}
-                          dict={dict.admin}
-                          orderId={line.id}
-                          customerId={customerId}
-                          label={`${line.productName} — ${ordererName}`}
-                          originalPrice={line.priceAtOrder}
-                          discountedPrice={line.discountedPrice}
-                        />
-                      ) : (
-                        <span className="text-zinc-600 dark:text-zinc-400">{formatGel(effectivePrice, locale)}</span>
-                      )}
+                      <OrderDiscountInput
+                        locale={locale}
+                        dict={dict.admin}
+                        orderId={line.id}
+                        customerId={customerId}
+                        label={`${line.productName} — ${ordererName}`}
+                        originalPrice={line.priceAtOrder}
+                        discountedPrice={line.discountedPrice}
+                      />
                     </td>
                     <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
                       {formatGel(effectivePrice * line.quantity, locale)}
