@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { Locale } from "@/i18n/locales";
 import type { BrandSlug } from "@/lib/brands";
 import { createPublicClient } from "@/lib/supabase/public";
@@ -138,16 +139,19 @@ export function discountPercent(product: Product): number | undefined {
   return Math.round((1 - product.price / product.oldPrice) * 100);
 }
 
-export async function getAllProducts(): Promise<Product[]> {
+// cache() dedupes identical calls within a single request/render — e.g. the
+// root layout's Header and a page component both asking for the full
+// product list only hit Supabase once, not twice.
+export const getAllProducts = cache(async (): Promise<Product[]> => {
   const supabase = createPublicClient();
   const { data } = await supabase
     .from("products")
     .select(SELECT_COLUMNS)
     .order("created_at", { ascending: false });
   return ((data ?? []) as unknown as ProductRow[]).map(mapRow);
-}
+});
 
-export async function getProductBySlug(slug: string): Promise<Product | undefined> {
+export const getProductBySlug = cache(async (slug: string): Promise<Product | undefined> => {
   const supabase = createPublicClient();
   const { data } = await supabase
     .from("products")
@@ -155,7 +159,18 @@ export async function getProductBySlug(slug: string): Promise<Product | undefine
     .eq("slug", slug)
     .maybeSingle();
   return data ? mapRow(data as unknown as ProductRow) : undefined;
-}
+});
+
+/** Just the two columns the header's search-filter dropdown needs (make,
+ * price) — used instead of {@link getAllProducts} on pages that don't
+ * otherwise render the full catalog, so Header doesn't drag in every
+ * product's images/specs/description in three languages just to compute a
+ * make list and a price range. */
+export const getProductFilterMeta = cache(async (): Promise<{ make: string; price: number }[]> => {
+  const supabase = createPublicClient();
+  const { data } = await supabase.from("products").select("make, price");
+  return (data ?? []).map((row) => ({ make: row.make, price: Number(row.price) }));
+});
 
 export type ProductFilters = {
   category?: CategoryId;
@@ -190,11 +205,11 @@ export function filterProducts(
   });
 }
 
-export function computeCarMakes(products: Product[]): string[] {
+export function computeCarMakes(products: { make: string }[]): string[] {
   return Array.from(new Set(products.map((p) => p.make))).sort((a, b) => a.localeCompare(b));
 }
 
-export function computePriceBounds(products: Product[]): { min: number; max: number } {
+export function computePriceBounds(products: { price: number }[]): { min: number; max: number } {
   if (products.length === 0) return { min: 0, max: 0 };
   return {
     min: Math.min(...products.map((p) => p.price)),

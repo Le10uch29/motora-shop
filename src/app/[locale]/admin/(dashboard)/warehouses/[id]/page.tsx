@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
-import { requireStaff } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { getWarehouseById, getWarehouseStock, getProductOptions } from "../data";
 import WarehouseStockListClient from "./WarehouseStockListClient";
 
@@ -11,7 +11,8 @@ export default async function WarehouseDetailPage({
 }: PageProps<"/[locale]/admin/warehouses/[id]">) {
   const { locale, id } = await params;
   if (!isLocale(locale)) notFound();
-  const staff = await requireStaff(locale);
+  // Warehouses isn't part of a seller's permitted scope — admin-only.
+  const staff = await requireAdmin(locale);
   const dict = await getDictionary(locale);
 
   const warehouse = await getWarehouseById(id);

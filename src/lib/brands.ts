@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createPublicClient } from "@/lib/supabase/public";
 
 export type BrandSlug = string;
@@ -25,25 +26,27 @@ function mapRow(row: {
   };
 }
 
-export async function getBrands(): Promise<Brand[]> {
+// cache() dedupes identical calls within a single request — Header and a
+// page component both asking for brands only hit Supabase once.
+export const getBrands = cache(async (): Promise<Brand[]> => {
   const supabase = createPublicClient();
   const { data } = await supabase
     .from("brands")
     .select("slug, name, logo_url, badge_logo_url")
     .order("name");
   return (data ?? []).map(mapRow);
-}
+});
 
 /**
  * Brands shown on the public Brands page and offered in the brand filter.
  * Excludes "araz" — that's the shop's own name, not a carried parts brand.
  */
-export async function getCatalogBrands(): Promise<Brand[]> {
+export const getCatalogBrands = cache(async (): Promise<Brand[]> => {
   const all = await getBrands();
   return all.filter((b) => b.slug !== "araz");
-}
+});
 
-export async function getBrandBySlug(slug: string): Promise<Brand | undefined> {
+export const getBrandBySlug = cache(async (slug: string): Promise<Brand | undefined> => {
   const supabase = createPublicClient();
   const { data } = await supabase
     .from("brands")
@@ -51,4 +54,4 @@ export async function getBrandBySlug(slug: string): Promise<Brand | undefined> {
     .eq("slug", slug)
     .maybeSingle();
   return data ? mapRow(data) : undefined;
-}
+});

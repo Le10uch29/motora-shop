@@ -202,19 +202,30 @@ create policy "admin_write_pages" on pages for all to authenticated using (is_ad
 drop policy if exists "admin_manage_staff" on staff;
 create policy "admin_manage_staff" on staff for all to authenticated using (is_admin()) with check (is_admin());
 
+-- Без этого продавец не может прочитать даже собственную строку своей же
+-- сессией (getCurrentStaff() в lib/auth.ts делает select не через
+-- service-role) — requireStaff() будет считать его разлогиненным и
+-- отправлять обратно на /admin/login при каждом заходе.
+drop policy if exists "staff_read_self" on staff;
+create policy "staff_read_self" on staff for select to authenticated using (id = auth.uid());
+
 -- Логи — читать и очищать может только админ.
 drop policy if exists "admin_manage_logs" on logs;
 create policy "admin_manage_logs" on logs for all to authenticated using (is_admin()) with check (is_admin());
 
--- Склады: видят все сотрудники (админ и продавец), изменяет — только админ.
--- Не публичные — витрина сайта эти таблицы не читает.
+-- Склады: раньше их видели все сотрудники, но раздел "Склады" и "Бренды" не
+-- входят в явно перечисленный набор прав продавца (товары/поиск/статус
+-- заказа/цена в заказе) — теперь только админ, и на чтение тоже. Не
+-- публичные — витрина сайта эти таблицы не читает.
 drop policy if exists "staff_read_warehouses" on warehouses;
-create policy "staff_read_warehouses" on warehouses for select to authenticated using (is_staff());
+drop policy if exists "admin_read_warehouses" on warehouses;
+create policy "admin_read_warehouses" on warehouses for select to authenticated using (is_admin());
 drop policy if exists "admin_write_warehouses" on warehouses;
 create policy "admin_write_warehouses" on warehouses for all to authenticated using (is_admin()) with check (is_admin());
 
 drop policy if exists "staff_read_warehouse_stock" on warehouse_stock;
-create policy "staff_read_warehouse_stock" on warehouse_stock for select to authenticated using (is_staff());
+drop policy if exists "admin_read_warehouse_stock" on warehouse_stock;
+create policy "admin_read_warehouse_stock" on warehouse_stock for select to authenticated using (is_admin());
 drop policy if exists "admin_write_warehouse_stock" on warehouse_stock;
 create policy "admin_write_warehouse_stock" on warehouse_stock for all to authenticated using (is_admin()) with check (is_admin());
 
@@ -420,3 +431,35 @@ alter table orders add column if not exists discounted_price numeric;
 -- списания, а метка "уже списали", чтобы повторный выбор статуса "отправлен"
 -- не вычитал остаток дважды.
 alter table orders add column if not exists stock_deducted_at timestamptz;
+
+-- Цена и название заказа всегда берутся из живого товара на момент вставки,
+-- а не из того, что прислал клиент — иначе оформление заказа своей же
+-- сессией (orderer_insert_own_orders) позволило бы указать любую цену
+-- напрямую через REST API, в обход server action'а, который сам сверяет
+-- цену с products.price. Триггер делает это гарантией на уровне БД.
+create or replace function set_order_price_from_product()
+returns trigger as $$
+begin
+  if new.product_id is not null then
+    select price, name into new.price_at_order, new.product_name
+    from products where id = new.product_id;
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists orders_set_price_from_product on orders;
+create trigger orders_set_price_from_product
+  before insert on orders
+  for each row execute function set_order_price_from_product();
+
+-- RLS-политики выше проверяют только владельца строки, но не то, какие
+-- именно столбцы меняются — без этих грантов покупатель мог бы через REST
+-- API вставить заказ сразу со статусом 'delivered' или скидкой, а сотрудник
+-- (даже с политикой staff_update_order_status) мог бы напрямую поменять
+-- price_at_order/customer_id/order_number в обход server action'ов.
+revoke insert on orders from authenticated;
+grant insert (customer_id, product_id, quantity) on orders to authenticated;
+
+revoke update on orders from authenticated;
+grant update (status, warehouse_id, stock_deducted_at, discounted_price) on orders to authenticated;

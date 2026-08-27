@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth";
 import { logAction } from "@/lib/logs";
 import { generateTempPassword } from "@/lib/password";
+import { normalizePhone } from "@/lib/phone";
 import type { Locale } from "@/i18n/locales";
 import { isLocale } from "@/i18n/locales";
 
@@ -29,10 +30,11 @@ function readLocale(formData: FormData): Locale {
 }
 
 function readCustomerFields(formData: FormData) {
+  const rawPhone = String(formData.get("phone") ?? "").trim();
   return {
     firstName: String(formData.get("firstName") ?? "").trim(),
     lastName: String(formData.get("lastName") ?? "").trim(),
-    phone: String(formData.get("phone") ?? "").trim(),
+    phone: rawPhone ? normalizePhone(rawPhone) : "",
     idCardNumber: String(formData.get("idCardNumber") ?? "").trim(),
     organizationName: String(formData.get("organizationName") ?? "").trim(),
     address: String(formData.get("address") ?? "").trim(),
@@ -96,7 +98,6 @@ export async function createCustomerAction(
   const deliveryMethod = readDeliveryMethod(formData);
 
   if (
-    !email ||
     !fields.firstName ||
     !fields.lastName ||
     !fields.phone ||
@@ -112,10 +113,13 @@ export async function createCustomerAction(
   const admin = createAdminClient();
   const password = generateTempPassword();
 
+  // Phone is always required for customers and always usable to log in;
+  // email stays optional (given only if the admin filled it in).
   const { data: created, error: createError } = await admin.auth.admin.createUser({
-    email,
     password,
-    email_confirm: true,
+    phone: fields.phone,
+    phone_confirm: true,
+    ...(email ? { email, email_confirm: true } : {}),
   });
 
   if (createError || !created.user) {
@@ -219,6 +223,13 @@ export async function updateCustomerAction(
     .eq("id", id);
 
   if (error) return { ...EMPTY_STATE, error: error.message };
+
+  // Phone doubles as the login identifier — keep auth.users in sync so a
+  // changed contact number doesn't lock the customer out.
+  if (fields.phone !== before.phone) {
+    const { error: phoneError } = await admin.auth.admin.updateUserById(id, { phone: fields.phone });
+    if (phoneError) return { ...EMPTY_STATE, error: phoneError.message };
+  }
 
   if (newPassword) {
     const { error: passwordError } = await admin.auth.admin.updateUserById(id, {

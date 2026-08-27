@@ -51,6 +51,7 @@ const az: Dictionary = {
     roleSeller: "Satıcı",
     identifierLabel: "Email və ya telefon",
     phoneOrEmailHint: "Email və ya telefon qeyd edin (girişi üçün ən azı biri lazımdır).",
+    customerEmailOptionalHint: "Məcburi deyil — müştəri telefon nömrəsi ilə daxil ola biləcək.",
     warehouseAssignedLabel: "Anbar/mağaza",
     tableName: "Ad",
     tablePhone: "Telefon",

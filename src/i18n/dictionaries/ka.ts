@@ -51,6 +51,7 @@ const ka: Dictionary = {
     roleSeller: "გამყიდველი",
     identifierLabel: "Email ან ტელეფონი",
     phoneOrEmailHint: "მიუთითეთ email ან ტელეფონი (შესვლისთვის საჭიროა მინიმუმ ერთი).",
+    customerEmailOptionalHint: "არასავალდებულოა — მყიდველი შეძლებს შესვლას ტელეფონის ნომრით.",
     warehouseAssignedLabel: "საწყობი/მაღაზია",
     tableName: "სახელი",
     tablePhone: "ტელეფონი",

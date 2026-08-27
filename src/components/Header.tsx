@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import type { Locale } from "@/i18n/locales";
 import type { Dictionary } from "@/i18n/dictionary";
-import { getAllProducts, computeCarMakes, computePriceBounds, localizedMakes } from "@/lib/products";
+import { getProductFilterMeta, computeCarMakes, computePriceBounds, localizedMakes } from "@/lib/products";
 import { getCatalogBrands } from "@/lib/brands";
 import { getCurrentStaff, getCurrentCustomer } from "@/lib/auth";
 import CartIndicator from "@/components/CartIndicator";
@@ -26,13 +26,18 @@ export default async function Header({
     { href: `/${locale}/contacts`, label: dict.header.contacts },
   ];
 
-  const staff = await getCurrentStaff();
+  // Independent fetches run in parallel — staff/customer depend on each
+  // other (only check customer if not staff), but brands and the filter
+  // metadata don't depend on anything here.
+  const [staff, catalogBrands, productMeta] = await Promise.all([
+    getCurrentStaff(),
+    getCatalogBrands(),
+    getProductFilterMeta(),
+  ]);
   const customer = staff ? null : await getCurrentCustomer();
   const isLoggedIn = Boolean(staff) || Boolean(customer);
-  const catalogBrands = await getCatalogBrands();
-  const allProducts = await getAllProducts();
-  const carMakes = computeCarMakes(allProducts);
-  const priceBounds = computePriceBounds(allProducts);
+  const carMakes = computeCarMakes(productMeta);
+  const priceBounds = computePriceBounds(productMeta);
 
   return (
     <header className="sticky top-0 z-30 border-b border-zinc-200 bg-white/90 backdrop-blur dark:border-zinc-800 dark:bg-black/90">

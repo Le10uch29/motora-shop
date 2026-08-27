@@ -60,6 +60,7 @@ const ru: Dictionary = {
     roleSeller: "Продавец",
     identifierLabel: "Email или телефон",
     phoneOrEmailHint: "Укажите email или телефон (нужен хотя бы один — для входа).",
+    customerEmailOptionalHint: "Необязательно — покупатель сможет войти по номеру телефона.",
     warehouseAssignedLabel: "Склад/магазин",
     tableName: "Имя",
     tablePhone: "Телефон",

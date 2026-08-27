@@ -49,6 +49,7 @@ export type Dictionary = {
     roleSeller: string;
     identifierLabel: string;
     phoneOrEmailHint: string;
+    customerEmailOptionalHint: string;
     warehouseAssignedLabel: string;
     tableName: string;
     tablePhone: string;

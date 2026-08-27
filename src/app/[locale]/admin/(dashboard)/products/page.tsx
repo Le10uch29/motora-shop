@@ -24,15 +24,20 @@ export default async function AdminProductsPage({
 
   const { rows, total } = await getAdminProducts(locale, { query, page });
   const brands = await getBrandOptions();
-  const warehouses = await getWarehouseOptions();
-  const stockByProduct = await getProductStockMap();
+  // Warehouse data (names, per-warehouse stock) is admin-only UI in
+  // ProductsListClient — don't even fetch it for a seller, since props on a
+  // Server Component still reach the browser in the RSC payload whether or
+  // not the client actually renders them.
+  const isAdmin = staff.role === "admin";
+  const warehouses = isAdmin ? await getWarehouseOptions() : [];
+  const stockByProduct = isAdmin ? await getProductStockMap() : {};
 
   return (
     <main className="flex w-full flex-1 flex-col gap-6 px-6 py-10">
       <ProductsListClient
         locale={locale}
         dict={dict.admin}
-        isAdmin={staff.role === "admin"}
+        isAdmin={isAdmin}
         rows={rows}
         brands={brands}
         warehouses={warehouses}

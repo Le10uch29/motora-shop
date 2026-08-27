@@ -191,14 +191,14 @@ export default function CustomerFormModal({
               id="customer-email"
               name="email"
               type="email"
-              required
               className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
             />
+            <span className="text-xs text-zinc-500">{dict.customerEmailOptionalHint}</span>
           </div>
         ) : (
           <div className="flex flex-col gap-1.5">
             <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Email</span>
-            <span className="text-sm text-zinc-500">{values.email}</span>
+            <span className="text-sm text-zinc-500">{values.email || "—"}</span>
           </div>
         )}
 

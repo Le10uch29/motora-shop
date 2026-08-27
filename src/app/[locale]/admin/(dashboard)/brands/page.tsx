@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
-import { requireStaff } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import BrandsListClient, { type BrandRow } from "./BrandsListClient";
 
@@ -10,7 +10,9 @@ export default async function AdminBrandsPage({
 }: PageProps<"/[locale]/admin/brands">) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
-  const staff = await requireStaff(locale);
+  // Brands isn't part of a seller's permitted scope (view/search products,
+  // change order status/price) — admin-only, including viewing.
+  const staff = await requireAdmin(locale);
   const dict = await getDictionary(locale);
 
   const supabase = await createClient();
