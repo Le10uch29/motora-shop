@@ -161,20 +161,37 @@ export const getProductBySlug = cache(async (slug: string): Promise<Product | un
   return data ? mapRow(data as unknown as ProductRow) : undefined;
 });
 
-/** Just the two columns the header's search-filter dropdown needs (make,
- * price) — used instead of {@link getAllProducts} on pages that don't
+/** Just the three columns the header's search-filter dropdown needs (make,
+ * model, price) — used instead of {@link getAllProducts} on pages that don't
  * otherwise render the full catalog, so Header doesn't drag in every
  * product's images/specs/description in three languages just to compute a
- * make list and a price range. */
-export const getProductFilterMeta = cache(async (): Promise<{ make: string; price: number }[]> => {
+ * make/model list and a price range. */
+export const getProductFilterMeta = cache(async (): Promise<{ make: string; model: string; price: number }[]> => {
   const supabase = createPublicClient();
-  const { data } = await supabase.from("products").select("make, price");
-  return (data ?? []).map((row) => ({ make: row.make, price: Number(row.price) }));
+  const { data } = await supabase.from("products").select("make, model, price");
+  return (data ?? []).map((row) => ({ make: row.make, model: row.model ?? "", price: Number(row.price) }));
 });
+
+/** Models grouped by make, both derived live from whatever products
+ * currently exist — a make/model with no products left simply isn't in the
+ * result, and reappears the moment a matching product is added again. */
+export function computeModelsByMake(products: { make: string; model: string }[]): Record<string, string[]> {
+  const byMake: Record<string, Set<string>> = {};
+  for (const p of products) {
+    if (!p.model) continue;
+    (byMake[p.make] ??= new Set()).add(p.model);
+  }
+  const result: Record<string, string[]> = {};
+  for (const [make, models] of Object.entries(byMake)) {
+    result[make] = Array.from(models).sort((a, b) => a.localeCompare(b));
+  }
+  return result;
+}
 
 export type ProductFilters = {
   category?: CategoryId;
   make?: string;
+  model?: string;
   brand?: BrandSlug;
   priceMin?: number;
   priceMax?: number;
@@ -192,6 +209,7 @@ export function filterProducts(
   return products.filter((p) => {
     if (filters.category && p.category !== filters.category) return false;
     if (filters.make && p.make !== filters.make) return false;
+    if (filters.model && p.model !== filters.model) return false;
     if (filters.brand && p.brand !== filters.brand) return false;
     if (filters.priceMin !== undefined && p.price < filters.priceMin) return false;
     if (filters.priceMax !== undefined && p.price > filters.priceMax) return false;

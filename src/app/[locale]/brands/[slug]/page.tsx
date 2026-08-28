@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { filterProducts, localizedMakes, getAllProducts, computePriceBounds } from "@/lib/products";
+import { filterProducts, localizedMakes, getAllProducts, computePriceBounds, computeModelsByMake } from "@/lib/products";
 import { getBrands, getBrandBySlug } from "@/lib/brands";
 import { locales, isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
@@ -27,28 +27,29 @@ export default async function BrandDetailPage({
   const sp = await searchParams;
   const query = single(sp.q)?.trim() || undefined;
   const make = single(sp.make) || undefined;
+  const model = single(sp.model) || undefined;
   const priceMin = toNumber(single(sp.priceMin));
   const priceMax = toNumber(single(sp.priceMax));
   const yearFrom = toNumber(single(sp.yearFrom));
   const yearTo = toNumber(single(sp.yearTo));
 
   const hasActiveFilters = Boolean(
-    query || make || priceMin !== undefined || priceMax !== undefined || yearFrom !== undefined || yearTo !== undefined
+    query || make || model || priceMin !== undefined || priceMax !== undefined || yearFrom !== undefined || yearTo !== undefined
   );
 
   const allProducts = await getAllProducts();
   const items = filterProducts(
     allProducts,
-    { brand: brand.slug, query, make, priceMin, priceMax, yearFrom, yearTo },
+    { brand: brand.slug, query, make, model, priceMin, priceMax, yearFrom, yearTo },
     locale
   );
 
-  const brandMakeIds = Array.from(
-    new Set(filterProducts(allProducts, { brand: brand.slug }, locale).map((p) => p.make))
-  );
+  const brandProducts = filterProducts(allProducts, { brand: brand.slug }, locale);
+  const brandMakeIds = Array.from(new Set(brandProducts.map((p) => p.make)));
   const brandMakes = localizedMakes(brandMakeIds, locale);
+  const brandModelsByMake = computeModelsByMake(brandProducts);
 
-  const brandPrices = filterProducts(allProducts, { brand: brand.slug }, locale).map((p) => p.price);
+  const brandPrices = brandProducts.map((p) => p.price);
   const maxPrice = brandPrices.length > 0 ? Math.max(...brandPrices) : computePriceBounds(allProducts).max;
 
   const basePath = `/${locale}/brands/${slug}`;
@@ -74,7 +75,13 @@ export default async function BrandDetailPage({
           </p>
         </div>
         <Suspense fallback={<div className="h-9 w-full max-w-sm rounded-full bg-zinc-100 dark:bg-zinc-800" />}>
-          <BrandSearch basePath={basePath} dict={dict.search} carMakes={brandMakes} maxPrice={maxPrice} />
+          <BrandSearch
+            basePath={basePath}
+            dict={dict.search}
+            carMakes={brandMakes}
+            modelsByMake={brandModelsByMake}
+            maxPrice={maxPrice}
+          />
         </Suspense>
       </div>
 

@@ -242,6 +242,185 @@ export async function updateProductAction(
   return { error: null };
 }
 
+export type ImportRow = {
+  productCode: string;
+  originCode?: string;
+  price?: number;
+  stock?: number;
+  name?: string;
+  description?: string;
+  make?: string;
+  model?: string;
+  photoUrl?: string;
+  yearFrom?: number;
+  yearTo?: number;
+};
+
+export type ImportResult = {
+  created: number;
+  updated: number;
+  skipped: number;
+  error: string | null;
+};
+
+const IMPORT_DEFAULT_YEAR_FROM = 2000;
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const groups: T[][] = [];
+  for (let i = 0; i < items.length; i += size) groups.push(items.slice(i, i + size));
+  return groups;
+}
+
+export async function importProductsAction(
+  locale: Locale,
+  categoryId: string,
+  brandId: string,
+  rows: ImportRow[]
+): Promise<ImportResult> {
+  const actor = await requireAdmin(locale);
+  const admin = createAdminClient();
+  const currentYear = new Date().getFullYear();
+
+  const validRows = rows.filter((r) => r.productCode.trim().length > 0);
+  const skipped = rows.length - validRows.length;
+  if (validRows.length === 0) {
+    return { created: 0, updated: 0, skipped, error: null };
+  }
+
+  const codes = Array.from(new Set(validRows.map((r) => r.productCode.trim())));
+
+  const [{ data: existingRows, error: fetchError }, { data: slugRows }] = await Promise.all([
+    admin
+      .from("products")
+      .select(
+        "id, product_code, price, stock, origin_code, make, model, brand_id, images, name, description, year_from, year_to"
+      )
+      .in("product_code", codes),
+    admin
+      .from("products")
+      .select("slug")
+      .in("slug", Array.from(new Set(codes.map((c) => slugify(c))))),
+  ]);
+  if (fetchError) return { created: 0, updated: 0, skipped: rows.length, error: fetchError.message };
+
+  const existingByCode = new Map<string, NonNullable<typeof existingRows>[number]>();
+  for (const row of existingRows ?? []) {
+    if (row.product_code && !existingByCode.has(row.product_code)) {
+      existingByCode.set(row.product_code, row);
+    }
+  }
+
+  const usedSlugs = new Set((slugRows ?? []).map((r) => r.slug));
+  function uniqueSlug(base: string): string {
+    let candidate = base;
+    let n = 2;
+    while (usedSlugs.has(candidate)) candidate = `${base}-${n++}`;
+    usedSlugs.add(candidate);
+    return candidate;
+  }
+
+  const toInsert: Record<string, unknown>[] = [];
+  const toUpdate: { id: string; patch: Record<string, unknown> }[] = [];
+
+  for (const row of validRows) {
+    const code = row.productCode.trim();
+    const existing = existingByCode.get(code);
+    const nameText = row.name?.trim();
+    const descriptionText = row.description?.trim();
+    const originCode = row.originCode?.trim();
+    const make = row.make?.trim();
+    const model = row.model?.trim();
+    const photoUrl = row.photoUrl?.trim();
+
+    if (!existing) {
+      toInsert.push({
+        slug: uniqueSlug(slugify(code)),
+        category: categoryId,
+        make: make || "universal",
+        model: model || null,
+        brand_id: brandId,
+        year_from: row.yearFrom ?? IMPORT_DEFAULT_YEAR_FROM,
+        year_to: row.yearTo ?? currentYear,
+        price: row.price ?? 0,
+        old_price: null,
+        stock: row.stock ?? 0,
+        origin_code: originCode || null,
+        product_code: code,
+        name: nameText ? { ru: nameText, az: nameText, ka: nameText } : { ru: code, az: code, ka: code },
+        description: { ru: descriptionText ?? "", az: descriptionText ?? "", ka: descriptionText ?? "" },
+        specs: [],
+        badge: null,
+        images: photoUrl ? [photoUrl] : [],
+        is_popular: false,
+      });
+      continue;
+    }
+
+    const patch: Record<string, unknown> = {};
+    if ((existing.price === 0 || existing.price == null) && row.price) patch.price = row.price;
+    if ((existing.stock === 0 || existing.stock == null) && row.stock) patch.stock = row.stock;
+    if (!existing.origin_code && originCode) patch.origin_code = originCode;
+    if ((!existing.make || existing.make === "universal") && make) patch.make = make;
+    if (!existing.model && model) patch.model = model;
+    if (!existing.brand_id && brandId) patch.brand_id = brandId;
+    if ((!existing.images || existing.images.length === 0) && photoUrl) patch.images = [photoUrl];
+
+    const nameEmpty =
+      !existing.name?.ru?.trim() && !existing.name?.az?.trim() && !existing.name?.ka?.trim();
+    if (nameEmpty && nameText) patch.name = { ru: nameText, az: nameText, ka: nameText };
+
+    const descriptionEmpty =
+      !existing.description?.ru?.trim() &&
+      !existing.description?.az?.trim() &&
+      !existing.description?.ka?.trim();
+    if (descriptionEmpty && descriptionText) {
+      patch.description = { ru: descriptionText, az: descriptionText, ka: descriptionText };
+    }
+
+    const isDefaultYearRange =
+      existing.year_from === IMPORT_DEFAULT_YEAR_FROM && existing.year_to === currentYear;
+    if (isDefaultYearRange && row.yearFrom) patch.year_from = row.yearFrom;
+    if (isDefaultYearRange && row.yearTo) patch.year_to = row.yearTo;
+
+    if (Object.keys(patch).length > 0) {
+      toUpdate.push({ id: existing.id, patch });
+    }
+  }
+
+  const errors: string[] = [];
+  let created = 0;
+  let updated = 0;
+
+  for (const group of chunk(toInsert, 50)) {
+    const { data, error } = await admin.from("products").insert(group).select("id");
+    if (error) errors.push(error.message);
+    else created += data?.length ?? 0;
+  }
+
+  for (const group of chunk(toUpdate, 50)) {
+    const results = await Promise.all(
+      group.map(({ id, patch }) => admin.from("products").update(patch).eq("id", id))
+    );
+    for (const { error } of results) {
+      if (error) errors.push(error.message);
+      else updated++;
+    }
+  }
+
+  await logAction(
+    actor,
+    "create",
+    "product",
+    `Импорт Excel: ${created} новых, ${updated} обновлено, ${skipped} пропущено`,
+    {}
+  );
+  revalidatePath(`/${locale}/admin/products`);
+  revalidatePath(`/${locale}/catalog`);
+  revalidatePath(`/${locale}`);
+
+  return { created, updated, skipped, error: errors.length > 0 ? errors.join("; ") : null };
+}
+
 export async function deleteProductAction(
   locale: Locale,
   id: string,
@@ -254,6 +433,24 @@ export async function deleteProductAction(
   if (error) return { error: error.message };
 
   await logAction(actor, "delete", "product", label, { entityId: id });
+  revalidatePath(`/${locale}/admin/products`);
+  revalidatePath(`/${locale}/catalog`);
+  revalidatePath(`/${locale}`);
+  return { error: null };
+}
+
+export async function deleteProductsAction(
+  locale: Locale,
+  ids: string[]
+): Promise<{ error: string | null }> {
+  const actor = await requireAdmin(locale);
+  if (ids.length === 0) return { error: null };
+
+  const admin = createAdminClient();
+  const { error, count } = await admin.from("products").delete({ count: "exact" }).in("id", ids);
+  if (error) return { error: error.message };
+
+  await logAction(actor, "delete", "product", `Массовое удаление: ${count ?? ids.length} товаров`, {});
   revalidatePath(`/${locale}/admin/products`);
   revalidatePath(`/${locale}/catalog`);
   revalidatePath(`/${locale}`);

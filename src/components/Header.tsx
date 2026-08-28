@@ -2,7 +2,13 @@ import Link from "next/link";
 import { Suspense } from "react";
 import type { Locale } from "@/i18n/locales";
 import type { Dictionary } from "@/i18n/dictionary";
-import { getProductFilterMeta, computeCarMakes, computePriceBounds, localizedMakes } from "@/lib/products";
+import {
+  getProductFilterMeta,
+  computeCarMakes,
+  computeModelsByMake,
+  computePriceBounds,
+  localizedMakes,
+} from "@/lib/products";
 import { getCatalogBrands } from "@/lib/brands";
 import { getCurrentStaff, getCurrentCustomer } from "@/lib/auth";
 import CartIndicator from "@/components/CartIndicator";
@@ -38,6 +44,7 @@ export default async function Header({
   const isLoggedIn = Boolean(staff) || Boolean(customer);
   const carMakes = computeCarMakes(productMeta);
   const priceBounds = computePriceBounds(productMeta);
+  const modelsByMake = computeModelsByMake(productMeta);
 
   return (
     <header className="sticky top-0 z-30 border-b border-zinc-200 bg-white/90 backdrop-blur dark:border-zinc-800 dark:bg-black/90">
@@ -59,6 +66,7 @@ export default async function Header({
               locale={locale}
               dict={dict.search}
               carMakes={localizedMakes(carMakes, locale)}
+              modelsByMake={modelsByMake}
               brands={catalogBrands}
               maxPrice={priceBounds.max}
             />

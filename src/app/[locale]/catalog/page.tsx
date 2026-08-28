@@ -31,13 +31,14 @@ export default async function CatalogPage({
   const category = isCategoryId(single(sp.category)) ? (single(sp.category) as CategoryId) : undefined;
   const query = single(sp.q)?.trim() || undefined;
   const make = single(sp.make) || undefined;
+  const model = single(sp.model) || undefined;
   const brand = single(sp.brand) || undefined;
   const priceMin = toNumber(single(sp.priceMin));
   const priceMax = toNumber(single(sp.priceMax));
   const yearFrom = toNumber(single(sp.yearFrom));
   const yearTo = toNumber(single(sp.yearTo));
 
-  const hasActiveFilters = Boolean(make || brand || priceMin !== undefined || priceMax !== undefined || yearFrom !== undefined || yearTo !== undefined);
+  const hasActiveFilters = Boolean(make || model || brand || priceMin !== undefined || priceMax !== undefined || yearFrom !== undefined || yearTo !== undefined);
 
   function hrefForCategory(target?: CategoryId): string {
     const searchParamsObj = new URLSearchParams();
@@ -54,7 +55,7 @@ export default async function CatalogPage({
   const allProducts = await getAllProducts();
   const items = filterProducts(
     allProducts,
-    { category, query, make, brand, priceMin, priceMax, yearFrom, yearTo },
+    { category, query, make, model, brand, priceMin, priceMax, yearFrom, yearTo },
     locale
   );
 

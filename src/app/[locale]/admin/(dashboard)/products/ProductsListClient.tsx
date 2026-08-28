@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useTransition, type ReactNode } from "react";
-import { deleteProductAction } from "./actions";
+import { deleteProductAction, deleteProductsAction } from "./actions";
 import ProductFormModal, { type ProductFormValues } from "./ProductFormModal";
 import ProductWarehousesModal from "./ProductWarehousesModal";
+import ImportProductsModal from "./ImportProductsModal";
 import { RowActionLink, RowActionButton, EyeIcon, PencilIcon, TrashIcon } from "@/components/admin/RowActions";
 import type { AdminProductRow } from "./data";
 import { formatGel } from "@/lib/currency";
@@ -30,15 +31,45 @@ export default function ProductsListClient({
   searchSlot?: ReactNode;
 }) {
   const [modal, setModal] = useState<{ mode: "create" | "edit"; values?: ProductFormValues } | null>(null);
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const [warehouseModalRow, setWarehouseModalRow] = useState<AdminProductRow | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [pending, startTransition] = useTransition();
+
+  const allIds = rows.map((r) => r.id);
+  const allSelected = allIds.length > 0 && allIds.every((id) => selectedIds.has(id));
+  const someSelected = selectedIds.size > 0 && !allSelected;
+
+  function toggleAll() {
+    setSelectedIds(allSelected ? new Set() : new Set(allIds));
+  }
+
+  function toggleOne(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   function handleDelete(row: AdminProductRow) {
     if (!window.confirm(dict.confirmDeleteProduct)) return;
     startTransition(async () => {
       const result = await deleteProductAction(locale, row.id, row.displayName);
       setDeleteError(result.error);
+    });
+  }
+
+  function handleDeleteSelected() {
+    if (selectedIds.size === 0) return;
+    if (!window.confirm(dict.confirmDeleteSelectedProducts)) return;
+    const ids = Array.from(selectedIds);
+    startTransition(async () => {
+      const result = await deleteProductsAction(locale, ids);
+      setDeleteError(result.error);
+      setSelectedIds(new Set());
     });
   }
 
@@ -75,19 +106,42 @@ export default function ProductsListClient({
           {dict.productsAdminTitle}
         </h1>
         {isAdmin && (
-          <button
-            type="button"
-            onClick={() => setModal({ mode: "create" })}
-            className="rounded-full bg-orange-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-500"
-          >
-            {dict.addProduct}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setImportModalOpen(true)}
+              className="rounded-full border border-orange-600 px-5 py-2 text-sm font-semibold text-orange-600 transition-colors hover:bg-orange-50 dark:hover:bg-orange-950/40"
+            >
+              {dict.importExcelButton}
+            </button>
+            <button
+              type="button"
+              onClick={() => setModal({ mode: "create" })}
+              className="rounded-full bg-orange-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-500"
+            >
+              {dict.addProduct}
+            </button>
+          </div>
         )}
       </div>
 
       {searchSlot}
 
       {deleteError && <p className="text-sm text-red-600">{deleteError}</p>}
+
+      {isAdmin && selectedIds.size > 0 && (
+        <div className="flex items-center justify-between rounded-lg border border-orange-200 bg-orange-50 px-4 py-2 dark:border-orange-900 dark:bg-orange-950/40">
+          <span className="text-sm text-zinc-700 dark:text-zinc-300">{selectedIds.size}</span>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={handleDeleteSelected}
+            className="rounded-full bg-red-600 px-4 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-red-500 disabled:opacity-60"
+          >
+            {dict.deleteSelectedButton}
+          </button>
+        </div>
+      )}
 
       {rows.length === 0 ? (
         <p className="py-16 text-center text-zinc-500">{dict.noResults}</p>
@@ -96,6 +150,20 @@ export default function ProductsListClient({
           <table className="w-full min-w-[700px] text-left text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
               <tr>
+                {isAdmin && (
+                  <th className="w-10 px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      ref={(el) => {
+                        if (el) el.indeterminate = someSelected;
+                      }}
+                      onChange={toggleAll}
+                      aria-label={dict.selectAllProductsAriaLabel}
+                      className="h-4 w-4 rounded border-zinc-300"
+                    />
+                  </th>
+                )}
                 <th className="px-4 py-3 font-medium">{dict.productsColName}</th>
                 <th className="px-4 py-3 font-medium">{dict.productsColBrand}</th>
                 <th className="px-4 py-3 font-medium">{dict.productsColPrice}</th>
@@ -106,6 +174,17 @@ export default function ProductsListClient({
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
               {rows.map((row) => (
                 <tr key={row.id}>
+                  {isAdmin && (
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(row.id)}
+                        onChange={() => toggleOne(row.id)}
+                        aria-label={dict.selectProductAriaLabel}
+                        className="h-4 w-4 rounded border-zinc-300"
+                      />
+                    </td>
+                  )}
                   <td className="flex items-center gap-3 px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
                       {row.images[0] ? (
@@ -176,6 +255,15 @@ export default function ProductsListClient({
           brands={brands}
           initialValues={modal.values}
           onClose={() => setModal(null)}
+        />
+      )}
+
+      {importModalOpen && (
+        <ImportProductsModal
+          locale={locale}
+          dict={dict}
+          brands={brands}
+          onClose={() => setImportModalOpen(false)}
         />
       )}
 
