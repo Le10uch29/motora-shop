@@ -161,6 +161,66 @@ export const getProductBySlug = cache(async (slug: string): Promise<Product | un
   return data ? mapRow(data as unknown as ProductRow) : undefined;
 });
 
+/** Up to `limit` products flagged "popular" — for the home page's featured
+ * section, which never needs more than a handful. Filtered in the DB query
+ * itself instead of fetching the whole catalog (potentially hundreds of
+ * rows, each with a 3-language name/description and an images array) just
+ * to throw away everything but 4 of them client-side. */
+export const getFeaturedProducts = cache(async (limit = 4): Promise<Product[]> => {
+  const supabase = createPublicClient();
+  const { data } = await supabase
+    .from("products")
+    .select(SELECT_COLUMNS)
+    .eq("is_popular", true)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return ((data ?? []) as unknown as ProductRow[]).map(mapRow);
+});
+
+// `!inner` makes PostgREST actually filter top-level rows by the embedded
+// resource's column — without it, .eq("brands.slug", …) is silently ignored.
+const SELECT_COLUMNS_BRAND_FILTER = SELECT_COLUMNS.replace("brands(slug)", "brands!inner(slug)");
+
+/** All products of one brand, filtered in the DB query — for a brand's own
+ * page, which otherwise had no reason to pull every other brand's products
+ * across the wire just to filter them out client-side. */
+export const getProductsByBrandSlug = cache(async (brandSlug: string): Promise<Product[]> => {
+  const supabase = createPublicClient();
+  const { data } = await supabase
+    .from("products")
+    .select(SELECT_COLUMNS_BRAND_FILTER)
+    .eq("brands.slug", brandSlug)
+    .order("created_at", { ascending: false });
+  return ((data ?? []) as unknown as ProductRow[]).map(mapRow);
+});
+
+/** Product count per brand slug, computed from a single skinny query (just
+ * the brand join, none of the other ~15 columns) instead of fetching every
+ * product's full row for the /brands listing page. */
+export const getProductCountsByBrandSlug = cache(async (): Promise<Record<string, number>> => {
+  const supabase = createPublicClient();
+  const { data } = await supabase.from("products").select("brands(slug)");
+  const counts: Record<string, number> = {};
+  for (const row of (data ?? []) as { brands: { slug: string } | { slug: string }[] | null }[]) {
+    const brand = Array.isArray(row.brands) ? row.brands[0] : row.brands;
+    if (brand?.slug) counts[brand.slug] = (counts[brand.slug] ?? 0) + 1;
+  }
+  return counts;
+});
+
+export type CartProductSummary = Pick<Product, "id" | "slug" | "name" | "category" | "price" | "stock">;
+
+/** Just the columns the cart view renders (name, price, stock, category —
+ * for the placeholder image) instead of every product's full row. The cart
+ * itself lives in the browser's localStorage, so the server can't know in
+ * advance which product ids to filter for — this still has to fetch every
+ * product, but a much lighter row: no description, specs, images, or badge. */
+export const getProductsForCart = cache(async (): Promise<CartProductSummary[]> => {
+  const supabase = createPublicClient();
+  const { data } = await supabase.from("products").select("id, slug, name, category, price, stock");
+  return (data ?? []) as CartProductSummary[];
+});
+
 /** Just the three columns the header's search-filter dropdown needs (make,
  * model, price) — used instead of {@link getAllProducts} on pages that don't
  * otherwise render the full catalog, so Header doesn't drag in every

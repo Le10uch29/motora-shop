@@ -1,19 +1,17 @@
 import Link from "next/link";
 import { buildPageList } from "@/lib/pagination";
 
-export const ADMIN_PAGE_SIZE = 10;
-
 export default function Pagination({
   basePath,
   currentPage,
   total,
-  pageSize = ADMIN_PAGE_SIZE,
+  pageSize,
   searchParams,
 }: {
   basePath: string;
   currentPage: number;
   total: number;
-  pageSize?: number;
+  pageSize: number;
   searchParams: Record<string, string | undefined>;
 }) {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));

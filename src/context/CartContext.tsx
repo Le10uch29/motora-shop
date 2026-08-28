@@ -117,10 +117,9 @@ export function CartProvider({
     setState((prev) => ({ ...prev, orderPlaced: true }));
   }, []);
 
-  const totalItems = useMemo(
-    () => state.items.reduce((sum, item) => sum + item.quantity, 0),
-    [state.items]
-  );
+  // Count of distinct products in the cart, not the sum of their quantities
+  // (30 units of one part should show as 1, not 30).
+  const totalItems = useMemo(() => state.items.length, [state.items]);
 
   const value = useMemo(
     () => ({

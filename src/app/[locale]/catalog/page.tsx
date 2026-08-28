@@ -13,6 +13,9 @@ import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
 import { single, toNumber } from "@/lib/searchParams";
 import ProductCard from "@/components/ProductCard";
+import Pagination from "@/components/Pagination";
+
+const CATALOG_PAGE_SIZE = 12;
 
 function isCategoryId(value: string | undefined): value is CategoryId {
   return categoryIds.includes(value as CategoryId);
@@ -37,13 +40,14 @@ export default async function CatalogPage({
   const priceMax = toNumber(single(sp.priceMax));
   const yearFrom = toNumber(single(sp.yearFrom));
   const yearTo = toNumber(single(sp.yearTo));
+  const page = Number(single(sp.page)) || 1;
 
   const hasActiveFilters = Boolean(make || model || brand || priceMin !== undefined || priceMax !== undefined || yearFrom !== undefined || yearTo !== undefined);
 
   function hrefForCategory(target?: CategoryId): string {
     const searchParamsObj = new URLSearchParams();
     for (const [key, value] of Object.entries(sp)) {
-      if (key === "category") continue;
+      if (key === "category" || key === "page") continue;
       const v = single(value);
       if (v) searchParamsObj.set(key, v);
     }
@@ -58,6 +62,8 @@ export default async function CatalogPage({
     { category, query, make, model, brand, priceMin, priceMax, yearFrom, yearTo },
     locale
   );
+  const pageStart = (page - 1) * CATALOG_PAGE_SIZE;
+  const pageItems = items.slice(pageStart, pageStart + CATALOG_PAGE_SIZE);
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-6 py-10">
@@ -109,15 +115,33 @@ export default async function CatalogPage({
         ))}
       </div>
 
-      {items.length > 0 ? (
+      {pageItems.length > 0 ? (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map((product) => (
+          {pageItems.map((product) => (
             <ProductCard key={product.id} product={product} locale={locale} dict={dict} brands={brands} />
           ))}
         </div>
       ) : (
         <p className="py-16 text-center text-zinc-500">{dict.catalog.empty}</p>
       )}
+
+      <Pagination
+        basePath={`/${locale}/catalog`}
+        currentPage={page}
+        total={items.length}
+        pageSize={CATALOG_PAGE_SIZE}
+        searchParams={{
+          category,
+          q: query,
+          make,
+          model,
+          brand,
+          priceMin: priceMin?.toString(),
+          priceMax: priceMax?.toString(),
+          yearFrom: yearFrom?.toString(),
+          yearTo: yearTo?.toString(),
+        }}
+      />
     </main>
   );
 }

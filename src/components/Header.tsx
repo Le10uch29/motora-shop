@@ -47,7 +47,7 @@ export default async function Header({
   const modelsByMake = computeModelsByMake(productMeta);
 
   return (
-    <header className="sticky top-0 z-30 border-b border-zinc-200 bg-white/90 backdrop-blur dark:border-zinc-800 dark:bg-black/90">
+    <header className="sticky top-0 z-30 border-b border-zinc-200 bg-sky-50/90 backdrop-blur dark:border-zinc-800 dark:bg-black/90">
       <div className="relative mx-auto flex max-w-6xl items-center gap-3 px-4 py-4 sm:gap-4 sm:px-6">
         <Link
           href={`/${locale}`}
@@ -75,7 +75,7 @@ export default async function Header({
         <div className="flex shrink-0 items-center gap-3">
           <div className="hidden lg:block">
             <Suspense fallback={<div className="h-8 w-[104px]" />}>
-              <LanguageSwitcher locale={locale} />
+              <LanguageSwitcher locale={locale} ariaLabel={dict.header.languageSwitcherAriaLabel} />
             </Suspense>
           </div>
           <CartIndicator locale={locale} ariaLabel={dict.header.cartAriaLabel} />
@@ -90,6 +90,8 @@ export default async function Header({
             logoutLabel={dict.auth.logoutLabel}
             accountHref={customer ? `/${locale}/account` : undefined}
             accountLabel={dict.admin.myAccountTitle}
+            themeToggleAriaLabel={dict.header.themeToggleAriaLabel}
+            languageSwitcherAriaLabel={dict.header.languageSwitcherAriaLabel}
           />
         </div>
       </div>

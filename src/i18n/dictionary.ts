@@ -9,6 +9,8 @@ export type Dictionary = {
     contacts: string;
     menuAriaLabel: string;
     closeMenuAriaLabel: string;
+    themeToggleAriaLabel: string;
+    languageSwitcherAriaLabel: string;
   };
   pages: {
     comingSoon: string;
@@ -123,6 +125,7 @@ export type Dictionary = {
     invoiceStampLabel: string;
     actionCancelOrder: string;
     confirmCancelOrder: string;
+    confirmDeleteOrder: string;
     orderDetailsTitle: string;
     orderColumnProduct: string;
     orderColumnQuantity: string;
@@ -173,6 +176,9 @@ export type Dictionary = {
     confirmDeleteBrand: string;
     searchPlaceholder: string;
     noResults: string;
+    productsColPhoto: string;
+    productsColProductCode: string;
+    productsColOriginCode: string;
     productsColName: string;
     productsColBrand: string;
     productsColPrice: string;

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { filterProducts, localizedMakes, getAllProducts, computePriceBounds, computeModelsByMake } from "@/lib/products";
+import { filterProducts, localizedMakes, getProductsByBrandSlug, computeModelsByMake } from "@/lib/products";
 import { getBrands, getBrandBySlug } from "@/lib/brands";
 import { locales, isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
@@ -37,20 +37,19 @@ export default async function BrandDetailPage({
     query || make || model || priceMin !== undefined || priceMax !== undefined || yearFrom !== undefined || yearTo !== undefined
   );
 
-  const allProducts = await getAllProducts();
+  const brandProducts = await getProductsByBrandSlug(brand.slug);
   const items = filterProducts(
-    allProducts,
-    { brand: brand.slug, query, make, model, priceMin, priceMax, yearFrom, yearTo },
+    brandProducts,
+    { query, make, model, priceMin, priceMax, yearFrom, yearTo },
     locale
   );
 
-  const brandProducts = filterProducts(allProducts, { brand: brand.slug }, locale);
   const brandMakeIds = Array.from(new Set(brandProducts.map((p) => p.make)));
   const brandMakes = localizedMakes(brandMakeIds, locale);
   const brandModelsByMake = computeModelsByMake(brandProducts);
 
   const brandPrices = brandProducts.map((p) => p.price);
-  const maxPrice = brandPrices.length > 0 ? Math.max(...brandPrices) : computePriceBounds(allProducts).max;
+  const maxPrice = brandPrices.length > 0 ? Math.max(...brandPrices) : 0;
 
   const basePath = `/${locale}/brands/${slug}`;
 

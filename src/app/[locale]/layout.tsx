@@ -57,6 +57,17 @@ export default async function LocaleLayout({
       lang={locale}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        {/* Runs before paint so a returning visitor who chose dark doesn't
+            flash light first — first-time visitors have nothing stored, so
+            this does nothing and they see the light theme, as intended. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{if(localStorage.getItem('araz-motors-theme')==='dark'){document.documentElement.classList.add('dark')}}catch(e){}",
+          }}
+        />
+      </head>
       <body className="flex min-h-full flex-col bg-zinc-50 dark:bg-black">
         <CartProvider userId={user?.id ?? null}>
           {!isAdminRoute && <Header locale={locale} dict={dict} />}

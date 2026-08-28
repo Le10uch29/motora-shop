@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
-import { ADMIN_PAGE_SIZE } from "@/components/admin/Pagination";
 import type { Locale } from "@/i18n/locales";
 import type { LocalizedText, ProductSpec } from "@/lib/products";
+
+export const PRODUCTS_PAGE_SIZE = 30;
 
 export type AdminProductRow = {
   id: string;
@@ -105,7 +106,7 @@ export async function getAdminProducts(
 
   const total = rows.length;
   const page = options.page && options.page > 0 ? options.page : 1;
-  const start = (page - 1) * ADMIN_PAGE_SIZE;
+  const start = (page - 1) * PRODUCTS_PAGE_SIZE;
 
-  return { rows: rows.slice(start, start + ADMIN_PAGE_SIZE), total };
+  return { rows: rows.slice(start, start + PRODUCTS_PAGE_SIZE), total };
 }

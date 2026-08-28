@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
 import { getCatalogBrands } from "@/lib/brands";
-import { getAllProducts } from "@/lib/products";
+import { getProductCountsByBrandSlug } from "@/lib/products";
 
 function initials(name: string): string {
   return name
@@ -21,7 +21,7 @@ export default async function BrandsPage({
   if (!isLocale(locale)) notFound();
   const dict = await getDictionary(locale);
   const catalogBrands = await getCatalogBrands();
-  const products = await getAllProducts();
+  const counts = await getProductCountsByBrandSlug();
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-6 py-16">
@@ -30,7 +30,7 @@ export default async function BrandsPage({
       </h1>
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {catalogBrands.map((brand) => {
-          const count = products.filter((p) => p.brand === brand.slug).length;
+          const count = counts[brand.slug] ?? 0;
           return (
             <Link
               key={brand.slug}

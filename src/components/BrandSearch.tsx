@@ -127,17 +127,23 @@ export default function BrandSearch({
         className="flex min-w-0 max-w-sm flex-1 items-center"
       >
         <div className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1.5 focus-within:border-orange-500 dark:border-zinc-700 dark:bg-zinc-900">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={1.8}
-            strokeLinecap="round"
-            className="h-4 w-4 shrink-0 text-zinc-400"
+          <button
+            type="submit"
+            aria-label={dict.submitAriaLabel}
+            className="flex shrink-0 items-center justify-center text-zinc-400 transition-colors hover:text-orange-600"
           >
-            <circle cx="11" cy="11" r="7" />
-            <path d="M21 21l-4.3-4.3" />
-          </svg>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.8}
+              strokeLinecap="round"
+              className="h-4 w-4"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="M21 21l-4.3-4.3" />
+            </svg>
+          </button>
           <input
             type="search"
             value={query}
@@ -147,9 +153,6 @@ export default function BrandSearch({
             className="min-w-0 flex-1 bg-transparent text-sm text-zinc-900 outline-none placeholder:text-zinc-400 dark:text-zinc-50"
           />
         </div>
-        <button type="submit" className="sr-only">
-          {dict.submitAriaLabel}
-        </button>
       </form>
 
       <button

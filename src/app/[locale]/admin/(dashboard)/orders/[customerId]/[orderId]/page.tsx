@@ -44,13 +44,14 @@ export default async function OrderDetailPage({
             {orderStatusLabel(order.status, dict.admin)}
           </span>
         </div>
-        {staff.role === "admin" && order.status !== "cancelled" && (
+        {staff.role === "admin" && (
           <OrderDetailActions
             locale={locale}
             dict={dict.admin}
             id={order.id}
             customerId={customerId}
             label={`${productName} — ${ordererName}`}
+            status={order.status}
           />
         )}
       </div>

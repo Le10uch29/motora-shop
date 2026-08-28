@@ -5,6 +5,7 @@ import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
 import { requireStaff } from "@/lib/auth";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import ThemeToggle from "@/components/ThemeToggle";
 import { signOutAction } from "./actions";
 
 export default async function AdminDashboardLayout({
@@ -31,7 +32,7 @@ export default async function AdminDashboardLayout({
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
-      <header className="flex shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-6 py-4 dark:border-zinc-800 dark:bg-zinc-950 print:hidden">
+      <header className="flex shrink-0 items-center justify-between border-b border-zinc-200 bg-sky-50 px-6 py-4 dark:border-zinc-800 dark:bg-black print:hidden">
         <Link
           href={`/${locale}`}
           className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50"
@@ -40,8 +41,9 @@ export default async function AdminDashboardLayout({
         </Link>
         <div className="flex items-center gap-3">
           <Suspense fallback={<div className="h-8 w-[104px]" />}>
-            <LanguageSwitcher locale={locale} />
+            <LanguageSwitcher locale={locale} ariaLabel={dict.header.languageSwitcherAriaLabel} />
           </Suspense>
+          <ThemeToggle ariaLabel={dict.header.themeToggleAriaLabel} />
           <form action={signOutAction}>
             <input type="hidden" name="locale" value={locale} />
             <button
@@ -55,7 +57,7 @@ export default async function AdminDashboardLayout({
       </header>
 
       <div className="flex flex-1">
-        <aside className="flex w-56 shrink-0 flex-col gap-6 border-r border-zinc-200 bg-white px-4 py-6 dark:border-zinc-800 dark:bg-zinc-950 print:hidden">
+        <aside className="flex w-56 shrink-0 flex-col gap-6 border-r border-zinc-200 bg-sky-50 px-4 py-6 dark:border-zinc-800 dark:bg-black print:hidden">
           <nav className="flex flex-col gap-1 text-sm font-medium text-zinc-600 dark:text-zinc-400">
             {navItems
               .filter((item) => item.show)

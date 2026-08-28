@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useCart } from "@/context/CartContext";
 import { placeOrderAction } from "@/app/[locale]/cart/actions";
-import { t, type Product } from "@/lib/products";
+import { t, type CartProductSummary } from "@/lib/products";
 import { formatGel, formatUsd } from "@/lib/currency";
 import type { Locale } from "@/i18n/locales";
 import type { Dictionary } from "@/i18n/dictionary";
@@ -25,7 +25,7 @@ export default function CartView({
 }: {
   locale: Locale;
   dict: Dictionary["cart"];
-  products: Product[];
+  products: CartProductSummary[];
 }) {
   const { items, setQuantity, removeItem, clear, orderPlaced, markOrdered } = useCart();
   const [orderError, setOrderError] = useState<string | null>(null);
@@ -37,11 +37,21 @@ export default function CartView({
       product: products.find((p) => p.id === item.productId),
     }))
     .filter(
-      (row): row is { item: (typeof items)[number]; product: Product } =>
-        Boolean(row.product)
+      (row): row is { item: (typeof items)[number]; product: CartProductSummary } =>
+        Boolean(row.product) && row.product!.stock > 0
     );
 
   const totalPrice = rows.reduce((sum, { item, product }) => sum + product.price * item.quantity, 0);
+
+  // A product can sell out or get deleted after it was added to the cart —
+  // drop it from the stored cart too, not just this render, so the header
+  // badge and a fresh page load agree with what's actually orderable.
+  useEffect(() => {
+    for (const item of items) {
+      const product = products.find((p) => p.id === item.productId);
+      if (!product || product.stock <= 0) removeItem(item.productId);
+    }
+  }, [items, products, removeItem]);
 
   function handleCheckout() {
     setOrderError(null);

@@ -3,7 +3,7 @@ import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
 import { requireStaff } from "@/lib/auth";
 import { single } from "@/lib/searchParams";
-import { getAdminProducts, getBrandOptions } from "./data";
+import { getAdminProducts, getBrandOptions, PRODUCTS_PAGE_SIZE } from "./data";
 import { getWarehouseOptions, getProductStockMap } from "../warehouses/data";
 import ProductsListClient from "./ProductsListClient";
 import AdminSearchBox from "@/components/admin/AdminSearchBox";
@@ -53,6 +53,7 @@ export default async function AdminProductsPage({
         basePath={`/${locale}/admin/products`}
         currentPage={page}
         total={total}
+        pageSize={PRODUCTS_PAGE_SIZE}
         searchParams={{ q: query || undefined }}
       />
     </main>

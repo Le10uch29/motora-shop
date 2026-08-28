@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Locale } from "@/i18n/locales";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import ThemeToggle from "@/components/ThemeToggle";
 import { signOutAction } from "@/lib/actions/auth";
 
 type NavLink = { href: string; label: string };
@@ -20,6 +21,8 @@ export default function MobileMenu({
   logoutLabel,
   accountHref,
   accountLabel,
+  themeToggleAriaLabel,
+  languageSwitcherAriaLabel,
 }: {
   locale: Locale;
   navLinks: NavLink[];
@@ -31,6 +34,8 @@ export default function MobileMenu({
   logoutLabel: string;
   accountHref?: string;
   accountLabel?: string;
+  themeToggleAriaLabel: string;
+  languageSwitcherAriaLabel: string;
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
@@ -138,10 +143,11 @@ export default function MobileMenu({
               </Link>
             )}
           </nav>
-          <div className="mt-4 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+          <div className="mt-4 flex items-center justify-between border-t border-zinc-200 pt-4 dark:border-zinc-800">
             <Suspense fallback={<div className="h-8 w-[104px]" />}>
-              <LanguageSwitcher locale={locale} />
+              <LanguageSwitcher locale={locale} ariaLabel={languageSwitcherAriaLabel} />
             </Suspense>
+            <ThemeToggle ariaLabel={themeToggleAriaLabel} />
           </div>
         </div>
       )}

@@ -136,6 +136,32 @@ export async function updateOrderDiscountAction(
   return { error: null };
 }
 
+/** Permanently deletes an order record — admin-only, and only once the order
+ * is in a terminal state (cancelled or delivered), enforced server-side so
+ * this can't be reached for an order still in progress. */
+export async function deleteOrderAction(
+  locale: Locale,
+  id: string,
+  customerId: string,
+  label: string
+): Promise<{ error: string | null }> {
+  const actor = await requireAdmin(locale);
+
+  const admin = createAdminClient();
+  const { data: order } = await admin.from("orders").select("status").eq("id", id).single();
+  if (!order) return { error: "not_found" };
+  if (order.status !== "cancelled" && order.status !== "delivered") {
+    return { error: "not_deletable" };
+  }
+
+  const { error } = await admin.from("orders").delete().eq("id", id);
+  if (error) return { error: error.message };
+
+  await logAction(actor, "delete", "order", label, { entityId: id });
+  revalidateOrderPaths(locale, customerId, id);
+  return { error: null };
+}
+
 export async function cancelOrderAction(
   locale: Locale,
   id: string,

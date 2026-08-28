@@ -147,7 +147,7 @@ export default function ProductsListClient({
         <p className="py-16 text-center text-zinc-500">{dict.noResults}</p>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
-          <table className="w-full min-w-[700px] text-left text-sm">
+          <table className="w-full min-w-[900px] text-left text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
               <tr>
                 {isAdmin && (
@@ -164,6 +164,9 @@ export default function ProductsListClient({
                     />
                   </th>
                 )}
+                <th className="px-4 py-3 font-medium">{dict.productsColPhoto}</th>
+                <th className="px-4 py-3 font-medium">{dict.productsColProductCode}</th>
+                <th className="px-4 py-3 font-medium">{dict.productsColOriginCode}</th>
                 <th className="px-4 py-3 font-medium">{dict.productsColName}</th>
                 <th className="px-4 py-3 font-medium">{dict.productsColBrand}</th>
                 <th className="px-4 py-3 font-medium">{dict.productsColPrice}</th>
@@ -185,7 +188,7 @@ export default function ProductsListClient({
                       />
                     </td>
                   )}
-                  <td className="flex items-center gap-3 px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50">
+                  <td className="px-4 py-3">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
                       {row.images[0] ? (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -194,8 +197,10 @@ export default function ProductsListClient({
                         <span className="text-xs text-zinc-400">—</span>
                       )}
                     </div>
-                    {row.displayName}
                   </td>
+                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{row.productCode || "—"}</td>
+                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{row.originCode || "—"}</td>
+                  <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50">{row.displayName}</td>
                   <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{row.brandName}</td>
                   <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
                     {formatGel(row.price, locale)}

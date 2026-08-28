@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getAllProducts, categoryIds, categoryLabels, t } from "@/lib/products";
+import { getFeaturedProducts, categoryIds, categoryLabels, t } from "@/lib/products";
 import { getBrands } from "@/lib/brands";
 import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
@@ -11,9 +11,7 @@ export default async function Home({ params }: PageProps<"/[locale]">) {
   if (!isLocale(locale)) notFound();
   const dict = await getDictionary(locale);
   const brands = await getBrands();
-  const products = await getAllProducts();
-
-  const featured = products.filter((p) => p.isPopular).slice(0, 4);
+  const featured = await getFeaturedProducts(4);
 
   return (
     <main className="flex flex-1 flex-col">

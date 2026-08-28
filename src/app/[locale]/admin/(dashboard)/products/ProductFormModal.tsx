@@ -138,9 +138,9 @@ export default function ProductFormModal({
         <div className="flex flex-col gap-1.5">
           <span className={labelClass}>{dict.productDescriptionSectionLabel}</span>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            <textarea name="descriptionRu" required placeholder="RU" defaultValue={initialValues?.description.ru} rows={3} className={inputClass} />
-            <textarea name="descriptionAz" required placeholder="AZ" defaultValue={initialValues?.description.az} rows={3} className={inputClass} />
-            <textarea name="descriptionKa" required placeholder="KA" defaultValue={initialValues?.description.ka} rows={3} className={inputClass} />
+            <textarea name="descriptionRu" placeholder="RU" defaultValue={initialValues?.description.ru} rows={3} className={inputClass} />
+            <textarea name="descriptionAz" placeholder="AZ" defaultValue={initialValues?.description.az} rows={3} className={inputClass} />
+            <textarea name="descriptionKa" placeholder="KA" defaultValue={initialValues?.description.ka} rows={3} className={inputClass} />
           </div>
         </div>
 

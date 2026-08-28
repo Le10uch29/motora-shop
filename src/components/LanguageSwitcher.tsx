@@ -1,17 +1,24 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { locales, type Locale } from "@/i18n/locales";
 
+const FLAGS: Record<Locale, string> = { ru: "🇷🇺", az: "🇦🇿", ka: "🇬🇪" };
 const LABELS: Record<Locale, string> = { ru: "RU", az: "AZ", ka: "KA" };
 
-export default function LanguageSwitcher({ locale }: { locale: Locale }) {
+export default function LanguageSwitcher({
+  locale,
+  ariaLabel,
+}: {
+  locale: Locale;
+  ariaLabel: string;
+}) {
+  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const query = searchParams.toString();
 
-  function pathFor(target: Locale) {
+  function pathFor(target: Locale): string {
     const segments = pathname.split("/");
     segments[1] = target;
     const path = segments.join("/") || "/";
@@ -19,20 +26,17 @@ export default function LanguageSwitcher({ locale }: { locale: Locale }) {
   }
 
   return (
-    <div className="flex items-center gap-1 rounded-full border border-zinc-200 p-1 text-xs font-medium dark:border-zinc-700">
+    <select
+      value={locale}
+      onChange={(event) => router.push(pathFor(event.target.value as Locale))}
+      aria-label={ariaLabel}
+      className="rounded-full border border-zinc-200 bg-transparent px-2.5 py-1.5 text-xs font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-200"
+    >
       {locales.map((l) => (
-        <Link
-          key={l}
-          href={pathFor(l)}
-          className={`rounded-full px-2.5 py-1 transition-colors ${
-            l === locale
-              ? "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900"
-              : "text-zinc-600 hover:text-orange-600 dark:text-zinc-400"
-          }`}
-        >
-          {LABELS[l]}
-        </Link>
+        <option key={l} value={l} className="bg-white text-zinc-900">
+          {FLAGS[l]} {LABELS[l]}
+        </option>
       ))}
-    </div>
+    </select>
   );
 }

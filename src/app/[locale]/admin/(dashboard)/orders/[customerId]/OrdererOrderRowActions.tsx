@@ -2,10 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { cancelOrderAction, updateOrderStatusAction } from "../actions";
+import { cancelOrderAction, deleteOrderAction, updateOrderStatusAction } from "../actions";
 import { orderStatusLabel, orderStatusClass, PROGRESSABLE_STATUSES } from "../statusStyles";
 import type { OrderStatus } from "../data";
-import { RowActionLink, RowActionButton, EyeIcon, XCircleIcon } from "@/components/admin/RowActions";
+import { RowActionLink, RowActionButton, EyeIcon, XCircleIcon, TrashIcon } from "@/components/admin/RowActions";
 import type { Dictionary } from "@/i18n/dictionary";
 import type { Locale } from "@/i18n/locales";
 
@@ -32,10 +32,21 @@ export default function OrdererOrderRowActions({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  const isDeletable = currentStatus === "cancelled" || currentStatus === "delivered";
+
   function handleCancel() {
     if (!window.confirm(dict.confirmCancelOrder)) return;
     startTransition(async () => {
       const result = await cancelOrderAction(locale, orderId, customerId, label);
+      if (result.error) setError(result.error);
+      else router.refresh();
+    });
+  }
+
+  function handleDelete() {
+    if (!window.confirm(dict.confirmDeleteOrder)) return;
+    startTransition(async () => {
+      const result = await deleteOrderAction(locale, orderId, customerId, label);
       if (result.error) setError(result.error);
       else router.refresh();
     });
@@ -82,6 +93,11 @@ export default function OrdererOrderRowActions({
         {isAdmin && isCancellable && (
           <RowActionButton label={dict.actionCancelOrder} disabled={pending} danger onClick={handleCancel}>
             <XCircleIcon />
+          </RowActionButton>
+        )}
+        {isAdmin && isDeletable && (
+          <RowActionButton label={dict.actionDelete} disabled={pending} danger onClick={handleDelete}>
+            <TrashIcon />
           </RowActionButton>
         )}
       </div>

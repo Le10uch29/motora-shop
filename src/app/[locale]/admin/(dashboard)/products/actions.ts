@@ -56,7 +56,7 @@ type ParsedFields = {
 
 function readFields(formData: FormData): ParsedFields | null {
   const name = readLocalizedField(formData, "name");
-  const description = readLocalizedField(formData, "description");
+  const description = readLocalizedField(formData, "description") ?? { ru: "", az: "", ka: "" };
   const slugInput = String(formData.get("slug") ?? "").trim();
   const category = String(formData.get("category") ?? "").trim();
   const brandId = String(formData.get("brandId") ?? "").trim();
@@ -77,10 +77,6 @@ function readFields(formData: FormData): ParsedFields | null {
     !name.ru ||
     !name.az ||
     !name.ka ||
-    !description ||
-    !description.ru ||
-    !description.az ||
-    !description.ka ||
     !slugInput ||
     !category ||
     !brandId ||
