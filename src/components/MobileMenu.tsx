@@ -72,7 +72,7 @@ export default function MobileMenu({
       </button>
 
       {open && (
-        <div className="absolute inset-x-0 top-full z-30 flex max-h-[80vh] flex-col overflow-y-auto border-t border-zinc-200 bg-white px-6 py-6 shadow-lg dark:border-zinc-800 dark:bg-black">
+        <div className="flame-sidebar absolute inset-x-0 top-full z-30 flex max-h-[80vh] flex-col overflow-y-auto border-t border-zinc-200 px-6 py-6 shadow-lg dark:border-zinc-800">
           <nav className="flex flex-col gap-1 text-base font-medium text-zinc-700 dark:text-zinc-300">
             {navLinks.map((link) => (
               <Link

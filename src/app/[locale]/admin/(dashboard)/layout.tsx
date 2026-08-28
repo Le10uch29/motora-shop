@@ -32,7 +32,7 @@ export default async function AdminDashboardLayout({
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
-      <header className="flex shrink-0 items-center justify-between border-b border-zinc-200 bg-sky-50 px-6 py-4 dark:border-zinc-800 dark:bg-black print:hidden">
+      <header className="flame-header flex shrink-0 items-center justify-between border-b border-zinc-200 px-6 py-4 dark:border-zinc-800 print:hidden">
         <Link
           href={`/${locale}`}
           className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50"
@@ -57,7 +57,7 @@ export default async function AdminDashboardLayout({
       </header>
 
       <div className="flex flex-1">
-        <aside className="flex w-56 shrink-0 flex-col gap-6 border-r border-zinc-200 bg-sky-50 px-4 py-6 dark:border-zinc-800 dark:bg-black print:hidden">
+        <aside className="flame-sidebar flex w-56 shrink-0 flex-col gap-6 border-r border-zinc-200 px-4 py-6 dark:border-zinc-800 print:hidden">
           <nav className="flex flex-col gap-1 text-sm font-medium text-zinc-600 dark:text-zinc-400">
             {navItems
               .filter((item) => item.show)

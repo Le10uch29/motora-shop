@@ -56,6 +56,11 @@ export default async function LocaleLayout({
     <html
       lang={locale}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      // The blocking script below adds .dark to this element before React
+      // hydrates (that's the point — it prevents a light-then-dark flash for
+      // returning dark-theme visitors), so its class attribute legitimately
+      // differs from what was server-rendered. That's expected, not a bug.
+      suppressHydrationWarning
     >
       <head>
         {/* Runs before paint so a returning visitor who chose dark doesn't
