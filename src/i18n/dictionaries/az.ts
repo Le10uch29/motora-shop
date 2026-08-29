@@ -312,6 +312,8 @@ const az: Dictionary = {
     allBrands: "Bütün brendlər",
     apply: "Tətbiq et",
     reset: "Sıfırla",
+    noResultsLabel: "Heç nə tapılmadı",
+    viewAllResultsPrefix: "Hamısını göstər",
   },
   home: {
     brand: "Araz Motors",

@@ -377,11 +377,16 @@ export async function importProductsAction(
     return { created: 0, updated: 0, skipped: rows.length, conflicts: 0, error: fetchError.message };
   }
 
-  // Keyed case-insensitively — "21202ap" and "21202Ap" are the same part.
+  // Keyed case-insensitively — "21202ap" and "21202Ap" are the same part —
+  // AND scoped to this import's brand: the same code can legitimately repeat
+  // across different brands (rare for product_code, common for origin_code —
+  // two aftermarket brands making an equivalent part for the same OEM
+  // reference). A match must belong to this brand too, not just share a
+  // code, or an Elring import could silently patch an unrelated APLUS row.
   const existingByCode = new Map<string, NonNullable<typeof existingRows>[number]>();
   for (const row of existingRows ?? []) {
     const key = row.product_code?.trim().toLowerCase();
-    if (key && !existingByCode.has(key)) {
+    if (key && row.brand_id === brandId && !existingByCode.has(key)) {
       existingByCode.set(key, row);
     }
   }

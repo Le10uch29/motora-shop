@@ -310,6 +310,8 @@ export type Dictionary = {
     allBrands: string;
     apply: string;
     reset: string;
+    noResultsLabel: string;
+    viewAllResultsPrefix: string;
   };
   home: {
     brand: string;

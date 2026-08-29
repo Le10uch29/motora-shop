@@ -1,11 +1,14 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { Locale } from "@/i18n/locales";
 import type { Dictionary } from "@/i18n/dictionary";
 import type { Brand } from "@/lib/brands";
+import { useSearchSuggestions } from "@/hooks/useSearchSuggestions";
+import SearchSuggestionsDropdown from "@/components/SearchSuggestionsDropdown";
+import type { SearchSuggestion } from "@/lib/actions/search";
 
 type FilterFieldsState = {
   make: string;
@@ -59,6 +62,8 @@ export default function HeaderSearch({
   const searchParams = useSearchParams();
 
   const [query, setQuery] = useState(() => searchParams.get("q") ?? "");
+  const searchFormRef = useRef<HTMLFormElement>(null);
+  const suggestions = useSearchSuggestions(query, locale, { containerRef: searchFormRef });
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filters, setFilters] = useState<FilterFieldsState>(() => filtersFromSearchParams(searchParams));
 
@@ -92,7 +97,13 @@ export default function HeaderSearch({
 
   function handleSearchSubmit(event: FormEvent) {
     event.preventDefault();
+    suggestions.close();
     navigateWith({ q: query.trim() || undefined });
+  }
+
+  function goToResult(result: SearchSuggestion) {
+    suggestions.close();
+    router.push(`/${locale}/catalog/${result.slug}`);
   }
 
   function handleFiltersApply(event: FormEvent) {
@@ -140,7 +151,7 @@ export default function HeaderSearch({
 
   return (
     <div className="flex w-full items-center gap-2">
-      <form onSubmit={handleSearchSubmit} role="search" className="min-w-0 flex-1">
+      <form ref={searchFormRef} onSubmit={handleSearchSubmit} role="search" className="relative min-w-0 flex-1">
         <div className="flex w-full min-w-0 items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1.5 focus-within:border-orange-500 dark:border-zinc-700 dark:bg-zinc-900">
           <button
             type="submit"
@@ -163,11 +174,25 @@ export default function HeaderSearch({
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => suggestions.handleKeyDown(event, goToResult)}
             placeholder={dict.placeholder}
             aria-label={dict.ariaLabel}
             className="min-w-0 flex-1 bg-transparent text-sm text-zinc-900 outline-none placeholder:text-zinc-400 dark:text-zinc-50"
           />
         </div>
+
+        {suggestions.open && (
+          <SearchSuggestionsDropdown
+            locale={locale}
+            dict={dict}
+            results={suggestions.results}
+            total={suggestions.total}
+            loading={suggestions.loading}
+            highlightedIndex={suggestions.highlightedIndex}
+            viewAllHref={`/${locale}/catalog?q=${encodeURIComponent(query.trim())}`}
+            onSelect={suggestions.close}
+          />
+        )}
       </form>
 
       <button

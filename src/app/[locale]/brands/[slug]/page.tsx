@@ -76,6 +76,8 @@ export default async function BrandDetailPage({
         <Suspense fallback={<div className="h-9 w-full max-w-sm rounded-full bg-zinc-100 dark:bg-zinc-800" />}>
           <BrandSearch
             basePath={basePath}
+            locale={locale}
+            brandSlug={brand.slug}
             dict={dict.search}
             carMakes={brandMakes}
             modelsByMake={brandModelsByMake}

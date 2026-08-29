@@ -321,6 +321,8 @@ const ru: Dictionary = {
     allBrands: "Все бренды",
     apply: "Применить",
     reset: "Сбросить",
+    noResultsLabel: "Ничего не найдено",
+    viewAllResultsPrefix: "Показать все",
   },
   home: {
     brand: "Araz Motors",

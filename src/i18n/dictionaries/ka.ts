@@ -312,6 +312,8 @@ const ka: Dictionary = {
     allBrands: "ყველა ბრენდი",
     apply: "გამოყენება",
     reset: "გასუფთავება",
+    noResultsLabel: "არაფერი მოიძებნა",
+    viewAllResultsPrefix: "ყველას ჩვენება",
   },
   home: {
     brand: "Araz Motors",
