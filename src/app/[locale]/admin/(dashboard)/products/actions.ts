@@ -267,6 +267,39 @@ function chunk<T>(items: T[], size: number): T[][] {
   return groups;
 }
 
+/** The same product code can appear more than once in one spreadsheet, and
+ * with inconsistent casing (e.g. "21202ap" vs "21202Ap" for the same part) —
+ * collapse those down to one row per code (case-insensitively) before
+ * matching against the DB, taking the first non-empty value per field across
+ * the repeats. Otherwise each repeat/casing variant creates its own new
+ * product instead of being recognized as the same one. */
+function mergeDuplicateImportRows(rows: ImportRow[]): ImportRow[] {
+  const byCode = new Map<string, ImportRow>();
+  for (const raw of rows) {
+    const code = raw.productCode.trim();
+    const key = code.toLowerCase();
+    const existing = byCode.get(key);
+    if (!existing) {
+      byCode.set(key, { ...raw, productCode: code });
+      continue;
+    }
+    byCode.set(key, {
+      productCode: existing.productCode,
+      originCode: existing.originCode ?? raw.originCode,
+      price: existing.price ?? raw.price,
+      stock: existing.stock ?? raw.stock,
+      name: existing.name ?? raw.name,
+      description: existing.description ?? raw.description,
+      make: existing.make ?? raw.make,
+      model: existing.model ?? raw.model,
+      photoUrl: existing.photoUrl ?? raw.photoUrl,
+      yearFrom: existing.yearFrom ?? raw.yearFrom,
+      yearTo: existing.yearTo ?? raw.yearTo,
+    });
+  }
+  return Array.from(byCode.values());
+}
+
 export async function importProductsAction(
   locale: Locale,
   categoryId: string,
@@ -277,21 +310,27 @@ export async function importProductsAction(
   const admin = createAdminClient();
   const currentYear = new Date().getFullYear();
 
-  const validRows = rows.filter((r) => r.productCode.trim().length > 0);
-  const skipped = rows.length - validRows.length;
-  if (validRows.length === 0) {
+  const validRowsRaw = rows.filter((r) => r.productCode.trim().length > 0);
+  const skipped = rows.length - validRowsRaw.length;
+  if (validRowsRaw.length === 0) {
     return { created: 0, updated: 0, skipped, error: null };
   }
 
-  const codes = Array.from(new Set(validRows.map((r) => r.productCode.trim())));
+  const validRows = mergeDuplicateImportRows(validRowsRaw);
+  const codes = validRows.map((r) => r.productCode);
 
+  // Fetched unfiltered (not `.in("product_code", codes)`) because that
+  // filter is case-sensitive — it would miss e.g. "21202Ap" already in the
+  // DB when this file has "21202ap", creating a duplicate instead of
+  // updating it. The table is a few hundred to low thousands of rows, so
+  // fetching all of them here (once per import) is cheap.
   const [{ data: existingRows, error: fetchError }, { data: slugRows }] = await Promise.all([
     admin
       .from("products")
       .select(
         "id, product_code, price, stock, origin_code, make, model, brand_id, images, name, description, year_from, year_to"
       )
-      .in("product_code", codes),
+      .not("product_code", "is", null),
     admin
       .from("products")
       .select("slug")
@@ -299,10 +338,12 @@ export async function importProductsAction(
   ]);
   if (fetchError) return { created: 0, updated: 0, skipped: rows.length, error: fetchError.message };
 
+  // Keyed case-insensitively — "21202ap" and "21202Ap" are the same part.
   const existingByCode = new Map<string, NonNullable<typeof existingRows>[number]>();
   for (const row of existingRows ?? []) {
-    if (row.product_code && !existingByCode.has(row.product_code)) {
-      existingByCode.set(row.product_code, row);
+    const key = row.product_code?.trim().toLowerCase();
+    if (key && !existingByCode.has(key)) {
+      existingByCode.set(key, row);
     }
   }
 
@@ -319,8 +360,8 @@ export async function importProductsAction(
   const toUpdate: { id: string; patch: Record<string, unknown> }[] = [];
 
   for (const row of validRows) {
-    const code = row.productCode.trim();
-    const existing = existingByCode.get(code);
+    const code = row.productCode;
+    const existing = existingByCode.get(code.toLowerCase());
     const nameText = row.name?.trim();
     const descriptionText = row.description?.trim();
     const originCode = row.originCode?.trim();
