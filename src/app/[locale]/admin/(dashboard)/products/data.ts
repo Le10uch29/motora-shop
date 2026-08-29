@@ -57,6 +57,16 @@ export async function getBrandOptions(): Promise<{ id: string; name: string }[]>
   return data ?? [];
 }
 
+/** Unfiltered count of every product — distinct from getAdminProducts's
+ * `total`, which reflects the current search query. The "delete all
+ * products" confirmation needs the true grand total, since that action
+ * always wipes the whole catalog regardless of any active search filter. */
+export async function getProductsGrandTotal(): Promise<number> {
+  const supabase = await createClient();
+  const { count } = await supabase.from("products").select("*", { count: "exact", head: true });
+  return count ?? 0;
+}
+
 export async function getAdminProducts(
   locale: Locale,
   options: { query?: string; page?: number } = {}
@@ -100,7 +110,9 @@ export async function getAdminProducts(
   const query = options.query?.trim().toLowerCase();
   if (query) {
     rows = rows.filter((row) =>
-      `${row.displayName} ${row.brandName}`.toLowerCase().includes(query)
+      `${row.displayName} ${row.brandName} ${row.productCode} ${row.originCode} ${row.make} ${row.model}`
+        .toLowerCase()
+        .includes(query)
     );
   }
 

@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useTransition, type ReactNode } from "react";
-import { deleteProductAction, deleteProductsAction } from "./actions";
+import { deleteProductAction, deleteProductsAction, deleteAllProductsAction } from "./actions";
 import ProductFormModal, { type ProductFormValues } from "./ProductFormModal";
 import ProductWarehousesModal from "./ProductWarehousesModal";
 import ImportProductsModal from "./ImportProductsModal";
+import ImportConflictsModal from "./ImportConflictsModal";
+import MissingDataModal from "./MissingDataModal";
 import { RowActionLink, RowActionButton, EyeIcon, PencilIcon, TrashIcon } from "@/components/admin/RowActions";
 import type { AdminProductRow } from "./data";
 import { formatGel } from "@/lib/currency";
@@ -16,6 +18,7 @@ export default function ProductsListClient({
   dict,
   isAdmin,
   rows,
+  total,
   brands,
   warehouses,
   stockByProduct,
@@ -25,6 +28,7 @@ export default function ProductsListClient({
   dict: Dictionary["admin"];
   isAdmin: boolean;
   rows: AdminProductRow[];
+  total: number;
   brands: { id: string; name: string }[];
   warehouses: { id: string; name: string }[];
   stockByProduct: Record<string, Record<string, number>>;
@@ -32,6 +36,8 @@ export default function ProductsListClient({
 }) {
   const [modal, setModal] = useState<{ mode: "create" | "edit"; values?: ProductFormValues } | null>(null);
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [conflictsModalOpen, setConflictsModalOpen] = useState(false);
+  const [missingDataModalOpen, setMissingDataModalOpen] = useState(false);
   const [warehouseModalRow, setWarehouseModalRow] = useState<AdminProductRow | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -68,6 +74,18 @@ export default function ProductsListClient({
     const ids = Array.from(selectedIds);
     startTransition(async () => {
       const result = await deleteProductsAction(locale, ids);
+      setDeleteError(result.error);
+      setSelectedIds(new Set());
+    });
+  }
+
+  function handleDeleteAll() {
+    if (total === 0) return;
+    if (!window.confirm(`${dict.confirmDeleteAllProducts}\n${dict.confirmDeleteAllProductsCountLabel} ${total}`)) {
+      return;
+    }
+    startTransition(async () => {
+      const result = await deleteAllProductsAction(locale);
       setDeleteError(result.error);
       setSelectedIds(new Set());
     });
@@ -116,6 +134,20 @@ export default function ProductsListClient({
             </button>
             <button
               type="button"
+              onClick={() => setConflictsModalOpen(true)}
+              className="rounded-full border border-amber-500 px-5 py-2 text-sm font-semibold text-amber-600 transition-colors hover:bg-amber-50 dark:hover:bg-amber-950/40"
+            >
+              {dict.importConflictsButton}
+            </button>
+            <button
+              type="button"
+              onClick={() => setMissingDataModalOpen(true)}
+              className="rounded-full border border-zinc-300 px-5 py-2 text-sm font-semibold text-zinc-700 transition-colors hover:border-orange-500 hover:text-orange-600 dark:border-zinc-700 dark:text-zinc-300"
+            >
+              {dict.missingDataButton}
+            </button>
+            <button
+              type="button"
               onClick={() => setModal({ mode: "create" })}
               className="rounded-full bg-orange-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-500"
             >
@@ -124,6 +156,19 @@ export default function ProductsListClient({
           </div>
         )}
       </div>
+
+      {isAdmin && total > 0 && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            disabled={pending}
+            onClick={handleDeleteAll}
+            className="rounded-full border border-red-300 px-4 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-60 dark:border-red-900 dark:hover:bg-red-950/40"
+          >
+            {dict.deleteAllProductsButton}
+          </button>
+        </div>
+      )}
 
       {searchSlot}
 
@@ -269,6 +314,22 @@ export default function ProductsListClient({
           dict={dict}
           brands={brands}
           onClose={() => setImportModalOpen(false)}
+        />
+      )}
+
+      {conflictsModalOpen && (
+        <ImportConflictsModal
+          locale={locale}
+          dict={dict}
+          onClose={() => setConflictsModalOpen(false)}
+        />
+      )}
+
+      {missingDataModalOpen && (
+        <MissingDataModal
+          locale={locale}
+          dict={dict}
+          onClose={() => setMissingDataModalOpen(false)}
         />
       )}
 

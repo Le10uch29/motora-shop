@@ -213,6 +213,11 @@ export default function ImportProductsModal({
               {dict.importResultUpdatedLabel} — {result.updated}, {dict.importResultSkippedLabel} —{" "}
               {result.skipped}.
             </p>
+            {result.conflicts > 0 && (
+              <p className="text-sm text-amber-600 dark:text-amber-500">
+                {dict.importConflictsFoundLabel} {result.conflicts}. {dict.importConflictsHint}
+              </p>
+            )}
             {result.error && <p className="text-sm text-red-600">{result.error}</p>}
             <div className="flex items-center gap-3">
               <button

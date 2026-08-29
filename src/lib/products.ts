@@ -276,7 +276,8 @@ export function filterProducts(
     if (filters.yearFrom !== undefined && p.yearTo < filters.yearFrom) return false;
     if (filters.yearTo !== undefined && p.yearFrom > filters.yearTo) return false;
     if (query) {
-      const haystack = `${t(p.name, locale)} ${t(p.description, locale)}`.toLowerCase();
+      const haystack = `${t(p.name, locale)} ${t(p.description, locale)} ${p.productCode ?? ""} ${p.originCode ?? ""} ${p.make} ${makeLabel(p.make, locale)} ${p.model}`
+        .toLowerCase();
       if (!haystack.includes(query)) return false;
     }
     return true;

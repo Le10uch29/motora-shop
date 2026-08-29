@@ -3,7 +3,7 @@ import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
 import { requireStaff } from "@/lib/auth";
 import { single } from "@/lib/searchParams";
-import { getAdminProducts, getBrandOptions, PRODUCTS_PAGE_SIZE } from "./data";
+import { getAdminProducts, getBrandOptions, getProductsGrandTotal, PRODUCTS_PAGE_SIZE } from "./data";
 import { getWarehouseOptions, getProductStockMap } from "../warehouses/data";
 import ProductsListClient from "./ProductsListClient";
 import AdminSearchBox from "@/components/admin/AdminSearchBox";
@@ -23,6 +23,7 @@ export default async function AdminProductsPage({
   const page = Number(single(sp.page)) || 1;
 
   const { rows, total } = await getAdminProducts(locale, { query, page });
+  const grandTotal = query ? await getProductsGrandTotal() : total;
   const brands = await getBrandOptions();
   // Warehouse data (names, per-warehouse stock) is admin-only UI in
   // ProductsListClient — don't even fetch it for a seller, since props on a
@@ -39,6 +40,7 @@ export default async function AdminProductsPage({
         dict={dict.admin}
         isAdmin={isAdmin}
         rows={rows}
+        total={grandTotal}
         brands={brands}
         warehouses={warehouses}
         stockByProduct={stockByProduct}

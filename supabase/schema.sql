@@ -458,6 +458,26 @@ create trigger orders_set_price_from_product
 -- API вставить заказ сразу со статусом 'delivered' или скидкой, а сотрудник
 -- (даже с политикой staff_update_order_status) мог бы напрямую поменять
 -- price_at_order/customer_id/order_number в обход server action'ов.
+-- Excel import: when the same product code appears more than once in one
+-- file with conflicting values (currently just price), the higher value is
+-- kept automatically and a row is logged here so an admin can double-check
+-- it later — see importProductsAction / ImportConflictsModal.
+create table if not exists import_conflicts (
+  id uuid primary key default gen_random_uuid(),
+  product_id uuid references products(id) on delete cascade,
+  product_code text not null,
+  origin_code text,
+  field text not null,
+  values text[] not null,
+  resolved_value text not null,
+  resolved boolean not null default false,
+  created_at timestamptz not null default now()
+);
+alter table import_conflicts enable row level security;
+drop policy if exists "admin_manage_import_conflicts" on import_conflicts;
+create policy "admin_manage_import_conflicts" on import_conflicts for all
+  to authenticated using (is_admin()) with check (is_admin());
+
 revoke insert on orders from authenticated;
 grant insert (customer_id, product_id, quantity) on orders to authenticated;
 

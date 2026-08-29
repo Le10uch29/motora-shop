@@ -256,6 +256,7 @@ export type ImportResult = {
   created: number;
   updated: number;
   skipped: number;
+  conflicts: number;
   error: string | null;
 };
 
@@ -267,14 +268,32 @@ function chunk<T>(items: T[], size: number): T[][] {
   return groups;
 }
 
+type ImportRowConflict = {
+  productCode: string;
+  originCode?: string;
+  field: string;
+  values: string[];
+  resolvedValue: string;
+};
+
 /** The same product code can appear more than once in one spreadsheet, and
  * with inconsistent casing (e.g. "21202ap" vs "21202Ap" for the same part) —
  * collapse those down to one row per code (case-insensitively) before
  * matching against the DB, taking the first non-empty value per field across
  * the repeats. Otherwise each repeat/casing variant creates its own new
- * product instead of being recognized as the same one. */
-function mergeDuplicateImportRows(rows: ImportRow[]): ImportRow[] {
+ * product instead of being recognized as the same one.
+ *
+ * If repeats of the same code disagree on price, that's a real conflict
+ * (not just one row having the field and another not) — the higher price is
+ * kept automatically and the disagreement is returned so it can be logged
+ * for an admin to double-check later, rather than silently picking one. */
+function mergeDuplicateImportRows(rows: ImportRow[]): {
+  rows: ImportRow[];
+  conflicts: ImportRowConflict[];
+} {
   const byCode = new Map<string, ImportRow>();
+  const conflicts: ImportRowConflict[] = [];
+
   for (const raw of rows) {
     const code = raw.productCode.trim();
     const key = code.toLowerCase();
@@ -283,10 +302,27 @@ function mergeDuplicateImportRows(rows: ImportRow[]): ImportRow[] {
       byCode.set(key, { ...raw, productCode: code });
       continue;
     }
+
+    let price = existing.price;
+    if (raw.price != null) {
+      if (existing.price == null) {
+        price = raw.price;
+      } else if (raw.price !== existing.price) {
+        price = Math.max(existing.price, raw.price);
+        conflicts.push({
+          productCode: code,
+          originCode: existing.originCode ?? raw.originCode,
+          field: "price",
+          values: [String(existing.price), String(raw.price)],
+          resolvedValue: String(price),
+        });
+      }
+    }
+
     byCode.set(key, {
       productCode: existing.productCode,
       originCode: existing.originCode ?? raw.originCode,
-      price: existing.price ?? raw.price,
+      price,
       stock: existing.stock ?? raw.stock,
       name: existing.name ?? raw.name,
       description: existing.description ?? raw.description,
@@ -297,7 +333,8 @@ function mergeDuplicateImportRows(rows: ImportRow[]): ImportRow[] {
       yearTo: existing.yearTo ?? raw.yearTo,
     });
   }
-  return Array.from(byCode.values());
+
+  return { rows: Array.from(byCode.values()), conflicts };
 }
 
 export async function importProductsAction(
@@ -313,10 +350,10 @@ export async function importProductsAction(
   const validRowsRaw = rows.filter((r) => r.productCode.trim().length > 0);
   const skipped = rows.length - validRowsRaw.length;
   if (validRowsRaw.length === 0) {
-    return { created: 0, updated: 0, skipped, error: null };
+    return { created: 0, updated: 0, skipped, conflicts: 0, error: null };
   }
 
-  const validRows = mergeDuplicateImportRows(validRowsRaw);
+  const { rows: validRows, conflicts: rowConflicts } = mergeDuplicateImportRows(validRowsRaw);
   const codes = validRows.map((r) => r.productCode);
 
   // Fetched unfiltered (not `.in("product_code", codes)`) because that
@@ -336,7 +373,9 @@ export async function importProductsAction(
       .select("slug")
       .in("slug", Array.from(new Set(codes.map((c) => slugify(c))))),
   ]);
-  if (fetchError) return { created: 0, updated: 0, skipped: rows.length, error: fetchError.message };
+  if (fetchError) {
+    return { created: 0, updated: 0, skipped: rows.length, conflicts: 0, error: fetchError.message };
+  }
 
   // Keyed case-insensitively — "21202ap" and "21202Ap" are the same part.
   const existingByCode = new Map<string, NonNullable<typeof existingRows>[number]>();
@@ -357,7 +396,11 @@ export async function importProductsAction(
   }
 
   const toInsert: Record<string, unknown>[] = [];
-  const toUpdate: { id: string; patch: Record<string, unknown> }[] = [];
+  const toUpdate: { id: string; code: string; patch: Record<string, unknown> }[] = [];
+  // Maps a product code (lowercased) to the id it ends up as in this run —
+  // needed to attach row-conflict log entries to the right product once
+  // inserts/updates have actually happened.
+  const codeToProductId = new Map<string, string>();
 
   for (const row of validRows) {
     const code = row.productCode;
@@ -420,7 +463,9 @@ export async function importProductsAction(
     if (isDefaultYearRange && row.yearTo) patch.year_to = row.yearTo;
 
     if (Object.keys(patch).length > 0) {
-      toUpdate.push({ id: existing.id, patch });
+      toUpdate.push({ id: existing.id, code, patch });
+    } else {
+      codeToProductId.set(code.toLowerCase(), existing.id);
     }
   }
 
@@ -429,18 +474,58 @@ export async function importProductsAction(
   let updated = 0;
 
   for (const group of chunk(toInsert, 50)) {
-    const { data, error } = await admin.from("products").insert(group).select("id");
-    if (error) errors.push(error.message);
-    else created += data?.length ?? 0;
+    const { data, error } = await admin.from("products").insert(group).select("id, product_code");
+    if (error) {
+      errors.push(error.message);
+      continue;
+    }
+    created += data?.length ?? 0;
+    for (const row of data ?? []) {
+      if (row.product_code) codeToProductId.set(row.product_code.toLowerCase(), row.id);
+    }
   }
 
   for (const group of chunk(toUpdate, 50)) {
     const results = await Promise.all(
-      group.map(({ id, patch }) => admin.from("products").update(patch).eq("id", id))
+      group.map(({ id, code, patch }) =>
+        admin
+          .from("products")
+          .update(patch)
+          .eq("id", id)
+          .then((res) => ({ ...res, id, code }))
+      )
     );
-    for (const { error } of results) {
+    for (const { error, id, code } of results) {
+      if (error) {
+        errors.push(error.message);
+      } else {
+        updated++;
+        codeToProductId.set(code.toLowerCase(), id);
+      }
+    }
+  }
+
+  let conflictsLogged = 0;
+  if (rowConflicts.length > 0) {
+    const conflictRows = rowConflicts
+      .map((c) => {
+        const productId = codeToProductId.get(c.productCode.toLowerCase());
+        if (!productId) return null;
+        return {
+          product_id: productId,
+          product_code: c.productCode,
+          origin_code: c.originCode || null,
+          field: c.field,
+          values: c.values,
+          resolved_value: c.resolvedValue,
+        };
+      })
+      .filter((r): r is NonNullable<typeof r> => r !== null);
+
+    for (const group of chunk(conflictRows, 50)) {
+      const { error } = await admin.from("import_conflicts").insert(group);
       if (error) errors.push(error.message);
-      else updated++;
+      else conflictsLogged += group.length;
     }
   }
 
@@ -448,14 +533,80 @@ export async function importProductsAction(
     actor,
     "create",
     "product",
-    `Импорт Excel: ${created} новых, ${updated} обновлено, ${skipped} пропущено`,
+    `Импорт Excel: ${created} новых, ${updated} обновлено, ${skipped} пропущено, ${conflictsLogged} конфликтов`,
     {}
   );
   revalidatePath(`/${locale}/admin/products`);
   revalidatePath(`/${locale}/catalog`);
   revalidatePath(`/${locale}`);
 
-  return { created, updated, skipped, error: errors.length > 0 ? errors.join("; ") : null };
+  return {
+    created,
+    updated,
+    skipped,
+    conflicts: conflictsLogged,
+    error: errors.length > 0 ? errors.join("; ") : null,
+  };
+}
+
+export type ImportConflictRow = {
+  id: string;
+  productId: string | null;
+  productCode: string;
+  originCode: string | null;
+  field: string;
+  values: string[];
+  resolvedValue: string;
+  createdAt: string;
+  productName: string | null;
+  productSlug: string | null;
+};
+
+export async function getImportConflictsAction(locale: Locale): Promise<ImportConflictRow[]> {
+  await requireAdmin(locale);
+  const admin = createAdminClient();
+
+  const { data } = await admin
+    .from("import_conflicts")
+    .select(
+      "id, product_id, product_code, origin_code, field, values, resolved_value, created_at, products(name, slug)"
+    )
+    .eq("resolved", false)
+    .order("created_at", { ascending: false });
+
+  return (data ?? []).map((row) => {
+    const product = Array.isArray(row.products) ? row.products[0] : row.products;
+    return {
+      id: row.id,
+      productId: row.product_id,
+      productCode: row.product_code,
+      originCode: row.origin_code,
+      field: row.field,
+      values: row.values,
+      resolvedValue: row.resolved_value,
+      createdAt: row.created_at,
+      productName: product?.name?.[locale] ?? product?.name?.ru ?? null,
+      productSlug: product?.slug ?? null,
+    };
+  });
+}
+
+/** Marks a logged import conflict as reviewed — doesn't touch the product
+ * itself (the higher price was already applied at import time); this just
+ * clears it from the admin's "needs a look" list. */
+export async function resolveImportConflictAction(
+  locale: Locale,
+  id: string
+): Promise<{ error: string | null }> {
+  const actor = await requireAdmin(locale);
+  const admin = createAdminClient();
+
+  const { error } = await admin.from("import_conflicts").update({ resolved: true }).eq("id", id);
+  if (error) return { error: error.message };
+
+  await logAction(actor, "update", "product", `Проверен конфликт импорта: ${id}`, {});
+  revalidatePath(`/${locale}/admin/products`);
+  return { error: null };
 }
 
 export async function deleteProductAction(
@@ -492,4 +643,54 @@ export async function deleteProductsAction(
   revalidatePath(`/${locale}/catalog`);
   revalidatePath(`/${locale}`);
   return { error: null };
+}
+
+/** Wipes the entire product catalog — admin-only, irreversible. The client
+ * confirms the exact count with the admin before ever calling this. */
+export async function deleteAllProductsAction(locale: Locale): Promise<{ error: string | null }> {
+  const actor = await requireAdmin(locale);
+
+  const admin = createAdminClient();
+  // Supabase requires an explicit filter on delete; `id is not null` is
+  // always true for every row (id is the primary key), so this deletes all.
+  const { error, count } = await admin
+    .from("products")
+    .delete({ count: "exact" })
+    .not("id", "is", null);
+  if (error) return { error: error.message };
+
+  await logAction(actor, "delete", "product", `Удалены все товары: ${count ?? 0}`, {});
+  revalidatePath(`/${locale}/admin/products`);
+  revalidatePath(`/${locale}/catalog`);
+  revalidatePath(`/${locale}`);
+  return { error: null };
+}
+
+export type ProductCompletenessRow = {
+  id: string;
+  productCode: string;
+  originCode: string;
+  price: number;
+  displayName: string;
+};
+
+/** Lean listing of every product's completeness-relevant fields, for the
+ * "missing data" audit modal — lets an admin spot products that came out of
+ * a bulk import (or manual entry) without a price/origin code/product code. */
+export async function getProductsCompletenessAction(locale: Locale): Promise<ProductCompletenessRow[]> {
+  await requireAdmin(locale);
+  const admin = createAdminClient();
+
+  const { data } = await admin
+    .from("products")
+    .select("id, product_code, origin_code, price, name")
+    .order("created_at", { ascending: false });
+
+  return (data ?? []).map((p) => ({
+    id: p.id,
+    productCode: p.product_code ?? "",
+    originCode: p.origin_code ?? "",
+    price: p.price,
+    displayName: p.name?.[locale] ?? p.name?.ru ?? "",
+  }));
 }
