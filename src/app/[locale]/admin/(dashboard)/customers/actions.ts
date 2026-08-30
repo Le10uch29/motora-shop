@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth";
 import { logAction } from "@/lib/logs";
 import { generateTempPassword } from "@/lib/password";
-import { normalizePhone } from "@/lib/phone";
+import { normalizePhone, normalizePhoneForAuth } from "@/lib/phone";
 import type { Locale } from "@/i18n/locales";
 import { isLocale } from "@/i18n/locales";
 
@@ -117,7 +117,7 @@ export async function createCustomerAction(
   // email stays optional (given only if the admin filled it in).
   const { data: created, error: createError } = await admin.auth.admin.createUser({
     password,
-    phone: fields.phone,
+    phone: normalizePhoneForAuth(fields.phone),
     phone_confirm: true,
     ...(email ? { email, email_confirm: true } : {}),
   });
@@ -227,7 +227,9 @@ export async function updateCustomerAction(
   // Phone doubles as the login identifier — keep auth.users in sync so a
   // changed contact number doesn't lock the customer out.
   if (fields.phone !== before.phone) {
-    const { error: phoneError } = await admin.auth.admin.updateUserById(id, { phone: fields.phone });
+    const { error: phoneError } = await admin.auth.admin.updateUserById(id, {
+      phone: normalizePhoneForAuth(fields.phone),
+    });
     if (phoneError) return { ...EMPTY_STATE, error: phoneError.message };
   }
 

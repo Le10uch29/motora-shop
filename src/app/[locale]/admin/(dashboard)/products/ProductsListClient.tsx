@@ -41,7 +41,17 @@ export default function ProductsListClient({
   const [warehouseModalRow, setWarehouseModalRow] = useState<AdminProductRow | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [stockSort, setStockSort] = useState<"none" | "desc" | "asc">("none");
   const [pending, startTransition] = useTransition();
+
+  function handleStockHeaderClick() {
+    setStockSort((prev) => (prev === "desc" ? "asc" : "desc"));
+  }
+
+  const displayRows =
+    stockSort === "none"
+      ? rows
+      : [...rows].sort((a, b) => (stockSort === "desc" ? b.stock - a.stock : a.stock - b.stock));
 
   const allIds = rows.map((r) => r.id);
   const allSelected = allIds.length > 0 && allIds.every((id) => selectedIds.has(id));
@@ -215,12 +225,33 @@ export default function ProductsListClient({
                 <th className="px-4 py-3 font-medium">{dict.productsColName}</th>
                 <th className="px-4 py-3 font-medium">{dict.productsColBrand}</th>
                 <th className="px-4 py-3 font-medium">{dict.productsColPrice}</th>
-                <th className="px-4 py-3 font-medium">{dict.productsColStock}</th>
+                <th className="px-4 py-3 font-medium">
+                  <button
+                    type="button"
+                    onClick={handleStockHeaderClick}
+                    className="flex items-center gap-1 uppercase tracking-wide text-zinc-500 hover:text-orange-600 dark:text-zinc-400"
+                  >
+                    {dict.productsColStock}
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className={`h-3 w-3 shrink-0 transition-transform ${
+                        stockSort === "asc" ? "rotate-180" : ""
+                      } ${stockSort === "none" ? "opacity-40" : ""}`}
+                    >
+                      <path d="M12 5v14M12 19l-5-5M12 19l5-5" />
+                    </svg>
+                  </button>
+                </th>
                 <th className="px-4 py-3 font-medium" />
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-              {rows.map((row) => (
+              {displayRows.map((row) => (
                 <tr key={row.id}>
                   {isAdmin && (
                     <td className="px-4 py-3">
@@ -250,7 +281,17 @@ export default function ProductsListClient({
                   <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
                     {formatGel(row.price, locale)}
                   </td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{row.stock}</td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`inline-flex items-center justify-center rounded-full border px-2.5 py-0.5 text-zinc-600 dark:text-zinc-400 ${
+                        row.stock < 50
+                          ? "border-red-300 bg-red-50 dark:border-red-900 dark:bg-red-950/40"
+                          : "border-emerald-300 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/40"
+                      }`}
+                    >
+                      {row.stock}
+                    </span>
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-2">
                       <RowActionLink href={`/${locale}/admin/products/${row.id}`} label={dict.actionDetails}>
@@ -313,6 +354,7 @@ export default function ProductsListClient({
           locale={locale}
           dict={dict}
           brands={brands}
+          warehouses={warehouses}
           onClose={() => setImportModalOpen(false)}
         />
       )}

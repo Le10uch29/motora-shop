@@ -14,7 +14,7 @@ export default async function OrdersPage({
 }: PageProps<"/[locale]/admin/orders">) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
-  await requireStaff(locale);
+  const staff = await requireStaff(locale);
   const dict = await getDictionary(locale);
 
   const sp = await searchParams;
@@ -28,6 +28,7 @@ export default async function OrdersPage({
       <OrderersListClient
         locale={locale}
         dict={dict.admin}
+        isAdmin={staff.role === "admin"}
         orderers={rows}
         emptyMessage={query ? dict.admin.noResults : dict.admin.emptyOrders}
         searchSlot={

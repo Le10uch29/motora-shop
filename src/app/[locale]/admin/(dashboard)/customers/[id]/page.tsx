@@ -6,6 +6,8 @@ import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { actionLabel } from "../../logs/labels";
 import DetailsToggle, { type LogDetails } from "../../logs/DetailsToggle";
+import { orderStatusLabel, orderStatusClass } from "../../orders/statusStyles";
+import { getCustomerPurchaseHistory } from "../data";
 import CustomerDetailActions from "./CustomerDetailActions";
 
 export default async function CustomerDetailPage({
@@ -29,6 +31,8 @@ export default async function CustomerDetailPage({
   if (!row) notFound();
 
   const { data: userData } = await admin.auth.admin.getUserById(id);
+
+  const purchases = await getCustomerPurchaseHistory(id, locale);
 
   const { data: entries } = await admin
     .from("logs")
@@ -93,6 +97,52 @@ export default async function CustomerDetailPage({
           </div>
         ))}
       </dl>
+
+      <div className="flex flex-col gap-2">
+        <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
+          {dict.admin.customerPurchaseHistoryTitle}
+        </h2>
+        {purchases.length > 0 ? (
+          <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
+            <table className="w-full min-w-[500px] text-left text-sm">
+              <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
+                <tr>
+                  <th className="px-4 py-3 font-medium">{dict.admin.orderColumnProduct}</th>
+                  <th className="px-4 py-3 font-medium">{dict.admin.productProductCodeLabel}</th>
+                  <th className="px-4 py-3 font-medium">{dict.admin.orderColumnQuantity}</th>
+                  <th className="px-4 py-3 font-medium">{dict.admin.orderColumnStatus}</th>
+                  <th className="px-4 py-3 font-medium">{dict.admin.orderColumnWhen}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                {purchases.map((purchase) => (
+                  <tr key={purchase.id}>
+                    <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50">
+                      {purchase.productName}
+                    </td>
+                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                      {purchase.productCode || "—"}
+                    </td>
+                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{purchase.quantity}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-medium ${orderStatusClass(purchase.status)}`}
+                      >
+                        {orderStatusLabel(purchase.status, dict.admin)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-zinc-500">
+                      {new Date(purchase.createdAt).toLocaleString(locale)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-sm text-zinc-500">{dict.admin.customerPurchaseHistoryEmpty}</p>
+        )}
+      </div>
 
       <div className="flex flex-col gap-2">
         <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">{dict.admin.historyTitle}</h2>

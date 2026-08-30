@@ -51,14 +51,25 @@ export default function ProductCard({
               {t(product.badge, locale)}
             </span>
           )}
+          <span className="absolute bottom-3 left-3 rounded-full bg-black/70 px-2.5 py-1 text-xs font-medium uppercase tracking-wide text-orange-300">
+            {t(categoryLabels[product.category], locale)}
+          </span>
         </div>
         <div className="flex flex-1 flex-col gap-2 p-4 pb-0">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-medium uppercase tracking-wide text-orange-600 dark:text-orange-500">
-              {t(categoryLabels[product.category], locale)}
-            </span>
-            <span className="text-xs text-zinc-400">{product.productCode ?? "—"}</span>
-          </div>
+          {(product.originCode || product.productCode) && (
+            <div className="flex flex-col gap-0.5">
+              {product.originCode && (
+                <span className="font-semibold text-zinc-900 dark:text-zinc-50">
+                  {dict.product.originCodeCardLabel}: {product.originCode}
+                </span>
+              )}
+              {product.productCode && (
+                <span className="font-semibold text-zinc-900 dark:text-zinc-50">
+                  {brand?.initials ? `${brand.initials}-${product.productCode}` : product.productCode}
+                </span>
+              )}
+            </div>
+          )}
           <h3 className="font-semibold text-zinc-900 group-hover:text-orange-600 dark:text-zinc-50">
             {t(product.name, locale)}
           </h3>

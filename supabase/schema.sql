@@ -14,6 +14,9 @@ create table if not exists brands (
   created_at timestamptz not null default now()
 );
 alter table brands add column if not exists badge_logo_url text;
+-- Short abbreviation shown before a product's code (e.g. "APLUS AUTOMOTIVE"
+-- -> "A-Plus") — product code display becomes "{initials}-{product_code}".
+alter table brands add column if not exists initials text;
 
 create table if not exists products (
   id uuid primary key default gen_random_uuid(),

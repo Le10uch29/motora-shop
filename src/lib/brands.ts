@@ -10,6 +10,9 @@ export type Brand = {
   logoUrl: string | null;
   /** Compact badge overlaid on product photos for this brand. */
   badgeLogoUrl: string | null;
+  /** Short abbreviation shown before a product's code, e.g. "A-Plus" for
+   * "APLUS AUTOMOTIVE" — product code display becomes "{initials}-{code}". */
+  initials: string | null;
 };
 
 function mapRow(row: {
@@ -17,12 +20,14 @@ function mapRow(row: {
   name: string;
   logo_url: string | null;
   badge_logo_url: string | null;
+  initials: string | null;
 }): Brand {
   return {
     slug: row.slug,
     name: row.name,
     logoUrl: row.logo_url,
     badgeLogoUrl: row.badge_logo_url,
+    initials: row.initials,
   };
 }
 
@@ -32,7 +37,7 @@ export const getBrands = cache(async (): Promise<Brand[]> => {
   const supabase = createPublicClient();
   const { data } = await supabase
     .from("brands")
-    .select("slug, name, logo_url, badge_logo_url")
+    .select("slug, name, logo_url, badge_logo_url, initials")
     .order("name");
   return (data ?? []).map(mapRow);
 });
@@ -50,7 +55,7 @@ export const getBrandBySlug = cache(async (slug: string): Promise<Brand | undefi
   const supabase = createPublicClient();
   const { data } = await supabase
     .from("brands")
-    .select("slug, name, logo_url, badge_logo_url")
+    .select("slug, name, logo_url, badge_logo_url, initials")
     .eq("slug", slug)
     .maybeSingle();
   return data ? mapRow(data) : undefined;

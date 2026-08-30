@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { looksLikeEmail, normalizePhone } from "@/lib/phone";
+import { looksLikeEmail, normalizePhoneForAuth } from "@/lib/phone";
 
 /** Signs out from anywhere on the public site (header icon, mobile menu). */
 export async function signOutAction(formData: FormData) {
@@ -30,11 +30,17 @@ export async function signInAction(
   const { error } = await supabase.auth.signInWithPassword(
     looksLikeEmail(identifier)
       ? { email: identifier, password }
-      : { phone: normalizePhone(identifier), password }
+      : { phone: normalizePhoneForAuth(identifier), password }
   );
 
   if (error) {
-    return { error: invalidCredentialsMessage || error.message };
+    // Only mask genuine wrong-login/wrong-password cases behind the
+    // friendly translated message (so a login attempt can't be used to
+    // probe which accounts exist) — a real config problem (e.g. a disabled
+    // auth provider) shows its actual message instead of also looking like
+    // "wrong password", which is undiagnosable from the outside.
+    const isInvalidCredentials = error.message.toLowerCase().includes("invalid login credentials");
+    return { error: isInvalidCredentials ? invalidCredentialsMessage || error.message : error.message };
   }
 
   redirect(`/${locale}`);

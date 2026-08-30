@@ -104,6 +104,8 @@ export type Dictionary = {
     myAccountTitle: string;
     customerDetailsTitle: string;
     customerHistoryEmpty: string;
+    customerPurchaseHistoryTitle: string;
+    customerPurchaseHistoryEmpty: string;
     addressLabel: string;
     postalCodeLabel: string;
     cityLabel: string;
@@ -126,6 +128,9 @@ export type Dictionary = {
     actionCancelOrder: string;
     confirmCancelOrder: string;
     confirmDeleteOrder: string;
+    bulkStatusChangeLabel: string;
+    confirmBulkStatusChange: string;
+    confirmBulkDeleteOrders: string;
     orderDetailsTitle: string;
     orderColumnProduct: string;
     orderColumnQuantity: string;
@@ -170,6 +175,8 @@ export type Dictionary = {
     addBrand: string;
     editBrand: string;
     brandNameLabel: string;
+    brandInitialsLabel: string;
+    brandInitialsHint: string;
     brandLogoLabel: string;
     brandBadgeLogoLabel: string;
     tableLogo: string;
@@ -253,6 +260,9 @@ export type Dictionary = {
     importFieldPhoto: string;
     importFieldYearFrom: string;
     importFieldYearTo: string;
+    importFieldWarehouse: string;
+    importWarehouseHint: string;
+    importWarehouseStockSetLabel: string;
     importNotUsedOption: string;
     importMissingProductCodeColumn: string;
     importSubmitButton: string;
@@ -338,6 +348,7 @@ export type Dictionary = {
     added: string;
     originCodeLabel: string;
     productCodeLabel: string;
+    originCodeCardLabel: string;
     brandLabel: string;
     makeLabel: string;
     modelLabel: string;

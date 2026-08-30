@@ -49,6 +49,7 @@ export async function createBrandAction(
   const actor = await requireAdmin(locale);
 
   const name = String(formData.get("name") ?? "").trim();
+  const initials = String(formData.get("initials") ?? "").trim();
   if (!name) return { error: "missing_fields" };
 
   const admin = createAdminClient();
@@ -67,6 +68,7 @@ export async function createBrandAction(
     name,
     logo_url: logoUrl,
     badge_logo_url: badgeLogoUrl,
+    initials: initials || null,
   });
 
   if (error) return { error: error.message };
@@ -86,6 +88,7 @@ export async function updateBrandAction(
 
   const id = String(formData.get("id") ?? "");
   const name = String(formData.get("name") ?? "").trim();
+  const initials = String(formData.get("initials") ?? "").trim();
   if (!id || !name) return { error: "missing_fields" };
 
   const admin = createAdminClient();
@@ -99,7 +102,7 @@ export async function updateBrandAction(
     return { error: error instanceof Error ? error.message : "upload_failed" };
   }
 
-  const updates: Record<string, unknown> = { name };
+  const updates: Record<string, unknown> = { name, initials: initials || null };
   if (logoUrl) updates.logo_url = logoUrl;
   if (badgeLogoUrl) updates.badge_logo_url = badgeLogoUrl;
 

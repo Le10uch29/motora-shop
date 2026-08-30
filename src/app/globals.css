@@ -28,6 +28,29 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Browsers don't give <button>/<select>/checkboxes a pointer cursor by
+ * default (only <a href> gets one) — set it globally instead of adding
+ * cursor-pointer to every button across the app one by one. Links, being
+ * already pointer by default, don't need it. Disabled controls explicitly
+ * get not-allowed instead, so a greyed-out button doesn't still invite a
+ * click. */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+select:not(:disabled),
+summary,
+input[type="checkbox"]:not(:disabled),
+input[type="radio"]:not(:disabled) {
+  cursor: pointer;
+}
+
+button:disabled,
+[role="button"][aria-disabled="true"],
+select:disabled,
+input[type="checkbox"]:disabled,
+input[type="radio"]:disabled {
+  cursor: not-allowed;
+}
+
 /* "Flame" treatment for headers and the admin sidebar — a dark/orange glow
  * that blooms along the bottom edge in dark theme (like embers under the
  * bar), swapped for a cool light-blue glow in light theme. Shared by the

@@ -30,7 +30,17 @@ export default async function InvoicePage({
         <PrintButton label={dict.admin.invoicePrintButton} />
       </div>
 
-      <div className="flex items-start justify-between border-b border-zinc-200 pb-6 dark:border-zinc-800 print:border-black">
+      <div className="flex justify-end text-sm text-zinc-500 print:text-black">
+        <div className="text-right">
+          <p>{dict.admin.invoiceDateLabel}</p>
+          <p className="font-medium text-zinc-900 dark:text-zinc-50 print:text-black">
+            {new Date().toLocaleDateString(locale)}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-8 border-b border-zinc-200 pb-6 dark:border-zinc-800 print:border-black sm:grid-cols-2">
+        {/* Company info — left side. */}
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 print:text-black">
             ARAZ MOTORS<span className="text-sm font-normal text-zinc-500 print:text-black">-2026</span>
@@ -45,30 +55,25 @@ export default async function InvoicePage({
             {dict.admin.companyPhoneLabel}: {COMPANY_PHONE}
           </p>
         </div>
-        <div className="text-right text-sm text-zinc-500 print:text-black">
-          <p>{dict.admin.invoiceDateLabel}</p>
-          <p className="font-medium text-zinc-900 dark:text-zinc-50 print:text-black">
-            {new Date().toLocaleDateString(locale)}
-          </p>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-2 print:text-black">
-        <p className="font-semibold text-zinc-900 dark:text-zinc-50 print:text-black">{ordererName}</p>
-        {orderer.kind === "customer" && (
-          <>
-            <p className="text-zinc-600 dark:text-zinc-400 print:text-black">{orderer.organizationName}</p>
-            <p className="text-zinc-600 dark:text-zinc-400 print:text-black">
-              {dict.admin.personalNumberLabel}: {orderer.idCardNumber}
-            </p>
-            <p className="text-zinc-600 dark:text-zinc-400 print:text-black">
-              {dict.admin.phoneLabel}: {orderer.phone || "—"}
-            </p>
-            <p className="text-zinc-600 dark:text-zinc-400 print:text-black">
-              {[orderer.city, orderer.postalCode, orderer.address].filter(Boolean).join(", ")}
-            </p>
-          </>
-        )}
+        {/* Customer info — right side. */}
+        <div className="flex flex-col gap-1 text-sm sm:items-end sm:text-right print:text-black">
+          <p className="font-semibold text-zinc-900 dark:text-zinc-50 print:text-black">{ordererName}</p>
+          {orderer.kind === "customer" && (
+            <>
+              <p className="text-zinc-600 dark:text-zinc-400 print:text-black">{orderer.organizationName}</p>
+              <p className="text-zinc-600 dark:text-zinc-400 print:text-black">
+                {dict.admin.personalNumberLabel}: {orderer.idCardNumber}
+              </p>
+              <p className="text-zinc-600 dark:text-zinc-400 print:text-black">
+                {dict.admin.phoneLabel}: {orderer.phone || "—"}
+              </p>
+              <p className="text-zinc-600 dark:text-zinc-400 print:text-black">
+                {[orderer.city, orderer.postalCode, orderer.address].filter(Boolean).join(", ")}
+              </p>
+            </>
+          )}
+        </div>
       </div>
 
       <table className="w-full text-left text-sm print:text-black">

@@ -99,6 +99,64 @@ export async function updateOrderStatusAction(
   return { error: null };
 }
 
+/** Moves every one of an orderer's active (non-cancelled) order lines to the
+ * same next status at once — the top-level orders list shows one row per
+ * customer/orderer, and a customer who ordered several different products
+ * would otherwise need each line changed individually from their detail
+ * page. Reuses updateOrderStatusAction per line so the stock-deduction
+ * safety on "shipped" (and every other rule) stays in exactly one place. */
+export async function bulkUpdateOrdererStatusAction(
+  locale: Locale,
+  customerId: string,
+  status: (typeof PROGRESSABLE_STATUSES)[number]
+): Promise<{ error: string | null }> {
+  await requireStaff(locale);
+  const admin = createAdminClient();
+
+  const { data: activeOrders } = await admin
+    .from("orders")
+    .select("id, product_name")
+    .eq("customer_id", customerId)
+    .neq("status", "cancelled");
+
+  const errors: string[] = [];
+  for (const order of activeOrders ?? []) {
+    const label = order.product_name?.[locale] ?? order.product_name?.ru ?? "";
+    const result = await updateOrderStatusAction(locale, order.id, customerId, status, label);
+    if (result.error) errors.push(result.error);
+  }
+
+  return { error: errors.length > 0 ? errors.join("; ") : null };
+}
+
+/** Deletes every one of an orderer's orders that's currently deletable
+ * (cancelled or delivered — same rule as the single-order delete) — orders
+ * still in progress are left untouched. Reuses deleteOrderAction per line. */
+export async function bulkDeleteOrdererOrdersAction(
+  locale: Locale,
+  customerId: string
+): Promise<{ error: string | null; deleted: number }> {
+  await requireAdmin(locale);
+  const admin = createAdminClient();
+
+  const { data: deletableOrders } = await admin
+    .from("orders")
+    .select("id, product_name")
+    .eq("customer_id", customerId)
+    .in("status", ["cancelled", "delivered"]);
+
+  let deleted = 0;
+  const errors: string[] = [];
+  for (const order of deletableOrders ?? []) {
+    const label = order.product_name?.[locale] ?? order.product_name?.ru ?? "";
+    const result = await deleteOrderAction(locale, order.id, customerId, label);
+    if (result.error) errors.push(result.error);
+    else deleted++;
+  }
+
+  return { error: errors.length > 0 ? errors.join("; ") : null, deleted };
+}
+
 /** Price override for one order line — open to admin and seller (matches the
  * seller's full permission set: view/search products, change order status,
  * change price — every change lands in the log). Pass null to clear the

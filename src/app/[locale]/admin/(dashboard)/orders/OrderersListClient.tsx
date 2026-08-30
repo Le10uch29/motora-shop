@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { OrdererRow } from "./data";
 import { orderStatusLabel, orderStatusClass } from "./statusStyles";
-import { RowActionLink, EyeIcon } from "@/components/admin/RowActions";
+import OrdererRowActions from "./OrdererRowActions";
 import { formatGel } from "@/lib/currency";
 import type { Dictionary } from "@/i18n/dictionary";
 import type { Locale } from "@/i18n/locales";
@@ -9,12 +9,14 @@ import type { Locale } from "@/i18n/locales";
 export default function OrderersListClient({
   locale,
   dict,
+  isAdmin,
   orderers,
   emptyMessage,
   searchSlot,
 }: {
   locale: Locale;
   dict: Dictionary["admin"];
+  isAdmin: boolean;
   orderers: OrdererRow[];
   emptyMessage: string;
   searchSlot?: ReactNode;
@@ -74,11 +76,13 @@ export default function OrderersListClient({
                     {formatGel(row.totalAmount, locale)}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center justify-end">
-                      <RowActionLink href={`/${locale}/admin/orders/${row.id}`} label={dict.actionDetails}>
-                        <EyeIcon />
-                      </RowActionLink>
-                    </div>
+                    <OrdererRowActions
+                      locale={locale}
+                      dict={dict}
+                      customerId={row.id}
+                      label={row.name}
+                      isAdmin={isAdmin}
+                    />
                   </td>
                 </tr>
               ))}

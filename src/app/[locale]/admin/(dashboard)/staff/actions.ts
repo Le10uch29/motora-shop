@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth";
 import { logAction } from "@/lib/logs";
-import { normalizePhone } from "@/lib/phone";
+import { normalizePhone, normalizePhoneForAuth } from "@/lib/phone";
 import type { Locale } from "@/i18n/locales";
 import { isLocale } from "@/i18n/locales";
 
@@ -54,7 +54,7 @@ export async function createStaffAction(
   const { data: created, error: createError } = await admin.auth.admin.createUser({
     password,
     ...(email ? { email, email_confirm: true } : {}),
-    ...(fields.phone ? { phone: fields.phone, phone_confirm: true } : {}),
+    ...(fields.phone ? { phone: normalizePhoneForAuth(fields.phone), phone_confirm: true } : {}),
   });
 
   if (createError || !created.user) {
@@ -120,7 +120,7 @@ export async function updateStaffAction(
 
   const { error: contactError } = await admin.auth.admin.updateUserById(id, {
     ...(email ? { email } : {}),
-    ...(fields.phone ? { phone: fields.phone } : {}),
+    ...(fields.phone ? { phone: normalizePhoneForAuth(fields.phone) } : {}),
   });
   if (contactError) return { error: contactError.message };
 

@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { looksLikeEmail, normalizePhone } from "@/lib/phone";
+import { looksLikeEmail, normalizePhoneForAuth } from "@/lib/phone";
 
 export type SignInState = { error: string | null };
 
@@ -19,11 +19,12 @@ export async function signInAction(
   const { error } = await supabase.auth.signInWithPassword(
     looksLikeEmail(identifier)
       ? { email: identifier, password }
-      : { phone: normalizePhone(identifier), password }
+      : { phone: normalizePhoneForAuth(identifier), password }
   );
 
   if (error) {
-    return { error: invalidCredentialsMessage || error.message };
+    const isInvalidCredentials = error.message.toLowerCase().includes("invalid login credentials");
+    return { error: isInvalidCredentials ? invalidCredentialsMessage || error.message : error.message };
   }
 
   redirect(`/${locale}/admin`);

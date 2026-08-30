@@ -11,6 +11,7 @@ export type BrandRow = {
   id: string;
   slug: string;
   name: string;
+  initials: string | null;
   logoUrl: string | null;
   badgeLogoUrl: string | null;
 };
@@ -74,7 +75,10 @@ export default function BrandsListClient({
               </div>
               <div className="flex flex-col">
                 <span className="font-semibold text-zinc-900 dark:text-zinc-50">{brand.name}</span>
-                <span className="text-xs text-zinc-400">{brand.slug}</span>
+                <span className="text-xs text-zinc-400">
+                  {brand.slug}
+                  {brand.initials ? ` · ${brand.initials}` : ""}
+                </span>
               </div>
             </div>
 
@@ -100,6 +104,7 @@ export default function BrandsListClient({
                       values: {
                         id: brand.id,
                         name: brand.name,
+                        initials: brand.initials,
                         logoUrl: brand.logoUrl,
                         badgeLogoUrl: brand.badgeLogoUrl,
                       },

@@ -19,7 +19,8 @@ type FieldKey =
   | "model"
   | "photoUrl"
   | "yearFrom"
-  | "yearTo";
+  | "yearTo"
+  | "warehouse";
 
 const FIELD_ORDER: FieldKey[] = [
   "productCode",
@@ -33,6 +34,7 @@ const FIELD_ORDER: FieldKey[] = [
   "photoUrl",
   "yearFrom",
   "yearTo",
+  "warehouse",
 ];
 
 const FIELD_KEYWORDS: Record<FieldKey, string[]> = {
@@ -47,6 +49,7 @@ const FIELD_KEYWORDS: Record<FieldKey, string[]> = {
   photoUrl: ["фото", "photo", "image", "şəkil", "sekil"],
   yearFrom: ["год от", "год с", "year from", "ildən", "ilden"],
   yearTo: ["год до", "год по", "year to", "ilə qədər", "ile qeder"],
+  warehouse: ["склад", "магазин", "warehouse", "store", "anbar", "საწყობი"],
 };
 
 function guessMapping(headers: string[]): Partial<Record<FieldKey, number>> {
@@ -68,11 +71,13 @@ export default function ImportProductsModal({
   locale,
   dict,
   brands,
+  warehouses,
   onClose,
 }: {
   locale: Locale;
   dict: Dictionary["admin"];
   brands: { id: string; name: string }[];
+  warehouses: { id: string; name: string }[];
   onClose: () => void;
 }) {
   const [headers, setHeaders] = useState<string[] | null>(null);
@@ -80,6 +85,7 @@ export default function ImportProductsModal({
   const [mapping, setMapping] = useState<Partial<Record<FieldKey, number>>>({});
   const [categoryId, setCategoryId] = useState<string>(categoryIds[0]);
   const [brandId, setBrandId] = useState<string>(brands[0]?.id ?? "");
+  const [warehouseId, setWarehouseId] = useState<string>("");
   const [parseError, setParseError] = useState<string | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [pending, startTransition] = useTransition();
@@ -101,6 +107,7 @@ export default function ImportProductsModal({
       photoUrl: dict.importFieldPhoto,
       yearFrom: dict.importFieldYearFrom,
       yearTo: dict.importFieldYearTo,
+      warehouse: dict.importFieldWarehouse,
     }),
     [dict]
   );
@@ -166,11 +173,18 @@ export default function ImportProductsModal({
         photoUrl: cell(row, mapping.photoUrl) || undefined,
         yearFrom: cellNumber(row, mapping.yearFrom),
         yearTo: cellNumber(row, mapping.yearTo),
+        warehouseName: cell(row, mapping.warehouse) || undefined,
       }))
       .filter((r) => r.productCode);
 
     startTransition(async () => {
-      const res = await importProductsAction(locale, categoryId, brandId, importRows);
+      const res = await importProductsAction(
+        locale,
+        categoryId,
+        brandId,
+        importRows,
+        warehouseId || undefined
+      );
       setResult(res);
     });
   }
@@ -212,6 +226,12 @@ export default function ImportProductsModal({
               {dict.importResultDonePrefix} {dict.importResultCreatedLabel} — {result.created},{" "}
               {dict.importResultUpdatedLabel} — {result.updated}, {dict.importResultSkippedLabel} —{" "}
               {result.skipped}.
+              {result.warehouseStockSet > 0 && (
+                <>
+                  {" "}
+                  {dict.importWarehouseStockSetLabel} {result.warehouseStockSet}.
+                </>
+              )}
             </p>
             {result.conflicts > 0 && (
               <p className="text-sm text-amber-600 dark:text-amber-500">
@@ -276,7 +296,7 @@ export default function ImportProductsModal({
               )}
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="import-category" className={labelClass}>
                   {dict.productCategoryLabel}
@@ -312,6 +332,26 @@ export default function ImportProductsModal({
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="import-warehouse" className={labelClass}>
+                  {dict.warehousesTitle}
+                </label>
+                <select
+                  id="import-warehouse"
+                  value={warehouseId}
+                  onChange={(e) => setWarehouseId(e.target.value)}
+                  className={inputClass}
+                >
+                  <option value="">{dict.importNotUsedOption}</option>
+                  {warehouses.map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.name}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-xs text-zinc-400">{dict.importWarehouseHint}</span>
               </div>
             </div>
 

@@ -250,6 +250,11 @@ export type ImportRow = {
   photoUrl?: string;
   yearFrom?: number;
   yearTo?: number;
+  /** Warehouse name as written in the file's own warehouse column, if one
+   * was mapped — matched case-insensitively against real warehouse names.
+   * Falls back to the whole-file warehouse selection when absent or when it
+   * doesn't match a real warehouse. */
+  warehouseName?: string;
 };
 
 export type ImportResult = {
@@ -257,6 +262,7 @@ export type ImportResult = {
   updated: number;
   skipped: number;
   conflicts: number;
+  warehouseStockSet: number;
   error: string | null;
 };
 
@@ -331,6 +337,7 @@ function mergeDuplicateImportRows(rows: ImportRow[]): {
       photoUrl: existing.photoUrl ?? raw.photoUrl,
       yearFrom: existing.yearFrom ?? raw.yearFrom,
       yearTo: existing.yearTo ?? raw.yearTo,
+      warehouseName: existing.warehouseName ?? raw.warehouseName,
     });
   }
 
@@ -341,7 +348,8 @@ export async function importProductsAction(
   locale: Locale,
   categoryId: string,
   brandId: string,
-  rows: ImportRow[]
+  rows: ImportRow[],
+  fallbackWarehouseId?: string
 ): Promise<ImportResult> {
   const actor = await requireAdmin(locale);
   const admin = createAdminClient();
@@ -350,7 +358,7 @@ export async function importProductsAction(
   const validRowsRaw = rows.filter((r) => r.productCode.trim().length > 0);
   const skipped = rows.length - validRowsRaw.length;
   if (validRowsRaw.length === 0) {
-    return { created: 0, updated: 0, skipped, conflicts: 0, error: null };
+    return { created: 0, updated: 0, skipped, conflicts: 0, warehouseStockSet: 0, error: null };
   }
 
   const { rows: validRows, conflicts: rowConflicts } = mergeDuplicateImportRows(validRowsRaw);
@@ -361,20 +369,37 @@ export async function importProductsAction(
   // DB when this file has "21202ap", creating a duplicate instead of
   // updating it. The table is a few hundred to low thousands of rows, so
   // fetching all of them here (once per import) is cheap.
-  const [{ data: existingRows, error: fetchError }, { data: slugRows }] = await Promise.all([
-    admin
-      .from("products")
-      .select(
-        "id, product_code, price, stock, origin_code, make, model, brand_id, images, name, description, year_from, year_to"
-      )
-      .not("product_code", "is", null),
-    admin
-      .from("products")
-      .select("slug")
-      .in("slug", Array.from(new Set(codes.map((c) => slugify(c))))),
-  ]);
+  const [{ data: existingRows, error: fetchError }, { data: slugRows }, { data: warehouseRows }] =
+    await Promise.all([
+      admin
+        .from("products")
+        .select(
+          "id, product_code, price, stock, origin_code, make, model, brand_id, images, name, description, year_from, year_to"
+        )
+        .not("product_code", "is", null),
+      admin
+        .from("products")
+        .select("slug")
+        .in("slug", Array.from(new Set(codes.map((c) => slugify(c))))),
+      admin.from("warehouses").select("id, name"),
+    ]);
   if (fetchError) {
-    return { created: 0, updated: 0, skipped: rows.length, conflicts: 0, error: fetchError.message };
+    return {
+      created: 0,
+      updated: 0,
+      skipped: rows.length,
+      conflicts: 0,
+      warehouseStockSet: 0,
+      error: fetchError.message,
+    };
+  }
+
+  // Matched case-insensitively — a file's own warehouse column is free text.
+  const warehouseIdByName = new Map((warehouseRows ?? []).map((w) => [w.name.trim().toLowerCase(), w.id]));
+  function resolveWarehouseId(warehouseName: string | undefined): string | null {
+    const named = warehouseName?.trim().toLowerCase();
+    if (named && warehouseIdByName.has(named)) return warehouseIdByName.get(named)!;
+    return fallbackWarehouseId || null;
   }
 
   // Keyed case-insensitively — "21202ap" and "21202Ap" are the same part —
@@ -406,6 +431,9 @@ export async function importProductsAction(
   // needed to attach row-conflict log entries to the right product once
   // inserts/updates have actually happened.
   const codeToProductId = new Map<string, string>();
+  // Rows that resolved to a warehouse and carry a quantity — applied to
+  // warehouse_stock after products exist, once codeToProductId is complete.
+  const warehouseAssignments: { code: string; warehouseId: string; quantity: number }[] = [];
 
   for (const row of validRows) {
     const code = row.productCode;
@@ -416,6 +444,11 @@ export async function importProductsAction(
     const make = row.make?.trim();
     const model = row.model?.trim();
     const photoUrl = row.photoUrl?.trim();
+
+    const resolvedWarehouseId = resolveWarehouseId(row.warehouseName);
+    if (resolvedWarehouseId && row.stock) {
+      warehouseAssignments.push({ code: code.toLowerCase(), warehouseId: resolvedWarehouseId, quantity: row.stock });
+    }
 
     if (!existing) {
       toInsert.push({
@@ -510,6 +543,43 @@ export async function importProductsAction(
     }
   }
 
+  let warehouseStockSet = 0;
+  if (warehouseAssignments.length > 0) {
+    const resolvedAssignments = warehouseAssignments
+      .map((a) => {
+        const productId = codeToProductId.get(a.code);
+        if (!productId) return null;
+        return { productId, warehouseId: a.warehouseId, quantity: a.quantity };
+      })
+      .filter((a): a is NonNullable<typeof a> => a !== null);
+
+    if (resolvedAssignments.length > 0) {
+      // "Fill only if currently empty" — same rule as every other field this
+      // import can touch: an existing non-zero warehouse_stock row (set
+      // manually, or by an earlier import) is left alone, not overwritten.
+      const { data: existingStock } = await admin
+        .from("warehouse_stock")
+        .select("product_id, warehouse_id, quantity")
+        .in("product_id", Array.from(new Set(resolvedAssignments.map((a) => a.productId))));
+
+      const existingQuantity = new Map(
+        (existingStock ?? []).map((s) => [`${s.product_id}:${s.warehouse_id}`, s.quantity])
+      );
+
+      const toUpsertStock = resolvedAssignments
+        .filter((a) => (existingQuantity.get(`${a.productId}:${a.warehouseId}`) ?? 0) === 0)
+        .map((a) => ({ product_id: a.productId, warehouse_id: a.warehouseId, quantity: a.quantity }));
+
+      for (const group of chunk(toUpsertStock, 50)) {
+        const { error } = await admin
+          .from("warehouse_stock")
+          .upsert(group, { onConflict: "warehouse_id,product_id" });
+        if (error) errors.push(error.message);
+        else warehouseStockSet += group.length;
+      }
+    }
+  }
+
   let conflictsLogged = 0;
   if (rowConflicts.length > 0) {
     const conflictRows = rowConflicts
@@ -538,18 +608,20 @@ export async function importProductsAction(
     actor,
     "create",
     "product",
-    `Импорт Excel: ${created} новых, ${updated} обновлено, ${skipped} пропущено, ${conflictsLogged} конфликтов`,
+    `Импорт Excel: ${created} новых, ${updated} обновлено, ${skipped} пропущено, ${conflictsLogged} конфликтов, склад проставлен для ${warehouseStockSet}`,
     {}
   );
   revalidatePath(`/${locale}/admin/products`);
   revalidatePath(`/${locale}/catalog`);
   revalidatePath(`/${locale}`);
+  revalidatePath(`/${locale}/admin/warehouses`);
 
   return {
     created,
     updated,
     skipped,
     conflicts: conflictsLogged,
+    warehouseStockSet,
     error: errors.length > 0 ? errors.join("; ") : null,
   };
 }

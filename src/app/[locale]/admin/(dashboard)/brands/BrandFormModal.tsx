@@ -8,6 +8,7 @@ import type { Dictionary } from "@/i18n/dictionary";
 export type BrandFormValues = {
   id: string;
   name: string;
+  initials: string | null;
   logoUrl: string | null;
   badgeLogoUrl: string | null;
 };
@@ -72,6 +73,19 @@ export default function BrandFormModal({
             defaultValue={initialValues?.name}
             className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
           />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="brand-initials" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            {dict.brandInitialsLabel}
+          </label>
+          <input
+            id="brand-initials"
+            name="initials"
+            defaultValue={initialValues?.initials ?? ""}
+            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+          />
+          <span className="text-xs text-zinc-400">{dict.brandInitialsHint}</span>
         </div>
 
         <div className="flex flex-col gap-1.5">

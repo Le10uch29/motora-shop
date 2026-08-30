@@ -21,6 +21,8 @@ export default function MobileMenu({
   logoutLabel,
   accountHref,
   accountLabel,
+  adminPanelHref,
+  adminPanelLabel,
   themeToggleAriaLabel,
   languageSwitcherAriaLabel,
 }: {
@@ -34,6 +36,8 @@ export default function MobileMenu({
   logoutLabel: string;
   accountHref?: string;
   accountLabel?: string;
+  adminPanelHref?: string;
+  adminPanelLabel?: string;
   themeToggleAriaLabel: string;
   languageSwitcherAriaLabel: string;
 }) {
@@ -99,6 +103,25 @@ export default function MobileMenu({
                   <path strokeLinecap="round" d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6" />
                 </svg>
                 {accountLabel}
+              </Link>
+            )}
+            {adminPanelHref && (
+              <Link
+                href={adminPanelHref}
+                className="flex items-center gap-2 rounded-lg px-3 py-3 transition-colors hover:bg-zinc-100 hover:text-orange-600 dark:hover:bg-zinc-900"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-5 w-5"
+                >
+                  <path d="M4 13h6V4H4v9ZM14 20h6v-9h-6v9ZM4 20h6v-4H4v4ZM14 9h6V4h-6v5Z" />
+                </svg>
+                {adminPanelLabel}
               </Link>
             )}
             {isLoggedIn ? (

@@ -18,13 +18,14 @@ export default async function AdminBrandsPage({
   const supabase = await createClient();
   const { data } = await supabase
     .from("brands")
-    .select("id, slug, name, logo_url, badge_logo_url")
+    .select("id, slug, name, logo_url, badge_logo_url, initials")
     .order("name");
 
   const brands: BrandRow[] = (data ?? []).map((b) => ({
     id: b.id,
     slug: b.slug,
     name: b.name,
+    initials: b.initials,
     logoUrl: b.logo_url,
     badgeLogoUrl: b.badge_logo_url,
   }));

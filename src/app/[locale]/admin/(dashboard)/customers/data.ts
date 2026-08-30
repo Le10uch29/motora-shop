@@ -1,5 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ADMIN_PAGE_SIZE } from "@/components/admin/Pagination";
+import type { Locale } from "@/i18n/locales";
+import type { OrderStatus } from "../orders/data";
 import type { CustomerRow } from "./CustomerListClient";
 
 export async function getCustomersList(
@@ -45,4 +47,42 @@ export async function getCustomersList(
   const start = (page - 1) * ADMIN_PAGE_SIZE;
 
   return { rows: rows.slice(start, start + ADMIN_PAGE_SIZE), total };
+}
+
+export type CustomerPurchase = {
+  id: string;
+  orderNumber: number;
+  productName: string;
+  productCode: string | null;
+  quantity: number;
+  status: OrderStatus;
+  createdAt: string;
+};
+
+/** What a customer has actually bought — separate from the audit-log
+ * "история" further down the page (who edited the customer's own profile
+ * and when), which is a different kind of history entirely. */
+export async function getCustomerPurchaseHistory(
+  customerId: string,
+  locale: Locale
+): Promise<CustomerPurchase[]> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("orders")
+    .select("id, order_number, product_name, quantity, status, created_at, products(product_code)")
+    .eq("customer_id", customerId)
+    .order("created_at", { ascending: false });
+
+  return (data ?? []).map((row) => {
+    const product = Array.isArray(row.products) ? row.products[0] : row.products;
+    return {
+      id: row.id,
+      orderNumber: row.order_number,
+      productName: row.product_name?.[locale] ?? row.product_name?.ru ?? "",
+      productCode: product?.product_code ?? null,
+      quantity: row.quantity,
+      status: row.status,
+      createdAt: row.created_at,
+    };
+  });
 }
