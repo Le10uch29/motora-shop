@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { notFound } from "next/navigation";
-import { headers } from "next/headers";
 import "../globals.css";
 import { CartProvider } from "@/context/CartContext";
-import Header from "@/components/Header";
 import { locales, isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
 import { createClient } from "@/lib/supabase/server";
@@ -41,11 +39,6 @@ export default async function LocaleLayout({
 }: LayoutProps<"/[locale]">) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
-  const dict = await getDictionary(locale);
-
-  const pathname = (await headers()).get("x-pathname") ?? "";
-  const adminPrefix = `/${locale}/admin`;
-  const isAdminRoute = pathname === adminPrefix || pathname.startsWith(`${adminPrefix}/`);
 
   const supabase = await createClient();
   const {
@@ -74,10 +67,7 @@ export default async function LocaleLayout({
         />
       </head>
       <body className="flex min-h-full flex-col bg-zinc-50 dark:bg-black">
-        <CartProvider userId={user?.id ?? null}>
-          {!isAdminRoute && <Header locale={locale} dict={dict} />}
-          {children}
-        </CartProvider>
+        <CartProvider userId={user?.id ?? null}>{children}</CartProvider>
       </body>
     </html>
   );

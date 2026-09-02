@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { useCart } from "@/context/CartContext";
-import { placeOrderAction } from "@/app/[locale]/cart/actions";
+import { placeOrderAction } from "@/app/[locale]/(public)/cart/actions";
 import { t, type CartProductSummary } from "@/lib/products";
 import { formatGel, formatUsd } from "@/lib/currency";
 import type { Locale } from "@/i18n/locales";
