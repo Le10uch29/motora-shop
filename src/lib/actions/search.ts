@@ -2,7 +2,6 @@
 
 import { createPublicClient } from "@/lib/supabase/public";
 import type { Locale } from "@/i18n/locales";
-import type { CategoryId } from "@/lib/products";
 
 export type SearchSuggestion = {
   id: string;
@@ -13,7 +12,6 @@ export type SearchSuggestion = {
   image: string | null;
   productCode: string | null;
   stock: number;
-  category: CategoryId;
 };
 
 const RESULT_LIMIT = 6;
@@ -49,7 +47,7 @@ export async function searchProductSuggestionsAction(
         supabase
           .from("products")
           .select(
-            "id, slug, name, category, price, old_price, images, product_code, stock, brands!inner(slug)"
+            "id, slug, name, price, old_price, images, product_code, stock, brands!inner(slug)"
           )
           .or(orFilter)
           .eq("brands.slug", brandSlug)
@@ -63,7 +61,7 @@ export async function searchProductSuggestionsAction(
     : await Promise.all([
         supabase
           .from("products")
-          .select("id, slug, name, category, price, old_price, images, product_code, stock")
+          .select("id, slug, name, price, old_price, images, product_code, stock")
           .or(orFilter)
           .limit(RESULT_LIMIT),
         supabase.from("products").select("id", { count: "exact", head: true }).or(orFilter),
@@ -79,7 +77,6 @@ export async function searchProductSuggestionsAction(
     image: row.images?.[0] ?? null,
     productCode: row.product_code ?? null,
     stock: row.stock,
-    category: row.category as CategoryId,
   }));
 
   return { results, total: count ?? results.length };

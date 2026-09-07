@@ -8,6 +8,13 @@ import { isLocale, type Locale } from "@/i18n/locales";
 
 export type ProductActionState = { error: string | null };
 
+/** Vehicle categories were dropped from the UI, but products.category is
+ * still NOT NULL with no default in the schema, so every insert writes this
+ * placeholder. Remove once the column itself is dropped. */
+const DEFAULT_CATEGORY = "universal";
+
+const MAX_IMAGES = 4;
+
 function slugify(value: string): string {
   const slug = value
     .toLowerCase()
@@ -37,7 +44,6 @@ function readLocalizedField(
 
 type ParsedFields = {
   slug: string;
-  category: string;
   brandId: string;
   make: string;
   model: string | null;
@@ -58,7 +64,6 @@ function readFields(formData: FormData): ParsedFields | null {
   const name = readLocalizedField(formData, "name");
   const description = readLocalizedField(formData, "description") ?? { ru: "", az: "", ka: "" };
   const slugInput = String(formData.get("slug") ?? "").trim();
-  const category = String(formData.get("category") ?? "").trim();
   const brandId = String(formData.get("brandId") ?? "").trim();
   const make = String(formData.get("make") ?? "").trim();
   const model = String(formData.get("model") ?? "").trim();
@@ -78,7 +83,6 @@ function readFields(formData: FormData): ParsedFields | null {
     !name.az ||
     !name.ka ||
     !slugInput ||
-    !category ||
     !brandId ||
     !make ||
     !Number.isFinite(yearFrom) ||
@@ -90,7 +94,6 @@ function readFields(formData: FormData): ParsedFields | null {
 
   return {
     slug: slugify(slugInput),
-    category,
     brandId,
     make,
     model: model || null,
@@ -123,9 +126,27 @@ async function uploadImages(
     if (error) throw new Error(error.message);
     const { data } = admin.storage.from("product-media").getPublicUrl(path);
     urls.push(data.publicUrl);
-    if (urls.length >= 4) break;
+    if (urls.length >= MAX_IMAGES) break;
   }
   return urls;
+}
+
+/** Photos pasted as links instead of uploaded — one URL per line (commas
+ * and spaces work too). Anything that isn't a well-formed http(s) URL is
+ * dropped rather than stored as a broken <img src>. */
+function readImageUrls(formData: FormData): string[] {
+  return String(formData.get("imageUrls") ?? "")
+    .split(/[\s,]+/)
+    .map((value) => value.trim())
+    .filter((value) => {
+      if (!value) return false;
+      try {
+        const url = new URL(value);
+        return url.protocol === "http:" || url.protocol === "https:";
+      } catch {
+        return false;
+      }
+    });
 }
 
 export async function createProductAction(
@@ -142,7 +163,8 @@ export async function createProductAction(
 
   let images: string[] = [];
   try {
-    images = await uploadImages(admin, formData.getAll("images"));
+    images = [...(await uploadImages(admin, formData.getAll("images"))), ...readImageUrls(formData)]
+      .slice(0, MAX_IMAGES);
   } catch (error) {
     return { error: error instanceof Error ? error.message : "upload_failed" };
   }
@@ -151,7 +173,7 @@ export async function createProductAction(
     .from("products")
     .insert({
       slug: fields.slug,
-      category: fields.category,
+      category: DEFAULT_CATEGORY,
       make: fields.make,
       model: fields.model,
       brand_id: fields.brandId,
@@ -198,10 +220,16 @@ export async function updateProductAction(
 
   const uploadedFiles = formData.getAll("images");
   const hasNewFiles = uploadedFiles.some((f) => f instanceof File && f.size > 0);
+  const imageUrls = readImageUrls(formData);
+  // Photos are only touched when the form actually carries new ones (files,
+  // links, or both) — leaving both empty keeps whatever the product has.
   let images: string[] | undefined;
-  if (hasNewFiles) {
+  if (hasNewFiles || imageUrls.length > 0) {
     try {
-      images = await uploadImages(admin, uploadedFiles);
+      images = [
+        ...(hasNewFiles ? await uploadImages(admin, uploadedFiles) : []),
+        ...imageUrls,
+      ].slice(0, MAX_IMAGES);
     } catch (error) {
       return { error: error instanceof Error ? error.message : "upload_failed" };
     }
@@ -209,7 +237,6 @@ export async function updateProductAction(
 
   const updates: Record<string, unknown> = {
     slug: fields.slug,
-    category: fields.category,
     make: fields.make,
     model: fields.model,
     brand_id: fields.brandId,
@@ -243,7 +270,12 @@ export type ImportRow = {
   originCode?: string;
   price?: number;
   stock?: number;
-  name?: string;
+  /** Product name per language — each mapped from its own column, so a file
+   * can carry any one, two, or all three of them. A missing language falls
+   * back to whichever one the file does have. */
+  nameRu?: string;
+  nameAz?: string;
+  nameKa?: string;
   description?: string;
   make?: string;
   model?: string;
@@ -330,7 +362,9 @@ function mergeDuplicateImportRows(rows: ImportRow[]): {
       originCode: existing.originCode ?? raw.originCode,
       price,
       stock: existing.stock ?? raw.stock,
-      name: existing.name ?? raw.name,
+      nameRu: existing.nameRu ?? raw.nameRu,
+      nameAz: existing.nameAz ?? raw.nameAz,
+      nameKa: existing.nameKa ?? raw.nameKa,
       description: existing.description ?? raw.description,
       make: existing.make ?? raw.make,
       model: existing.model ?? raw.model,
@@ -346,7 +380,6 @@ function mergeDuplicateImportRows(rows: ImportRow[]): {
 
 export async function importProductsAction(
   locale: Locale,
-  categoryId: string,
   brandId: string,
   rows: ImportRow[],
   fallbackWarehouseId?: string
@@ -438,7 +471,16 @@ export async function importProductsAction(
   for (const row of validRows) {
     const code = row.productCode;
     const existing = existingByCode.get(code.toLowerCase());
-    const nameText = row.name?.trim();
+    // A file may map only some of the three name columns — each language
+    // falls back to whichever one was actually filled in, and to the product
+    // code itself when the file carries no name at all.
+    const nameRu = row.nameRu?.trim();
+    const nameAz = row.nameAz?.trim();
+    const nameKa = row.nameKa?.trim();
+    const anyName = nameRu || nameAz || nameKa;
+    const nameValue = anyName
+      ? { ru: nameRu || anyName, az: nameAz || anyName, ka: nameKa || anyName }
+      : { ru: code, az: code, ka: code };
     const descriptionText = row.description?.trim();
     const originCode = row.originCode?.trim();
     const make = row.make?.trim();
@@ -453,7 +495,7 @@ export async function importProductsAction(
     if (!existing) {
       toInsert.push({
         slug: uniqueSlug(slugify(code)),
-        category: categoryId,
+        category: DEFAULT_CATEGORY,
         make: make || "universal",
         model: model || null,
         brand_id: brandId,
@@ -464,7 +506,7 @@ export async function importProductsAction(
         stock: row.stock ?? 0,
         origin_code: originCode || null,
         product_code: code,
-        name: nameText ? { ru: nameText, az: nameText, ka: nameText } : { ru: code, az: code, ka: code },
+        name: nameValue,
         description: { ru: descriptionText ?? "", az: descriptionText ?? "", ka: descriptionText ?? "" },
         specs: [],
         badge: null,
@@ -483,9 +525,21 @@ export async function importProductsAction(
     if (!existing.brand_id && brandId) patch.brand_id = brandId;
     if ((!existing.images || existing.images.length === 0) && photoUrl) patch.images = [photoUrl];
 
-    const nameEmpty =
-      !existing.name?.ru?.trim() && !existing.name?.az?.trim() && !existing.name?.ka?.trim();
-    if (nameEmpty && nameText) patch.name = { ru: nameText, az: nameText, ka: nameText };
+    // Filled per language, not all-or-nothing: a product that already has a
+    // Russian name but no Georgian one picks up the Georgian column from the
+    // file without its existing Russian name being touched.
+    if (anyName) {
+      const currentName = existing.name ?? { ru: "", az: "", ka: "" };
+      const mergedName = {
+        ru: currentName.ru?.trim() || nameValue.ru,
+        az: currentName.az?.trim() || nameValue.az,
+        ka: currentName.ka?.trim() || nameValue.ka,
+      };
+      const changed = (["ru", "az", "ka"] as const).some(
+        (lang) => mergedName[lang] !== currentName[lang]
+      );
+      if (changed) patch.name = mergedName;
+    }
 
     const descriptionEmpty =
       !existing.description?.ru?.trim() &&

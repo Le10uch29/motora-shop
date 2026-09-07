@@ -43,6 +43,9 @@ create table if not exists products (
 alter table products add column if not exists model text;
 -- Показывать товар в блоке "Популярное" на главной странице.
 alter table products add column if not exists is_popular boolean not null default false;
+-- Категории автомобилей убраны из сайта и админки, но колонка остаётся NOT
+-- NULL — даём ей значение по умолчанию, чтобы вставка товара не требовала её.
+alter table products alter column category set default 'universal';
 
 -- Склады: физические точки хранения товара. Сколько и какого товара лежит
 -- на складе — отдельная таблица warehouse_stock, не влияет на product.stock

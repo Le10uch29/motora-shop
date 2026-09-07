@@ -7,7 +7,6 @@ export const PRODUCTS_PAGE_SIZE = 30;
 export type AdminProductRow = {
   id: string;
   slug: string;
-  category: string;
   make: string;
   model: string;
   brandId: string;
@@ -31,7 +30,6 @@ export type AdminProductRow = {
 type ProductRow = {
   id: string;
   slug: string;
-  category: string;
   make: string;
   model: string | null;
   brand_id: string | null;
@@ -76,7 +74,7 @@ export async function getAdminProducts(
   const { data } = await supabase
     .from("products")
     .select(
-      "id, slug, category, make, model, brand_id, year_from, year_to, price, old_price, stock, origin_code, product_code, name, description, specs, badge, images, is_popular, brands(name)"
+      "id, slug, make, model, brand_id, year_from, year_to, price, old_price, stock, origin_code, product_code, name, description, specs, badge, images, is_popular, brands(name)"
     )
     .order("created_at", { ascending: false });
 
@@ -85,7 +83,6 @@ export async function getAdminProducts(
     return {
       id: p.id,
       slug: p.slug,
-      category: p.category,
       make: p.make,
       model: p.model ?? "",
       brandId: p.brand_id ?? "",

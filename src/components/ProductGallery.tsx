@@ -1,19 +1,16 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import type { CategoryId } from "@/lib/products";
 import ProductVisual from "@/components/ProductVisual";
 
 const MAX_PHOTOS = 4;
 
 export default function ProductGallery({
   images,
-  category,
   alt,
   overlay,
 }: {
   images: string[] | undefined;
-  category: CategoryId;
   alt: string;
   overlay?: ReactNode;
 }) {
@@ -23,7 +20,7 @@ export default function ProductGallery({
   if (photos.length === 0) {
     return (
       <div className="relative overflow-hidden rounded-2xl">
-        <ProductVisual category={category} className="aspect-square w-full" />
+        <ProductVisual className="aspect-square w-full" />
         {overlay}
       </div>
     );

@@ -196,7 +196,6 @@ export type Dictionary = {
     productDescriptionSectionLabel: string;
     productSlugLabel: string;
     productSlugHint: string;
-    productCategoryLabel: string;
     productBrandLabel: string;
     productMakeLabel: string;
     productMakeHint: string;
@@ -211,6 +210,8 @@ export type Dictionary = {
     productBadgeSectionLabel: string;
     productImagesLabel: string;
     productImagesHint: string;
+    productImageUrlsLabel: string;
+    productImageUrlsHint: string;
     confirmDeleteProduct: string;
     productPopularLabel: string;
     productDiscountPercentLabel: string;
@@ -254,6 +255,9 @@ export type Dictionary = {
     importFieldPrice: string;
     importFieldStock: string;
     importFieldName: string;
+    importFieldNameRu: string;
+    importFieldNameAz: string;
+    importFieldNameKa: string;
     importFieldDescription: string;
     importFieldMake: string;
     importFieldModel: string;
@@ -333,10 +337,8 @@ export type Dictionary = {
   };
   catalog: {
     title: string;
-    all: string;
     empty: string;
     productCount: (count: number) => string;
-    inCategory: (categoryLabel: string) => string;
     forQuery: (query: string) => string;
     clearFilters: string;
   };

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getProductBySlug, getAllProducts, categoryLabels, makeLabel, discountPercent, t } from "@/lib/products";
+import { getProductBySlug, getAllProducts, makeLabel, discountPercent, t } from "@/lib/products";
 import { formatGel, formatUsd } from "@/lib/currency";
 import { getBrandBySlug } from "@/lib/brands";
 import { locales, isLocale } from "@/i18n/locales";
@@ -48,20 +48,12 @@ export default async function ProductPage({
           {dict.product.breadcrumbCatalog}
         </Link>
         {" / "}
-        <Link
-          href={`/${locale}/catalog?category=${product.category}`}
-          className="hover:text-orange-600"
-        >
-          {t(categoryLabels[product.category], locale)}
-        </Link>
-        {" / "}
         <span className="text-zinc-700 dark:text-zinc-300">{t(product.name, locale)}</span>
       </nav>
 
       <div className="grid grid-cols-1 items-start gap-10 lg:grid-cols-2">
         <ProductGallery
           images={product.images}
-          category={product.category}
           alt={t(product.name, locale)}
           overlay={
             <>
@@ -81,10 +73,7 @@ export default async function ProductPage({
 
         <div className="flex flex-col gap-5">
           <div className="flex flex-col gap-1">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-medium uppercase tracking-wide text-orange-600 dark:text-orange-500">
-                {t(categoryLabels[product.category], locale)}
-              </span>
+            <div className="flex items-center gap-2">
               <span className="flex flex-wrap items-center gap-x-3 text-xs text-zinc-400">
                 <span>
                   {dict.product.originCodeLabel}: {product.originCode ?? "—"}

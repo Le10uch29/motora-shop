@@ -21,7 +21,7 @@ export default async function ProductDetailPage({
   const { data: row } = await admin
     .from("products")
     .select(
-      "id, category, make, model, year_from, year_to, price, old_price, stock, origin_code, product_code, name, description, brands(name)"
+      "id, make, model, year_from, year_to, price, old_price, stock, origin_code, product_code, name, description, brands(name)"
     )
     .eq("id", id)
     .single();
@@ -44,7 +44,6 @@ export default async function ProductDetailPage({
   const fields: [string, string][] = [
     [dict.admin.productsColName, t(row.name, locale)],
     [dict.admin.productsColBrand, brand?.name ?? "—"],
-    [dict.admin.productCategoryLabel, row.category],
     [dict.admin.productMakeLabel, row.make],
     [dict.admin.productModelLabel, row.model ?? "—"],
     [dict.admin.productYearFromLabel, String(row.year_from)],

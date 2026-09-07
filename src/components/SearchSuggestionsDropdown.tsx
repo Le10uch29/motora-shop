@@ -50,7 +50,7 @@ export default function SearchSuggestionsDropdown({
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={result.image} alt="" className="h-full w-full object-cover" />
                   ) : (
-                    <ProductVisual category={result.category} className="h-full w-full" />
+                    <ProductVisual className="h-full w-full" />
                   )}
                 </div>
                 <div className="flex min-w-0 flex-1 flex-col">

@@ -4,7 +4,6 @@ import { useMemo, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import * as XLSX from "xlsx";
 import { importProductsAction, type ImportRow, type ImportResult } from "./actions";
-import { categoryIds, categoryLabels, t } from "@/lib/products";
 import type { Locale } from "@/i18n/locales";
 import type { Dictionary } from "@/i18n/dictionary";
 
@@ -13,7 +12,9 @@ type FieldKey =
   | "originCode"
   | "price"
   | "stock"
-  | "name"
+  | "nameRu"
+  | "nameAz"
+  | "nameKa"
   | "description"
   | "make"
   | "model"
@@ -22,12 +23,15 @@ type FieldKey =
   | "yearTo"
   | "warehouse";
 
+/** The three name columns get their own row in the mapping UI, so they're
+ * not mistaken for one another or for the rest of the columns. */
+const NAME_FIELDS: FieldKey[] = ["nameRu", "nameAz", "nameKa"];
+
 const FIELD_ORDER: FieldKey[] = [
   "productCode",
   "originCode",
   "price",
   "stock",
-  "name",
   "description",
   "make",
   "model",
@@ -42,7 +46,9 @@ const FIELD_KEYWORDS: Record<FieldKey, string[]> = {
   originCode: ["оригинал", "origin", "oem"],
   price: ["цена", "price", "qiymət", "qiymet"],
   stock: ["кол-во", "количество", "остаток", "шт", "stock", "qty", "quantity", "miqdar"],
-  name: ["назв", "наимен", "name", "ad"],
+  nameRu: ["назв", "наимен", "рус", "name ru", "name (ru)"],
+  nameAz: ["adı", "adi", "azərb", "azerb", "азерб", "name az", "name (az)"],
+  nameKa: ["დასახელება", "სახელი", "ქარ", "груз", "name ka", "name (ka)"],
   description: ["опис", "descr", "təsvir", "tesvir"],
   make: ["марка", "marka", "make"],
   model: ["модел", "model"],
@@ -52,17 +58,29 @@ const FIELD_KEYWORDS: Record<FieldKey, string[]> = {
   warehouse: ["склад", "магазин", "warehouse", "store", "anbar", "საწყობი"],
 };
 
+// Name columns are matched first so a header like "Наименование" is claimed
+// as the Russian name rather than by a later field's looser keyword.
+const GUESS_ORDER: FieldKey[] = [...NAME_FIELDS, ...FIELD_ORDER];
+
 function guessMapping(headers: string[]): Partial<Record<FieldKey, number>> {
   const lower = headers.map((h) => h.toLowerCase());
   const used = new Set<number>();
   const mapping: Partial<Record<FieldKey, number>> = {};
-  for (const field of FIELD_ORDER) {
+  for (const field of GUESS_ORDER) {
     const keywords = FIELD_KEYWORDS[field];
     const idx = lower.findIndex((h, i) => !used.has(i) && keywords.some((k) => h.includes(k)));
     if (idx !== -1) {
       mapping[field] = idx;
       used.add(idx);
     }
+  }
+  // A file with a single, language-neutral "Name"/"Ad" column: treat it as
+  // the Russian name — the import fills the other two languages from it.
+  if (mapping.nameRu == null) {
+    const idx = lower.findIndex(
+      (h, i) => !used.has(i) && (h.includes("name") || h.trim() === "ad")
+    );
+    if (idx !== -1) mapping.nameRu = idx;
   }
   return mapping;
 }
@@ -83,7 +101,6 @@ export default function ImportProductsModal({
   const [headers, setHeaders] = useState<string[] | null>(null);
   const [dataRows, setDataRows] = useState<unknown[][]>([]);
   const [mapping, setMapping] = useState<Partial<Record<FieldKey, number>>>({});
-  const [categoryId, setCategoryId] = useState<string>(categoryIds[0]);
   const [brandId, setBrandId] = useState<string>(brands[0]?.id ?? "");
   const [warehouseId, setWarehouseId] = useState<string>("");
   const [parseError, setParseError] = useState<string | null>(null);
@@ -100,7 +117,9 @@ export default function ImportProductsModal({
       originCode: dict.importFieldOriginCode,
       price: dict.importFieldPrice,
       stock: dict.importFieldStock,
-      name: dict.importFieldName,
+      nameRu: dict.importFieldNameRu,
+      nameAz: dict.importFieldNameAz,
+      nameKa: dict.importFieldNameKa,
       description: dict.importFieldDescription,
       make: dict.importFieldMake,
       model: dict.importFieldModel,
@@ -166,7 +185,9 @@ export default function ImportProductsModal({
         originCode: cell(row, mapping.originCode) || undefined,
         price: cellNumber(row, mapping.price),
         stock: cellNumber(row, mapping.stock),
-        name: cell(row, mapping.name) || undefined,
+        nameRu: cell(row, mapping.nameRu) || undefined,
+        nameAz: cell(row, mapping.nameAz) || undefined,
+        nameKa: cell(row, mapping.nameKa) || undefined,
         description: cell(row, mapping.description) || undefined,
         make: cell(row, mapping.make) || undefined,
         model: cell(row, mapping.model) || undefined,
@@ -178,15 +199,38 @@ export default function ImportProductsModal({
       .filter((r) => r.productCode);
 
     startTransition(async () => {
-      const res = await importProductsAction(
-        locale,
-        categoryId,
-        brandId,
-        importRows,
-        warehouseId || undefined
-      );
+      const res = await importProductsAction(locale, brandId, importRows, warehouseId || undefined);
       setResult(res);
     });
+  }
+
+  function renderFieldSelect(field: FieldKey) {
+    if (!headers) return null;
+    return (
+      <div key={field} className="flex flex-col gap-1">
+        <label htmlFor={`import-map-${field}`} className="text-xs text-zinc-500">
+          {fieldLabels[field]}
+        </label>
+        <select
+          id={`import-map-${field}`}
+          value={mapping[field] ?? ""}
+          onChange={(e) =>
+            setMapping((prev) => ({
+              ...prev,
+              [field]: e.target.value === "" ? undefined : Number(e.target.value),
+            }))
+          }
+          className={inputClass}
+        >
+          <option value="">{dict.importNotUsedOption}</option>
+          {headers.map((h, i) => (
+            <option key={i} value={i}>
+              {h}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
   }
 
   return createPortal(
@@ -264,57 +308,28 @@ export default function ImportProductsModal({
 
             <div className="flex flex-col gap-1.5">
               <span className={labelClass}>{dict.importMappingTitle}</span>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {FIELD_ORDER.map((field) => (
-                  <div key={field} className="flex flex-col gap-1">
-                    <label htmlFor={`import-map-${field}`} className="text-xs text-zinc-500">
-                      {fieldLabels[field]}
-                    </label>
-                    <select
-                      id={`import-map-${field}`}
-                      value={mapping[field] ?? ""}
-                      onChange={(e) =>
-                        setMapping((prev) => ({
-                          ...prev,
-                          [field]: e.target.value === "" ? undefined : Number(e.target.value),
-                        }))
-                      }
-                      className={inputClass}
-                    >
-                      <option value="">{dict.importNotUsedOption}</option>
-                      {headers.map((h, i) => (
-                        <option key={i} value={i}>
-                          {h}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                ))}
+
+              {/* The three name columns, set apart in their own row so the
+                  language each one feeds is unmistakable. */}
+              <div className="rounded-xl border border-zinc-200 p-3 dark:border-zinc-700">
+                <span className="text-xs font-medium text-zinc-500">{dict.importFieldName}</span>
+                <div
+                  className="mt-2 grid grid-cols-1 sm:grid-cols-3"
+                  style={{ gap: "12px" }}
+                >
+                  {NAME_FIELDS.map(renderFieldSelect)}
+                </div>
+              </div>
+
+              <div className="mt-1 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {FIELD_ORDER.map(renderFieldSelect)}
               </div>
               {mapping.productCode == null && (
                 <p className="text-sm text-red-600">{dict.importMissingProductCodeColumn}</p>
               )}
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="import-category" className={labelClass}>
-                  {dict.productCategoryLabel}
-                </label>
-                <select
-                  id="import-category"
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
-                  className={inputClass}
-                >
-                  {categoryIds.map((c) => (
-                    <option key={c} value={c}>
-                      {t(categoryLabels[c], locale)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="import-brand" className={labelClass}>
                   {dict.productBrandLabel}

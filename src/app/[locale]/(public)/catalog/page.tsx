@@ -1,13 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  categoryIds,
-  categoryLabels,
-  filterProducts,
-  getAllProducts,
-  t,
-  type CategoryId,
-} from "@/lib/products";
+import { filterProducts, getAllProducts } from "@/lib/products";
 import { getBrands } from "@/lib/brands";
 import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
@@ -16,10 +9,6 @@ import ProductCard from "@/components/ProductCard";
 import Pagination from "@/components/Pagination";
 
 const CATALOG_PAGE_SIZE = 12;
-
-function isCategoryId(value: string | undefined): value is CategoryId {
-  return categoryIds.includes(value as CategoryId);
-}
 
 export default async function CatalogPage({
   params,
@@ -31,7 +20,6 @@ export default async function CatalogPage({
   const brands = await getBrands();
 
   const sp = await searchParams;
-  const category = isCategoryId(single(sp.category)) ? (single(sp.category) as CategoryId) : undefined;
   const query = single(sp.q)?.trim() || undefined;
   const make = single(sp.make) || undefined;
   const model = single(sp.model) || undefined;
@@ -44,22 +32,10 @@ export default async function CatalogPage({
 
   const hasActiveFilters = Boolean(make || model || brand || priceMin !== undefined || priceMax !== undefined || yearFrom !== undefined || yearTo !== undefined);
 
-  function hrefForCategory(target?: CategoryId): string {
-    const searchParamsObj = new URLSearchParams();
-    for (const [key, value] of Object.entries(sp)) {
-      if (key === "category" || key === "page") continue;
-      const v = single(value);
-      if (v) searchParamsObj.set(key, v);
-    }
-    if (target) searchParamsObj.set("category", target);
-    const qs = searchParamsObj.toString();
-    return qs ? `/${locale}/catalog?${qs}` : `/${locale}/catalog`;
-  }
-
   const allProducts = await getAllProducts();
   const items = filterProducts(
     allProducts,
-    { category, query, make, model, brand, priceMin, priceMax, yearFrom, yearTo },
+    { query, make, model, brand, priceMin, priceMax, yearFrom, yearTo },
     locale
   );
   const pageStart = (page - 1) * CATALOG_PAGE_SIZE;
@@ -73,13 +49,12 @@ export default async function CatalogPage({
         </h1>
         <p className="text-zinc-600 dark:text-zinc-400">
           {dict.catalog.productCount(items.length)}
-          {category ? dict.catalog.inCategory(t(categoryLabels[category], locale)) : ""}
           {query ? ` ${dict.catalog.forQuery(query)}` : ""}
           {hasActiveFilters && (
             <>
               {" · "}
               <Link
-                href={category ? `/${locale}/catalog?category=${category}` : `/${locale}/catalog`}
+                href={`/${locale}/catalog`}
                 className="text-orange-600 hover:underline"
               >
                 {dict.catalog.clearFilters}
@@ -87,32 +62,6 @@ export default async function CatalogPage({
             </>
           )}
         </p>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        <Link
-          href={hrefForCategory()}
-          className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-            !category
-              ? "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900"
-              : "border border-zinc-200 text-zinc-700 hover:border-orange-500 hover:text-orange-600 dark:border-zinc-700 dark:text-zinc-300"
-          }`}
-        >
-          {dict.catalog.all}
-        </Link>
-        {categoryIds.map((c) => (
-          <Link
-            key={c}
-            href={hrefForCategory(c)}
-            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-              category === c
-                ? "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900"
-                : "border border-zinc-200 text-zinc-700 hover:border-orange-500 hover:text-orange-600 dark:border-zinc-700 dark:text-zinc-300"
-            }`}
-          >
-            {t(categoryLabels[c], locale)}
-          </Link>
-        ))}
       </div>
 
       {pageItems.length > 0 ? (
@@ -131,7 +80,6 @@ export default async function CatalogPage({
         total={items.length}
         pageSize={CATALOG_PAGE_SIZE}
         searchParams={{
-          category,
           q: query,
           make,
           model,

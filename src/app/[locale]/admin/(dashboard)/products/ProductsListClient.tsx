@@ -107,7 +107,6 @@ export default function ProductsListClient({
       values: {
         id: row.id,
         slug: row.slug,
-        category: row.category,
         brandId: row.brandId,
         make: row.make,
         model: row.model,

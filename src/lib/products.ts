@@ -5,15 +5,12 @@ import { createPublicClient } from "@/lib/supabase/public";
 
 export type LocalizedText = Record<Locale, string>;
 
-export type CategoryId = "cars" | "trucks" | "vans";
-
 export type ProductSpec = { label: LocalizedText; value: LocalizedText };
 
 export type Product = {
   id: string;
   slug: string;
   name: LocalizedText;
-  category: CategoryId;
   /** Vehicle make this part fits, as a key into {@link makeLabels}. "universal" if not make-specific. */
   make: string;
   /** Vehicle model (and chassis code, where relevant) this part fits. */
@@ -45,8 +42,6 @@ export function t(text: LocalizedText, locale: Locale): string {
   return text[locale];
 }
 
-export const categoryIds: CategoryId[] = ["cars", "trucks", "vans"];
-
 /** Vehicle makes referenced by {@link Product.make}, keyed by a stable locale-independent id. */
 export const makeLabels: Record<string, LocalizedText> = {
   toyota: { ru: "Toyota", az: "Toyota", ka: "Toyota" },
@@ -73,21 +68,10 @@ export function localizedMakes(
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 
-export const categoryLabels: Record<CategoryId, LocalizedText> = {
-  cars: { ru: "Легковые авто", az: "Yüngül avtomobillər", ka: "მსუბუქი ავტომობილები" },
-  trucks: { ru: "Грузовики", az: "Yük maşınları", ka: "სატვირთოები" },
-  vans: {
-    ru: "Спринтеры / микроавтобусы",
-    az: "Sprinterlər / mikroavtobuslar",
-    ka: "სპრინტერები / მიკროავტობუსები",
-  },
-};
-
 type ProductRow = {
   id: string;
   slug: string;
   name: LocalizedText;
-  category: CategoryId;
   make: string;
   model: string | null;
   year_from: number;
@@ -106,7 +90,7 @@ type ProductRow = {
 };
 
 const SELECT_COLUMNS =
-  "id, slug, name, category, make, model, year_from, year_to, price, old_price, description, specs, stock, badge, images, origin_code, product_code, is_popular, brands(slug)";
+  "id, slug, name, make, model, year_from, year_to, price, old_price, description, specs, stock, badge, images, origin_code, product_code, is_popular, brands(slug)";
 
 function mapRow(row: ProductRow): Product {
   const brand = Array.isArray(row.brands) ? row.brands[0] : row.brands;
@@ -114,7 +98,6 @@ function mapRow(row: ProductRow): Product {
     id: row.id,
     slug: row.slug,
     name: row.name,
-    category: row.category,
     make: row.make,
     model: row.model ?? "",
     brand: brand?.slug ?? "",
@@ -208,16 +191,16 @@ export const getProductCountsByBrandSlug = cache(async (): Promise<Record<string
   return counts;
 });
 
-export type CartProductSummary = Pick<Product, "id" | "slug" | "name" | "category" | "price" | "stock">;
+export type CartProductSummary = Pick<Product, "id" | "slug" | "name" | "price" | "stock">;
 
-/** Just the columns the cart view renders (name, price, stock, category —
- * for the placeholder image) instead of every product's full row. The cart
- * itself lives in the browser's localStorage, so the server can't know in
- * advance which product ids to filter for — this still has to fetch every
- * product, but a much lighter row: no description, specs, images, or badge. */
+/** Just the columns the cart view renders (name, price, stock) instead of
+ * every product's full row. The cart itself lives in the browser's
+ * localStorage, so the server can't know in advance which product ids to
+ * filter for — this still has to fetch every product, but a much lighter
+ * row: no description, specs, images, or badge. */
 export const getProductsForCart = cache(async (): Promise<CartProductSummary[]> => {
   const supabase = createPublicClient();
-  const { data } = await supabase.from("products").select("id, slug, name, category, price, stock");
+  const { data } = await supabase.from("products").select("id, slug, name, price, stock");
   return (data ?? []) as CartProductSummary[];
 });
 
@@ -249,7 +232,6 @@ export function computeModelsByMake(products: { make: string; model: string }[])
 }
 
 export type ProductFilters = {
-  category?: CategoryId;
   make?: string;
   model?: string;
   brand?: BrandSlug;
@@ -267,7 +249,6 @@ export function filterProducts(
 ): Product[] {
   const query = filters.query?.trim().toLowerCase();
   return products.filter((p) => {
-    if (filters.category && p.category !== filters.category) return false;
     if (filters.make && p.make !== filters.make) return false;
     if (filters.model && p.model !== filters.model) return false;
     if (filters.brand && p.brand !== filters.brand) return false;

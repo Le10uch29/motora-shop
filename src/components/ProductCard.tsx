@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { t, categoryLabels, discountPercent, type Product } from "@/lib/products";
+import { t, discountPercent, type Product } from "@/lib/products";
 import { formatGel, formatUsd } from "@/lib/currency";
 import type { Locale } from "@/i18n/locales";
 import type { Dictionary } from "@/i18n/dictionary";
@@ -34,7 +34,7 @@ export default function ProductCard({
               className="aspect-[4/3] w-full object-cover"
             />
           ) : (
-            <ProductVisual category={product.category} className="aspect-[4/3] w-full" />
+            <ProductVisual className="aspect-[4/3] w-full" />
           )}
           {product.stock <= 0 && (
             <span className="absolute right-3 top-3 rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-600">
@@ -51,9 +51,6 @@ export default function ProductCard({
               {t(product.badge, locale)}
             </span>
           )}
-          <span className="absolute bottom-3 left-3 rounded-full bg-black/70 px-2.5 py-1 text-xs font-medium uppercase tracking-wide text-orange-300">
-            {t(categoryLabels[product.category], locale)}
-          </span>
         </div>
         <div className="flex flex-1 flex-col gap-2 p-4 pb-0">
           {(product.originCode || product.productCode) && (

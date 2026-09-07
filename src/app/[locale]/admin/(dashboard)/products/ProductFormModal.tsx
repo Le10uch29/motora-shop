@@ -3,14 +3,13 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { createProductAction, updateProductAction, type ProductActionState } from "./actions";
-import { categoryIds, categoryLabels, t, type LocalizedText } from "@/lib/products";
+import type { LocalizedText } from "@/lib/products";
 import type { Locale } from "@/i18n/locales";
 import type { Dictionary } from "@/i18n/dictionary";
 
 export type ProductFormValues = {
   id: string;
   slug: string;
-  category: string;
   brandId: string;
   make: string;
   model: string;
@@ -149,23 +148,6 @@ export default function ProductFormModal({
             <label htmlFor="product-slug" className={labelClass}>{dict.productSlugLabel}</label>
             <input id="product-slug" name="slug" required defaultValue={initialValues?.slug} className={inputClass} />
             <span className="text-xs text-zinc-400">{dict.productSlugHint}</span>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="product-category" className={labelClass}>{dict.productCategoryLabel}</label>
-            <select
-              id="product-category"
-              name="category"
-              required
-              defaultValue={initialValues?.category ?? categoryIds[0]}
-              className={inputClass}
-            >
-              {categoryIds.map((c) => (
-                <option key={c} value={c}>
-                  {t(categoryLabels[c], locale)}
-                </option>
-              ))}
-            </select>
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -351,6 +333,17 @@ export default function ProductFormModal({
             className="text-sm text-zinc-600 dark:text-zinc-400"
           />
           <span className="text-xs text-zinc-400">{dict.productImagesHint}</span>
+          <label htmlFor="product-image-urls" className={labelClass}>
+            {dict.productImageUrlsLabel}
+          </label>
+          <textarea
+            id="product-image-urls"
+            name="imageUrls"
+            rows={2}
+            placeholder="https://…"
+            className={inputClass}
+          />
+          <span className="text-xs text-zinc-400">{dict.productImageUrlsHint}</span>
         </div>
 
         {state.error && <p className="text-sm text-red-600">{state.error}</p>}

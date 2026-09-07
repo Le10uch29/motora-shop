@@ -68,7 +68,7 @@ export default function HeaderSearch({
   const [filters, setFilters] = useState<FilterFieldsState>(() => filtersFromSearchParams(searchParams));
 
   // Re-sync local editable state whenever the URL's filter params change from
-  // outside this component (e.g. a category tab click, browser back/forward),
+  // outside this component (e.g. a brand link, browser back/forward),
   // or whenever the modal is reopened, discarding any un-applied edits.
   const searchParamsKey = searchParams.toString();
   const [lastQueryKey, setLastQueryKey] = useState(searchParamsKey);
