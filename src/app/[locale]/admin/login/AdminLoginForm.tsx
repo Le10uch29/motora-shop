@@ -23,7 +23,7 @@ export default function AdminLoginForm({
   const [state, formAction, pending] = useActionState(signInAction, initialState);
 
   return (
-    <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-6 px-3 py-16">
+    <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-6 px-2 py-16">
       <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">{title}</h1>
       <form action={formAction} className="flex flex-col gap-4">
         <input type="hidden" name="locale" value={locale} />

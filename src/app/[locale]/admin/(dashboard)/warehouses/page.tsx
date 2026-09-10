@@ -17,7 +17,7 @@ export default async function AdminWarehousesPage({
   const warehouses = await getWarehouses();
 
   return (
-    <main className="flex w-full flex-1 flex-col gap-6 px-3 py-10">
+    <main className="flex w-full flex-1 flex-col gap-6 px-2 py-10">
       <WarehousesListClient
         locale={locale}
         dict={dict.admin}

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { t, discountPercent, type Product } from "@/lib/products";
-import { formatGel, formatUsd } from "@/lib/currency";
+import { formatGel } from "@/lib/currency";
 import type { Locale } from "@/i18n/locales";
 import type { Dictionary } from "@/i18n/dictionary";
 import type { Brand } from "@/lib/brands";
@@ -86,9 +86,8 @@ export default function ProductCard({
                 </span>
               )}
             </div>
-            <span className="text-sm text-zinc-500">{formatUsd(product.price, locale)}</span>
             {product.stock > 0 && (
-              <span className="text-xs text-zinc-400">{dict.product.stockCount(product.stock)}</span>
+              <span className="text-2xl text-zinc-400">{dict.product.stockCount(product.stock)}</span>
             )}
           </div>
         </div>

@@ -56,7 +56,7 @@ export default async function StaffDetailPage({
   const backLabel = row.role === "admin" ? dict.admin.navStaffAdmins : dict.admin.navStaffSellers;
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-3 py-10">
+    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-2 py-10">
       <Link href={backHref} className="text-sm text-zinc-500 hover:text-orange-600">
         ← {backLabel}
       </Link>

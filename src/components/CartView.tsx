@@ -5,7 +5,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useCart } from "@/context/CartContext";
 import { placeOrderAction } from "@/app/[locale]/(public)/cart/actions";
 import { t, type CartProductSummary } from "@/lib/products";
-import { formatGel, formatUsd } from "@/lib/currency";
+import { formatGel } from "@/lib/currency";
 import type { Locale } from "@/i18n/locales";
 import type { Dictionary } from "@/i18n/dictionary";
 import ProductVisual from "@/components/ProductVisual";
@@ -67,7 +67,7 @@ export default function CartView({
 
   if (rows.length === 0) {
     return (
-      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center gap-4 px-3 py-24 text-center">
+      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center gap-4 px-2 py-24 text-center">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
           {dict.emptyTitle}
         </h1>
@@ -83,7 +83,7 @@ export default function CartView({
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-3 py-10">
+    <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-2 py-10">
       <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
         {dict.title}
       </h1>
@@ -104,9 +104,7 @@ export default function CartView({
               >
                 {t(product.name, locale)}
               </Link>
-              <span className="text-sm text-zinc-500">
-                {formatGel(product.price, locale)} · {formatUsd(product.price, locale)}
-              </span>
+              <span className="text-sm text-zinc-500">{formatGel(product.price, locale)}</span>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -150,7 +148,6 @@ export default function CartView({
           <span className="font-bold text-zinc-900 dark:text-zinc-50">
             {formatGel(totalPrice, locale)}
           </span>
-          <span className="text-sm text-zinc-500">{formatUsd(totalPrice, locale)}</span>
         </div>
         {orderError && <p className="text-sm text-red-600">{orderError}</p>}
 

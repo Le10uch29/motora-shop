@@ -48,7 +48,7 @@ export default async function Header({
 
   return (
     <header className="flame-header sticky top-0 z-30 border-b border-zinc-200 backdrop-blur dark:border-zinc-800">
-      <div className="relative mx-auto flex max-w-[96rem] items-center gap-3 px-4 py-4 sm:gap-4 sm:px-3">
+      <div className="relative mx-auto flex max-w-[120rem] items-center gap-3 px-4 py-4 sm:gap-4 sm:px-2">
         <Link
           href={`/${locale}`}
           className="shrink-0 text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50"

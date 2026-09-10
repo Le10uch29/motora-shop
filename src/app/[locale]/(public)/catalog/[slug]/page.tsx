@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getProductBySlug, getAllProducts, makeLabel, discountPercent, t } from "@/lib/products";
-import { formatGel, formatUsd } from "@/lib/currency";
+import { formatGel } from "@/lib/currency";
 import { getBrandBySlug } from "@/lib/brands";
 import { locales, isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
@@ -42,7 +42,7 @@ export default async function ProductPage({
   const percent = discountPercent(product);
 
   return (
-    <main className="mx-auto flex w-full max-w-[96rem] flex-1 flex-col gap-8 px-3 py-10">
+    <main className="mx-auto flex w-full max-w-[120rem] flex-1 flex-col gap-8 px-2 py-10">
       <nav className="text-sm text-zinc-500">
         <Link href={`/${locale}/catalog`} className="hover:text-orange-600">
           {dict.product.breadcrumbCatalog}
@@ -104,7 +104,6 @@ export default async function ProductPage({
                 </span>
               )}
             </div>
-            <span className="text-zinc-500">{formatUsd(product.price, locale)}</span>
           </div>
 
           <p className="text-zinc-600 dark:text-zinc-400">{t(product.description, locale)}</p>
@@ -120,7 +119,9 @@ export default async function ProductPage({
               {product.stock > 0 ? dict.product.inStock : dict.product.onOrder}
             </p>
             {product.stock > 0 && (
-              <span className="text-sm text-zinc-500">{dict.product.stockCount(product.stock)}</span>
+              <span className="text-[1.75rem] text-zinc-500">
+                {dict.product.stockCount(product.stock)}
+              </span>
             )}
           </div>
 
