@@ -12,7 +12,7 @@ export default async function AdminDashboardPage({
   const dict = await getDictionary(locale);
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-2 px-6 py-10">
+    <main className="mx-auto flex w-full max-w-[96rem] flex-1 flex-col gap-2 px-3 py-10">
       <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
         {dict.admin.dashboardTitle}
       </h1>

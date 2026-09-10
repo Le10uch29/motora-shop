@@ -16,7 +16,7 @@ export default async function Home({ params }: PageProps<"/[locale]">) {
   return (
     <main className="flex flex-1 flex-col">
       <section className="border-b border-zinc-200 bg-gradient-to-br from-zinc-900 via-zinc-900 to-orange-900 dark:border-zinc-800">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-6 py-20 text-white">
+        <div className="mx-auto flex max-w-[96rem] flex-col gap-4 px-3 py-20 text-white">
           <span className="text-sm font-medium uppercase tracking-widest text-orange-400">
             {dict.home.brand}
           </span>
@@ -36,7 +36,7 @@ export default async function Home({ params }: PageProps<"/[locale]">) {
       </section>
 
       {featured.length > 0 && (
-        <section className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-12">
+        <section className="mx-auto flex w-full max-w-[96rem] flex-col gap-6 px-3 py-12">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
               {dict.home.popular}

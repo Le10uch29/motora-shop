@@ -32,7 +32,7 @@ export default async function AdminDashboardLayout({
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
-      <header className="flame-header flex shrink-0 items-center justify-between border-b border-zinc-200 px-6 py-4 dark:border-zinc-800 print:hidden">
+      <header className="flame-header flex shrink-0 items-center justify-between border-b border-zinc-200 px-3 py-4 dark:border-zinc-800 print:hidden">
         <Link
           href={`/${locale}`}
           className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50"

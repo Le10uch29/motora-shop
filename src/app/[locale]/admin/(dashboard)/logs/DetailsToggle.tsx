@@ -13,7 +13,6 @@ const FIELD_LABEL_KEYS = {
   idCardNumber: "idCardLabel",
   organizationName: "organizationNameLabel",
   address: "addressLabel",
-  postalCode: "postalCodeLabel",
   city: "cityLabel",
   photoUrl: "photoLabel",
   password: "resetPasswordLabel",

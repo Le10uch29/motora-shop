@@ -2,7 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { looksLikeEmail, normalizePhoneForAuth } from "@/lib/phone";
+import { looksLikeEmail } from "@/lib/phone";
+import { resolveLoginEmail } from "@/lib/phoneLogin";
 
 /** Signs out from anywhere on the public site (header icon, mobile menu). */
 export async function signOutAction(formData: FormData) {
@@ -26,12 +27,15 @@ export async function signInAction(
   const locale = String(formData.get("locale") ?? "");
   const invalidCredentialsMessage = String(formData.get("invalidCredentialsMessage") ?? "");
 
+  // A phone number is turned into the account's email first — Supabase's own
+  // phone login needs an SMS provider this project doesn't have.
+  const email = looksLikeEmail(identifier) ? identifier : await resolveLoginEmail(identifier);
+  if (!email) {
+    return { error: invalidCredentialsMessage || "Invalid login credentials" };
+  }
+
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword(
-    looksLikeEmail(identifier)
-      ? { email: identifier, password }
-      : { phone: normalizePhoneForAuth(identifier), password }
-  );
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
     // Only mask genuine wrong-login/wrong-password cases behind the

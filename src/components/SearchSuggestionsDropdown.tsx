@@ -39,13 +39,13 @@ export default function SearchSuggestionsDropdown({
               <Link
                 href={`/${locale}/catalog/${result.slug}`}
                 onClick={onSelect}
-                className={`flex items-center gap-3 px-4 py-2.5 transition-colors ${
+                className={`flex items-center gap-5 px-4 py-4 transition-colors ${
                   index === highlightedIndex
                     ? "bg-zinc-100 dark:bg-zinc-800"
                     : "hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
                 }`}
               >
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-800">
                   {result.image ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={result.image} alt="" className="h-full w-full object-cover" />
@@ -53,20 +53,20 @@ export default function SearchSuggestionsDropdown({
                     <ProductVisual className="h-full w-full" />
                   )}
                 </div>
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <span className="truncate text-base font-medium text-zinc-900 dark:text-zinc-50">
                     {result.name}
                   </span>
                   {result.productCode && (
-                    <span className="text-xs text-zinc-400">{result.productCode}</span>
+                    <span className="text-sm text-zinc-400">{result.productCode}</span>
                   )}
                 </div>
                 <div className="flex shrink-0 flex-col items-end">
-                  <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                  <span className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
                     {formatGel(result.price, locale)}
                   </span>
                   {result.oldPrice && (
-                    <span className="text-xs text-zinc-400 line-through">
+                    <span className="text-sm text-zinc-400 line-through">
                       {formatGel(result.oldPrice, locale)}
                     </span>
                   )}

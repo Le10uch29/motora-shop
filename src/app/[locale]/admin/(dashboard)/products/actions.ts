@@ -528,12 +528,20 @@ export async function importProductsAction(
     // Filled per language, not all-or-nothing: a product that already has a
     // Russian name but no Georgian one picks up the Georgian column from the
     // file without its existing Russian name being touched.
+    //
+    // A name that is just the product code counts as missing, not as a real
+    // name — that's what a row imported without a name column gets, and
+    // re-importing the same file with the name column mapped has to be able
+    // to replace it. Otherwise the placeholder looks "filled" forever and the
+    // second import silently changes nothing.
     if (anyName) {
       const currentName = existing.name ?? { ru: "", az: "", ka: "" };
+      const isPlaceholder = (value: string | undefined) =>
+        !value?.trim() || value.trim().toLowerCase() === code.toLowerCase();
       const mergedName = {
-        ru: currentName.ru?.trim() || nameValue.ru,
-        az: currentName.az?.trim() || nameValue.az,
-        ka: currentName.ka?.trim() || nameValue.ka,
+        ru: isPlaceholder(currentName.ru) ? nameValue.ru : currentName.ru.trim(),
+        az: isPlaceholder(currentName.az) ? nameValue.az : currentName.az.trim(),
+        ka: isPlaceholder(currentName.ka) ? nameValue.ka : currentName.ka.trim(),
       };
       const changed = (["ru", "az", "ka"] as const).some(
         (lang) => mergedName[lang] !== currentName[lang]

@@ -27,7 +27,7 @@ export default async function OrderDetailPage({
       : "";
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-10">
+    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-3 py-10">
       <Link
         href={`/${locale}/admin/orders/${customerId}`}
         className="text-sm text-zinc-500 hover:text-orange-600"
@@ -150,7 +150,6 @@ export default async function OrderDetailPage({
                 [dict.admin.idCardLabel, order.customer.idCardNumber],
                 [dict.admin.organizationNameLabel, order.customer.organizationName],
                 [dict.admin.cityLabel, order.customer.city],
-                [dict.admin.postalCodeLabel, order.customer.postalCode],
                 [dict.admin.addressLabel, order.customer.address],
               ] as [string, string][]
             ).map(([label, value]) => (

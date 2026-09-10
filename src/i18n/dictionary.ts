@@ -107,7 +107,6 @@ export type Dictionary = {
     customerPurchaseHistoryTitle: string;
     customerPurchaseHistoryEmpty: string;
     addressLabel: string;
-    postalCodeLabel: string;
     cityLabel: string;
     ordersTitle: string;
     emptyOrders: string;

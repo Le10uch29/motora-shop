@@ -4,6 +4,7 @@ import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isPhoneAliasEmail } from "@/lib/phoneLogin";
 import { actionLabel } from "../../logs/labels";
 import DetailsToggle, { type LogDetails } from "../../logs/DetailsToggle";
 import { orderStatusLabel, orderStatusClass } from "../../orders/statusStyles";
@@ -23,7 +24,7 @@ export default async function CustomerDetailPage({
   const { data: row } = await admin
     .from("customers")
     .select(
-      "id, first_name, last_name, phone, id_card_number, organization_name, address, postal_code, city, photo_url, created_at"
+      "id, first_name, last_name, phone, id_card_number, organization_name, address, city, photo_url, created_at"
     )
     .eq("id", id)
     .single();
@@ -42,21 +43,24 @@ export default async function CustomerDetailPage({
     .order("created_at", { ascending: false })
     .limit(50);
 
+  // A phone-derived stand-in address is an internal login detail, not a
+  // contact the customer gave — shown as "—", the same as having none.
+  const email = isPhoneAliasEmail(userData.user?.email) ? "" : userData.user?.email ?? "";
+
   const fields: [string, string][] = [
     [dict.admin.firstNameLabel, row.first_name],
     [dict.admin.lastNameLabel, row.last_name],
-    ["Email", userData.user?.email ?? "—"],
+    ["Email", email || "—"],
     [dict.admin.phoneLabel, row.phone],
     [dict.admin.idCardLabel, row.id_card_number],
     [dict.admin.organizationNameLabel, row.organization_name],
     [dict.admin.cityLabel, row.city],
-    [dict.admin.postalCodeLabel, row.postal_code],
     [dict.admin.addressLabel, row.address],
     [dict.admin.tableId, row.id],
   ];
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-10">
+    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-3 py-10">
       <Link href={`/${locale}/admin/customers`} className="text-sm text-zinc-500 hover:text-orange-600">
         ← {dict.admin.customersTitle}
       </Link>
@@ -70,14 +74,13 @@ export default async function CustomerDetailPage({
           dict={dict.admin}
           values={{
             id: row.id,
-            email: userData.user?.email ?? "",
+            email,
             firstName: row.first_name,
             lastName: row.last_name,
             phone: row.phone,
             idCardNumber: row.id_card_number,
             organizationName: row.organization_name,
             address: row.address,
-            postalCode: row.postal_code,
             city: row.city,
             photoUrl: row.photo_url,
           }}

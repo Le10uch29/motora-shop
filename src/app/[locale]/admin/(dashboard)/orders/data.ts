@@ -27,7 +27,6 @@ type OrdererInfo =
       organizationName: string;
       idCardNumber: string;
       address: string;
-      postalCode: string;
       city: string;
       phone: string;
       email: string;
@@ -43,7 +42,7 @@ async function resolveOrderers(
 
   const { data: customerRows } = await admin
     .from("customers")
-    .select("id, first_name, last_name, organization_name, id_card_number, address, postal_code, city, phone")
+    .select("id, first_name, last_name, organization_name, id_card_number, address, city, phone")
     .in("id", ids);
 
   const remainingAfterCustomers = ids.filter(
@@ -67,7 +66,6 @@ async function resolveOrderers(
       organizationName: row.organization_name,
       idCardNumber: row.id_card_number,
       address: row.address,
-      postalCode: row.postal_code,
       city: row.city,
       phone: row.phone,
       email: emailById.get(row.id) ?? "",
@@ -231,7 +229,6 @@ export type OrdererProfile =
       organizationName: string;
       idCardNumber: string;
       address: string;
-      postalCode: string;
       city: string;
       phone: string;
       email: string;
@@ -342,7 +339,6 @@ export type OrderDetail = {
     idCardNumber: string;
     organizationName: string;
     address: string;
-    postalCode: string;
     city: string;
   } | null;
   // Set instead of `customer` when the order was placed by a staff account
@@ -398,7 +394,7 @@ export async function getOrderDetail(id: string, locale: Locale): Promise<OrderD
 
   const { data: customerRow } = await admin
     .from("customers")
-    .select("id, first_name, last_name, phone, id_card_number, organization_name, address, postal_code, city")
+    .select("id, first_name, last_name, phone, id_card_number, organization_name, address, city")
     .eq("id", row.customer_id)
     .maybeSingle();
 
@@ -416,7 +412,6 @@ export async function getOrderDetail(id: string, locale: Locale): Promise<OrderD
       idCardNumber: customerRow.id_card_number,
       organizationName: customerRow.organization_name,
       address: customerRow.address,
-      postalCode: customerRow.postal_code,
       city: customerRow.city,
     };
   } else {

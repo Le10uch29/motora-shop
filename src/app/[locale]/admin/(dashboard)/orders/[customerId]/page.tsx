@@ -28,13 +28,12 @@ export default async function OrdererOrdersPage({
           [dict.admin.organizationNameLabel, orderer.organizationName],
           [dict.admin.idCardLabel, orderer.idCardNumber],
           [dict.admin.cityLabel, orderer.city],
-          [dict.admin.postalCodeLabel, orderer.postalCode],
           [dict.admin.addressLabel, orderer.address],
         ]
       : [];
 
   return (
-    <main className="flex w-full flex-1 flex-col gap-6 px-6 py-10">
+    <main className="flex w-full flex-1 flex-col gap-6 px-3 py-10">
       <Link href={`/${locale}/admin/orders`} className="text-sm text-zinc-500 hover:text-orange-600">
         ← {dict.admin.ordersTitle}
       </Link>

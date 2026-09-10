@@ -16,7 +16,6 @@ export type CustomerRow = {
   idCardNumber: string;
   organizationName: string;
   address: string;
-  postalCode: string;
   city: string;
   photoUrl: string | null;
 };
@@ -66,7 +65,6 @@ export default function CustomerListClient({
                 idCardNumber: "",
                 organizationName: "",
                 address: "",
-                postalCode: "",
                 city: "",
                 photoUrl: null,
               },

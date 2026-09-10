@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/auth";
 import { logAction } from "@/lib/logs";
 import { generateTempPassword } from "@/lib/password";
 import { normalizePhone, normalizePhoneForAuth } from "@/lib/phone";
+import { isPhoneAliasEmail, phoneAliasEmail } from "@/lib/phoneLogin";
 import type { Locale } from "@/i18n/locales";
 import { isLocale } from "@/i18n/locales";
 
@@ -38,7 +39,6 @@ function readCustomerFields(formData: FormData) {
     idCardNumber: String(formData.get("idCardNumber") ?? "").trim(),
     organizationName: String(formData.get("organizationName") ?? "").trim(),
     address: String(formData.get("address") ?? "").trim(),
-    postalCode: String(formData.get("postalCode") ?? "").trim(),
     city: String(formData.get("city") ?? "").trim(),
   };
 }
@@ -97,14 +97,14 @@ export async function createCustomerAction(
   const fields = readCustomerFields(formData);
   const deliveryMethod = readDeliveryMethod(formData);
 
+  // Last name is optional — some customers are registered as a company or by
+  // first name alone. Postal code isn't collected at all any more.
   if (
     !fields.firstName ||
-    !fields.lastName ||
     !fields.phone ||
     !fields.idCardNumber ||
     !fields.organizationName ||
     !fields.address ||
-    !fields.postalCode ||
     !fields.city
   ) {
     return { ...EMPTY_STATE, error: "missing_fields" };
@@ -114,12 +114,15 @@ export async function createCustomerAction(
   const password = generateTempPassword();
 
   // Phone is always required for customers and always usable to log in;
-  // email stays optional (given only if the admin filled it in).
+  // email stays optional for the admin, but the account always gets one —
+  // a phone-derived stand-in when none was given — because signing in by
+  // phone goes through the account's email (see resolveLoginEmail).
   const { data: created, error: createError } = await admin.auth.admin.createUser({
     password,
     phone: normalizePhoneForAuth(fields.phone),
     phone_confirm: true,
-    ...(email ? { email, email_confirm: true } : {}),
+    email: email || phoneAliasEmail(fields.phone),
+    email_confirm: true,
   });
 
   if (createError || !created.user) {
@@ -143,7 +146,6 @@ export async function createCustomerAction(
     id_card_number: fields.idCardNumber,
     organization_name: fields.organizationName,
     address: fields.address,
-    postal_code: fields.postalCode,
     city: fields.city,
     photo_url: photoUrl,
   });
@@ -175,12 +177,10 @@ export async function updateCustomerAction(
   if (
     !id ||
     !fields.firstName ||
-    !fields.lastName ||
     !fields.phone ||
     !fields.idCardNumber ||
     !fields.organizationName ||
     !fields.address ||
-    !fields.postalCode ||
     !fields.city
   ) {
     return { ...EMPTY_STATE, error: "missing_fields" };
@@ -193,7 +193,7 @@ export async function updateCustomerAction(
 
   const { data: before } = await admin
     .from("customers")
-    .select("first_name, last_name, phone, id_card_number, organization_name, address, postal_code, city, photo_url")
+    .select("first_name, last_name, phone, id_card_number, organization_name, address, city, photo_url")
     .eq("id", id)
     .single();
 
@@ -216,7 +216,6 @@ export async function updateCustomerAction(
       id_card_number: fields.idCardNumber,
       organization_name: fields.organizationName,
       address: fields.address,
-      postal_code: fields.postalCode,
       city: fields.city,
       photo_url: photoUrl,
     })
@@ -225,10 +224,16 @@ export async function updateCustomerAction(
   if (error) return { ...EMPTY_STATE, error: error.message };
 
   // Phone doubles as the login identifier — keep auth.users in sync so a
-  // changed contact number doesn't lock the customer out.
+  // changed contact number doesn't lock the customer out. A stand-in address
+  // derived from the old number moves with it, so it stays in step with the
+  // phone (and can't collide with a new customer given that old number).
   if (fields.phone !== before.phone) {
+    const { data: authUser } = await admin.auth.admin.getUserById(id);
     const { error: phoneError } = await admin.auth.admin.updateUserById(id, {
       phone: normalizePhoneForAuth(fields.phone),
+      ...(isPhoneAliasEmail(authUser.user?.email)
+        ? { email: phoneAliasEmail(fields.phone), email_confirm: true }
+        : {}),
     });
     if (phoneError) return { ...EMPTY_STATE, error: phoneError.message };
   }
@@ -248,7 +253,6 @@ export async function updateCustomerAction(
       idCardNumber: before.id_card_number,
       organizationName: before.organization_name,
       address: before.address,
-      postalCode: before.postal_code,
       city: before.city,
     },
     fields

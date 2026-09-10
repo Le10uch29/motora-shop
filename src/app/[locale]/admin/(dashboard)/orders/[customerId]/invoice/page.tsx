@@ -24,7 +24,7 @@ export default async function InvoicePage({
   const activeLines = lines.filter((line) => line.status !== "cancelled");
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-6 py-10 print:max-w-none print:gap-6 print:px-0 print:py-0">
+    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-3 py-10 print:max-w-none print:gap-6 print:px-0 print:py-0">
       <div className="flex items-start justify-between print:hidden">
         <p className="text-sm text-zinc-500">{dict.admin.invoiceTitle}</p>
         <PrintButton label={dict.admin.invoicePrintButton} />
@@ -69,7 +69,7 @@ export default async function InvoicePage({
                 {dict.admin.phoneLabel}: {orderer.phone || "—"}
               </p>
               <p className="text-zinc-600 dark:text-zinc-400 print:text-black">
-                {[orderer.city, orderer.postalCode, orderer.address].filter(Boolean).join(", ")}
+                {[orderer.city, orderer.address].filter(Boolean).join(", ")}
               </p>
             </>
           )}

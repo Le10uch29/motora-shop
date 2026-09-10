@@ -42,7 +42,7 @@ export default async function ProductPage({
   const percent = discountPercent(product);
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-6 py-10">
+    <main className="mx-auto flex w-full max-w-[96rem] flex-1 flex-col gap-8 px-3 py-10">
       <nav className="text-sm text-zinc-500">
         <Link href={`/${locale}/catalog`} className="hover:text-orange-600">
           {dict.product.breadcrumbCatalog}

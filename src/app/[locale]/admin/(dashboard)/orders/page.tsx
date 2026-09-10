@@ -24,7 +24,7 @@ export default async function OrdersPage({
   const { rows, total } = await getOrderersList(locale, { query, page });
 
   return (
-    <main className="flex w-full flex-1 flex-col gap-6 px-6 py-10">
+    <main className="flex w-full flex-1 flex-col gap-6 px-3 py-10">
       <OrderersListClient
         locale={locale}
         dict={dict.admin}

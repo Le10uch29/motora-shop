@@ -109,7 +109,6 @@ const ka: Dictionary = {
     customerPurchaseHistoryTitle: "შენაძენების ისტორია",
     customerPurchaseHistoryEmpty: "ამ მყიდველს ჯერ არაფერი შეუკვეთავს.",
     addressLabel: "მისამართი",
-    postalCodeLabel: "საფოსტო ინდექსი",
     cityLabel: "ქალაქი",
     ordersTitle: "შეკვეთები",
     emptyOrders: "შეკვეთები ჯერ არ არის.",

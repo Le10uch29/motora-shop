@@ -109,7 +109,6 @@ const az: Dictionary = {
     customerPurchaseHistoryTitle: "Sifarişlər tarixçəsi",
     customerPurchaseHistoryEmpty: "Bu müştəri hələ heç nə sifariş etməyib.",
     addressLabel: "Ünvan",
-    postalCodeLabel: "Poçt indeksi",
     cityLabel: "Şəhər",
     ordersTitle: "Sifarişlər",
     emptyOrders: "Hələ sifariş yoxdur.",

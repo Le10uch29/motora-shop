@@ -48,16 +48,16 @@ export default async function Header({
 
   return (
     <header className="flame-header sticky top-0 z-30 border-b border-zinc-200 backdrop-blur dark:border-zinc-800">
-      <div className="relative mx-auto flex max-w-6xl items-center gap-3 px-4 py-4 sm:gap-4 sm:px-6">
+      <div className="relative mx-auto flex max-w-[96rem] items-center gap-3 px-4 py-4 sm:gap-4 sm:px-3">
         <Link
           href={`/${locale}`}
           className="shrink-0 text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50"
         >
           <span className="sm:hidden">
-            ARAZ<span className="text-xs font-normal text-zinc-500 dark:text-zinc-400">-2026</span>
+            ARAZ<span>-2026</span>
           </span>
           <span className="hidden sm:inline">
-            ARAZ MOTORS<span className="text-xs font-normal text-zinc-500 dark:text-zinc-400">-2026</span>
+            ARAZ MOTORS<span>-2026</span>
           </span>
         </Link>
         <div className="min-w-0 flex-1">

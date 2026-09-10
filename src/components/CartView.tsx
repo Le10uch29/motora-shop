@@ -67,7 +67,7 @@ export default function CartView({
 
   if (rows.length === 0) {
     return (
-      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center gap-4 px-6 py-24 text-center">
+      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center gap-4 px-3 py-24 text-center">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
           {dict.emptyTitle}
         </h1>
@@ -83,7 +83,7 @@ export default function CartView({
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-6 py-10">
+    <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-3 py-10">
       <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
         {dict.title}
       </h1>

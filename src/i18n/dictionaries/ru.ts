@@ -118,7 +118,6 @@ const ru: Dictionary = {
     customerPurchaseHistoryTitle: "История покупок",
     customerPurchaseHistoryEmpty: "Этот покупатель ещё ничего не заказывал.",
     addressLabel: "Адрес",
-    postalCodeLabel: "Почтовый индекс",
     cityLabel: "Город",
     ordersTitle: "Заказы",
     emptyOrders: "Заказов пока нет.",
