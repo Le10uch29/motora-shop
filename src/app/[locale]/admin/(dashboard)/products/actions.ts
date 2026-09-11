@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAction } from "@/lib/logs";
 import { isLocale, type Locale } from "@/i18n/locales";
+import { mergeImportedName } from "./importName";
 
 export type ProductActionState = { error: string | null };
 
@@ -295,6 +296,10 @@ export type ImportResult = {
   skipped: number;
   conflicts: number;
   warehouseStockSet: number;
+  /** Products matched by code whose every mapped field was already filled —
+   * nothing to change. Reported so an import that legitimately does nothing
+   * reads as "already up to date" instead of an unexplained 0 / 0. */
+  unchanged: number;
   error: string | null;
 };
 
@@ -391,7 +396,7 @@ export async function importProductsAction(
   const validRowsRaw = rows.filter((r) => r.productCode.trim().length > 0);
   const skipped = rows.length - validRowsRaw.length;
   if (validRowsRaw.length === 0) {
-    return { created: 0, updated: 0, skipped, conflicts: 0, warehouseStockSet: 0, error: null };
+    return { created: 0, updated: 0, skipped, conflicts: 0, warehouseStockSet: 0, unchanged: 0, error: null };
   }
 
   const { rows: validRows, conflicts: rowConflicts } = mergeDuplicateImportRows(validRowsRaw);
@@ -423,6 +428,7 @@ export async function importProductsAction(
       skipped: rows.length,
       conflicts: 0,
       warehouseStockSet: 0,
+      unchanged: 0,
       error: fetchError.message,
     };
   }
@@ -458,6 +464,7 @@ export async function importProductsAction(
     return candidate;
   }
 
+  let unchanged = 0;
   const toInsert: Record<string, unknown>[] = [];
   const toUpdate: { id: string; code: string; patch: Record<string, unknown> }[] = [];
   // Maps a product code (lowercased) to the id it ends up as in this run —
@@ -525,28 +532,13 @@ export async function importProductsAction(
     if (!existing.brand_id && brandId) patch.brand_id = brandId;
     if ((!existing.images || existing.images.length === 0) && photoUrl) patch.images = [photoUrl];
 
-    // Filled per language, not all-or-nothing: a product that already has a
-    // Russian name but no Georgian one picks up the Georgian column from the
-    // file without its existing Russian name being touched.
-    //
-    // A name that is just the product code counts as missing, not as a real
-    // name — that's what a row imported without a name column gets, and
-    // re-importing the same file with the name column mapped has to be able
-    // to replace it. Otherwise the placeholder looks "filled" forever and the
-    // second import silently changes nothing.
     if (anyName) {
-      const currentName = existing.name ?? { ru: "", az: "", ka: "" };
-      const isPlaceholder = (value: string | undefined) =>
-        !value?.trim() || value.trim().toLowerCase() === code.toLowerCase();
-      const mergedName = {
-        ru: isPlaceholder(currentName.ru) ? nameValue.ru : currentName.ru.trim(),
-        az: isPlaceholder(currentName.az) ? nameValue.az : currentName.az.trim(),
-        ka: isPlaceholder(currentName.ka) ? nameValue.ka : currentName.ka.trim(),
-      };
-      const changed = (["ru", "az", "ka"] as const).some(
-        (lang) => mergedName[lang] !== currentName[lang]
+      const mergedName = mergeImportedName(
+        existing.name,
+        { ru: nameRu, az: nameAz, ka: nameKa },
+        code
       );
-      if (changed) patch.name = mergedName;
+      if (mergedName) patch.name = mergedName;
     }
 
     const descriptionEmpty =
@@ -565,6 +557,7 @@ export async function importProductsAction(
     if (Object.keys(patch).length > 0) {
       toUpdate.push({ id: existing.id, code, patch });
     } else {
+      unchanged += 1;
       codeToProductId.set(code.toLowerCase(), existing.id);
     }
   }
@@ -670,7 +663,7 @@ export async function importProductsAction(
     actor,
     "create",
     "product",
-    `Импорт Excel: ${created} новых, ${updated} обновлено, ${skipped} пропущено, ${conflictsLogged} конфликтов, склад проставлен для ${warehouseStockSet}`,
+    `Импорт Excel: ${created} новых, ${updated} обновлено, ${unchanged} без изменений, ${skipped} пропущено, ${conflictsLogged} конфликтов, склад проставлен для ${warehouseStockSet}`,
     {}
   );
   revalidatePath(`/${locale}/admin/products`);
@@ -684,6 +677,7 @@ export async function importProductsAction(
     skipped,
     conflicts: conflictsLogged,
     warehouseStockSet,
+    unchanged,
     error: errors.length > 0 ? errors.join("; ") : null,
   };
 }

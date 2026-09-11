@@ -276,6 +276,7 @@ const ka: Dictionary = {
     importResultDonePrefix: "დასრულდა:",
     importResultCreatedLabel: "ახალი",
     importResultUpdatedLabel: "განახლდა",
+    importResultUnchangedLabel: "უცვლელი",
     importResultSkippedLabel: "გამოტოვებული",
     importGenericError: "იმპორტის შესრულება ვერ მოხერხდა.",
     importConflictsFoundLabel: "ნაპოვნია კონფლიქტები:",

@@ -25,7 +25,7 @@ type FieldKey =
 
 /** The three name columns get their own row in the mapping UI, so they're
  * not mistaken for one another or for the rest of the columns. */
-const NAME_FIELDS: FieldKey[] = ["nameRu", "nameAz", "nameKa"];
+const NAME_FIELDS = ["nameRu", "nameAz", "nameKa"] as const satisfies readonly FieldKey[];
 
 const FIELD_ORDER: FieldKey[] = [
   "productCode",
@@ -46,9 +46,9 @@ const FIELD_KEYWORDS: Record<FieldKey, string[]> = {
   originCode: ["оригинал", "origin", "oem"],
   price: ["цена", "price", "qiymət", "qiymet"],
   stock: ["кол-во", "количество", "остаток", "шт", "stock", "qty", "quantity", "miqdar"],
-  nameRu: ["назв", "наимен", "рус", "name ru", "name (ru)"],
-  nameAz: ["adı", "adi", "azərb", "azerb", "азерб", "name az", "name (az)"],
-  nameKa: ["დასახელება", "სახელი", "ქარ", "груз", "name ka", "name (ka)"],
+  nameRu: ["назв", "наимен"],
+  nameAz: ["adı", "adi"],
+  nameKa: ["დასახელება", "სახელი"],
   description: ["опис", "descr", "təsvir", "tesvir"],
   make: ["марка", "marka", "make"],
   model: ["модел", "model"],
@@ -58,28 +58,42 @@ const FIELD_KEYWORDS: Record<FieldKey, string[]> = {
   warehouse: ["склад", "магазин", "warehouse", "store", "anbar", "საწყობი"],
 };
 
-// Name columns are matched first so a header like "Наименование" is claimed
-// as the Russian name rather than by a later field's looser keyword.
+// Which language a name column is for, when the header says so outright —
+// "Название (грузинский)", "Name KA", "Ad (az)". These are matched before
+// anything else: otherwise "Название (грузинский)" is claimed by the Russian
+// column's own "назв" keyword and the Georgian names import as Russian ones.
+const NAME_LANGUAGE_KEYWORDS: Record<(typeof NAME_FIELDS)[number], string[]> = {
+  nameRu: ["рус", "rus", "(ru)", " ru", "_ru", "-ru", "ru]"],
+  nameAz: ["азерб", "azərb", "azerb", "(az)", " az", "_az", "-az", "az]"],
+  nameKa: ["груз", "ქარ", "gürc", "gurc", "(ka)", " ka", "_ka", "-ka", "ka]", "(ge)", " ge"],
+};
+
+// Name columns are matched before the rest so a header like "Наименование" is
+// claimed as a name rather than by a later field's looser keyword.
 const GUESS_ORDER: FieldKey[] = [...NAME_FIELDS, ...FIELD_ORDER];
 
 function guessMapping(headers: string[]): Partial<Record<FieldKey, number>> {
   const lower = headers.map((h) => h.toLowerCase());
   const used = new Set<number>();
   const mapping: Partial<Record<FieldKey, number>> = {};
-  for (const field of GUESS_ORDER) {
-    const keywords = FIELD_KEYWORDS[field];
+
+  function claim(field: FieldKey, keywords: string[]) {
+    if (mapping[field] != null) return;
     const idx = lower.findIndex((h, i) => !used.has(i) && keywords.some((k) => h.includes(k)));
-    if (idx !== -1) {
-      mapping[field] = idx;
-      used.add(idx);
-    }
+    if (idx === -1) return;
+    mapping[field] = idx;
+    used.add(idx);
   }
-  // A file with a single, language-neutral "Name"/"Ad" column: treat it as
-  // the Russian name — the import fills the other two languages from it.
+
+  // 1. Headers that name their language explicitly.
+  for (const field of NAME_FIELDS) claim(field, NAME_LANGUAGE_KEYWORDS[field]);
+  // 2. Everything else by its own keywords, names first.
+  for (const field of GUESS_ORDER) claim(field, FIELD_KEYWORDS[field]);
+  // 3. A file with a single, language-neutral "Name"/"Ad" column: treat it as
+  //    the Russian name — the import fills the other two languages from it.
+  claim("nameRu", ["name"]);
   if (mapping.nameRu == null) {
-    const idx = lower.findIndex(
-      (h, i) => !used.has(i) && (h.includes("name") || h.trim() === "ad")
-    );
+    const idx = lower.findIndex((h, i) => !used.has(i) && h.trim() === "ad");
     if (idx !== -1) mapping.nameRu = idx;
   }
   return mapping;
@@ -268,8 +282,9 @@ export default function ImportProductsModal({
           <div className="flex flex-col gap-4">
             <p className="text-sm text-zinc-700 dark:text-zinc-300">
               {dict.importResultDonePrefix} {dict.importResultCreatedLabel} — {result.created},{" "}
-              {dict.importResultUpdatedLabel} — {result.updated}, {dict.importResultSkippedLabel} —{" "}
-              {result.skipped}.
+              {dict.importResultUpdatedLabel} — {result.updated},{" "}
+              {dict.importResultUnchangedLabel} — {result.unchanged},{" "}
+              {dict.importResultSkippedLabel} — {result.skipped}.
               {result.warehouseStockSet > 0 && (
                 <>
                   {" "}

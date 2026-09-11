@@ -285,6 +285,7 @@ const ru: Dictionary = {
     importResultDonePrefix: "Готово:",
     importResultCreatedLabel: "новых",
     importResultUpdatedLabel: "обновлено",
+    importResultUnchangedLabel: "без изменений",
     importResultSkippedLabel: "пропущено",
     importGenericError: "Не удалось выполнить импорт.",
     importConflictsFoundLabel: "Найдено конфликтов:",

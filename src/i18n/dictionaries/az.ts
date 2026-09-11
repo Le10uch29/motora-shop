@@ -276,6 +276,7 @@ const az: Dictionary = {
     importResultDonePrefix: "Hazırdır:",
     importResultCreatedLabel: "yeni",
     importResultUpdatedLabel: "yenilənib",
+    importResultUnchangedLabel: "dəyişiklik yoxdur",
     importResultSkippedLabel: "keçilib",
     importGenericError: "İdxalı tamamlamaq mümkün olmadı.",
     importConflictsFoundLabel: "Tapılan münaqişələr:",

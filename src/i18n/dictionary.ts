@@ -274,6 +274,7 @@ export type Dictionary = {
     importResultDonePrefix: string;
     importResultCreatedLabel: string;
     importResultUpdatedLabel: string;
+    importResultUnchangedLabel: string;
     importResultSkippedLabel: string;
     importGenericError: string;
     importConflictsFoundLabel: string;
