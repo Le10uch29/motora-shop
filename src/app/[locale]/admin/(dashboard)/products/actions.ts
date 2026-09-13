@@ -284,22 +284,26 @@ export async function uploadImportPhotosAction(
   await requireAdmin(locale);
   const admin = createAdminClient();
 
-  const urls: string[] = [];
-  for (const entry of formData.getAll("photos")) {
-    if (!(entry instanceof File) || entry.size === 0) {
-      urls.push("");
-      continue;
-    }
+  // A file full of photos means hundreds of uploads, so the batch goes up in
+  // parallel rather than one at a time; the results stay in the order they
+  // came in, which is what pairs each URL back with its row.
+  const uploads = formData.getAll("photos").map(async (entry) => {
+    if (!(entry instanceof File) || entry.size === 0) return "";
+
     const ext = entry.name.split(".").pop() || "png";
     const path = `products/import-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
     const { error } = await admin.storage.from("product-media").upload(path, entry, {
       contentType: entry.type || "image/png",
     });
-    if (error) return { urls: [], error: error.message };
-    urls.push(admin.storage.from("product-media").getPublicUrl(path).data.publicUrl);
-  }
+    if (error) throw new Error(error.message);
+    return admin.storage.from("product-media").getPublicUrl(path).data.publicUrl;
+  });
 
-  return { urls, error: null };
+  try {
+    return { urls: await Promise.all(uploads), error: null };
+  } catch (error) {
+    return { urls: [], error: error instanceof Error ? error.message : String(error) };
+  }
 }
 
 export type ImportRow = {

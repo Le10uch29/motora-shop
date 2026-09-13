@@ -33,10 +33,19 @@ type FieldKey =
  * not mistaken for one another or for the rest of the columns. */
 const NAME_FIELDS = ["nameRu", "nameAz", "nameKa"] as const satisfies readonly FieldKey[];
 
-/** Embedded photos go up a handful per request rather than all at once — a
- * price list can carry hundreds, and one request holding all of them would run
- * past the server's request size limit. */
-const PHOTO_UPLOAD_BATCH = 5;
+/** Embedded photos go up a batch per request rather than all at once — a price
+ * list can carry hundreds, and one request holding all of them would run past
+ * the server's request size limit. Whichever cap a batch reaches first ends it,
+ * so a few large photos travel as safely as many small ones. */
+const PHOTO_BATCH_MAX_FILES = 20;
+const PHOTO_BATCH_MAX_BYTES = 6 * 1024 * 1024;
+
+/** A photo column holds links. Excel leaves "#VALUE!" in a cell whose picture
+ * lives inside it, and that must not be mistaken for one — it would be saved
+ * as the product's image URL and would also shut out the real picture. */
+function asPhotoLink(value: string): string | undefined {
+  return /^(https?:\/\/|data:image\/)/i.test(value) ? value : undefined;
+}
 
 const FIELD_ORDER: FieldKey[] = [
   "productCode",
@@ -129,6 +138,9 @@ export default function ImportProductsModal({
   // Pictures pasted into the spreadsheet, keyed by data-row index.
   const [embeddedPhotos, setEmbeddedPhotos] = useState<Map<number, EmbeddedImage>>(new Map());
   const [uploadedPhotos, setUploadedPhotos] = useState(0);
+  // How many photos this run actually has to send: rows whose picture is in
+  // the file and that weren't given a link of their own.
+  const [photosToUpload, setPhotosToUpload] = useState(0);
   const [brandId, setBrandId] = useState<string>(brands[0]?.id ?? "");
   const [warehouseId, setWarehouseId] = useState<string>("");
   const [parseError, setParseError] = useState<string | null>(null);
@@ -237,7 +249,7 @@ export default function ImportProductsModal({
         description: cell(row, mapping.description) || undefined,
         make: cell(row, mapping.make) || undefined,
         model: cell(row, mapping.model) || undefined,
-        photoUrl: cell(row, mapping.photoUrl) || undefined,
+        photoUrl: asPhotoLink(cell(row, mapping.photoUrl)),
         yearFrom: cellNumber(row, mapping.yearFrom),
         yearTo: cellNumber(row, mapping.yearTo),
         warehouseName: cell(row, mapping.warehouse) || undefined,
@@ -250,15 +262,37 @@ export default function ImportProductsModal({
       // Pictures that live inside the spreadsheet are uploaded first and turn
       // into URLs, so the import itself sees them exactly as it sees a photo
       // column full of links. A row that has both keeps the link it was given.
-      const pending = importRows.filter(
+      const withPhoto = importRows.filter(
         (row) => !row.photoUrl && embeddedPhotos.has(row.rowIndex)
       );
+      setPhotosToUpload(withPhoto.length);
 
-      for (let i = 0; i < pending.length; i += PHOTO_UPLOAD_BATCH) {
-        const batch = pending.slice(i, i + PHOTO_UPLOAD_BATCH);
+      // One picture can sit on several rows — a shared photo for a family of
+      // parts — so each distinct picture is uploaded once and its URL handed
+      // to every row that carries it.
+      const byPicture = new Map<string, { image: EmbeddedImage; rows: typeof withPhoto }>();
+      for (const row of withPhoto) {
+        const image = embeddedPhotos.get(row.rowIndex)!;
+        const entry = byPicture.get(image.fileName);
+        if (entry) entry.rows.push(row);
+        else byPicture.set(image.fileName, { image, rows: [row] });
+      }
+
+      const uploads = Array.from(byPicture.values());
+      for (let i = 0; i < uploads.length; ) {
+        const batch: typeof uploads = [];
+        let batchBytes = 0;
+        while (i < uploads.length && batch.length < PHOTO_BATCH_MAX_FILES) {
+          const size = uploads[i].image.bytes.length;
+          // A single oversized photo still goes on its own, rather than never.
+          if (batch.length > 0 && batchBytes + size > PHOTO_BATCH_MAX_BYTES) break;
+          batch.push(uploads[i]);
+          batchBytes += size;
+          i++;
+        }
+
         const formData = new FormData();
-        for (const row of batch) {
-          const image = embeddedPhotos.get(row.rowIndex)!;
+        for (const { image } of batch) {
           formData.append(
             "photos",
             new File([new Uint8Array(image.bytes)], image.fileName, { type: image.contentType })
@@ -273,11 +307,14 @@ export default function ImportProductsModal({
           });
           return;
         }
-        batch.forEach((row, index) => {
+        batch.forEach(({ rows }, index) => {
           const url = uploaded.urls[index];
-          if (url) row.photoUrl = url;
+          if (!url) return;
+          for (const row of rows) row.photoUrl = url;
         });
-        setUploadedPhotos((count) => count + batch.length);
+        setUploadedPhotos(
+          (count) => count + batch.reduce((total, entry) => total + entry.rows.length, 0)
+        );
       }
 
       const res = await importProductsAction(locale, brandId, importRows, warehouseId || undefined);
@@ -472,8 +509,8 @@ export default function ImportProductsModal({
                 onClick={handleSubmit}
                 className="flex-1 rounded-full bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-orange-500 disabled:opacity-60"
               >
-                {pending && embeddedPhotos.size > 0 && uploadedPhotos < embeddedPhotos.size
-                  ? `${dict.importPhotosUploadingLabel} ${uploadedPhotos}/${embeddedPhotos.size}`
+                {pending && photosToUpload > 0 && uploadedPhotos < photosToUpload
+                  ? `${dict.importPhotosUploadingLabel} ${uploadedPhotos}/${photosToUpload}`
                   : dict.importSubmitButton}
               </button>
             </div>
