@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getProductBySlug, getAllProducts, makeLabel, discountPercent, t } from "@/lib/products";
+import { getProductBySlug, getAllProductSlugs, makeLabel, discountPercent, t } from "@/lib/products";
 import { formatGel } from "@/lib/currency";
 import { getBrandBySlug } from "@/lib/brands";
 import { locales, isLocale } from "@/i18n/locales";
@@ -11,10 +11,8 @@ import BrandLogo from "@/components/BrandLogo";
 import AddToCartButton from "@/components/AddToCartButton";
 
 export async function generateStaticParams() {
-  const products = await getAllProducts();
-  return locales.flatMap((locale) =>
-    products.map((product) => ({ locale, slug: product.slug }))
-  );
+  const slugs = await getAllProductSlugs();
+  return locales.flatMap((locale) => slugs.map((slug) => ({ locale, slug })));
 }
 
 export async function generateMetadata({

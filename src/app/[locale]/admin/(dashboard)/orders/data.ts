@@ -100,6 +100,10 @@ type OrderBaseRow = {
 
 export type OrdererRow = {
   id: string;
+  /** Number of this orderer's most recent order. A row groups every order one
+   * person placed, so there's no single number for the group — the newest one
+   * identifies it, matching the newest-first ordering of the list itself. */
+  orderNumber: number | null;
   name: string;
   phone: string;
   email: string;
@@ -118,18 +122,29 @@ export async function getOrderersList(
   const admin = createAdminClient();
   const { data } = await admin
     .from("orders")
-    .select("customer_id, quantity, price_at_order, discounted_price, status, updated_at, warehouse_id")
+    .select(
+      "customer_id, order_number, quantity, price_at_order, discounted_price, status, updated_at, warehouse_id"
+    )
     .order("created_at", { ascending: false });
 
-  const baseRows = (data ?? []) as Omit<OrderBaseRow, "id" | "order_number" | "product_name" | "created_at">[];
+  const baseRows = (data ?? []) as Omit<OrderBaseRow, "id" | "product_name" | "created_at">[];
   const ordererIds = Array.from(new Set(baseRows.map((row) => row.customer_id)));
   const orderers = await resolveOrderers(admin, ordererIds);
 
   const totalByOrderer = new Map<string, number>();
   const statusCountsByOrderer = new Map<string, Map<OrderStatus, number>>();
   const latestWarehouseByOrderer = new Map<string, { warehouseId: string; updatedAt: string }>();
+  // Highest number wins rather than "first row seen": order_number counts up,
+  // so this stays the newest order even for an orderer whose only orders are
+  // cancelled ones (skipped by the loop below).
+  const latestOrderNumberByOrderer = new Map<string, number>();
 
   for (const row of baseRows) {
+    const previousNumber = latestOrderNumberByOrderer.get(row.customer_id);
+    if (previousNumber == null || row.order_number > previousNumber) {
+      latestOrderNumberByOrderer.set(row.customer_id, row.order_number);
+    }
+
     if (row.status === "cancelled") continue;
 
     const currentTotal = totalByOrderer.get(row.customer_id) ?? 0;
@@ -184,6 +199,7 @@ export async function getOrderersList(
 
       return {
         id,
+        orderNumber: latestOrderNumberByOrderer.get(id) ?? null,
         name: `${info.firstName} ${info.lastName}`,
         phone: info.phone,
         email: info.email,
@@ -213,6 +229,9 @@ export type OrdererOrderLine = {
   id: string;
   orderNumber: number;
   productName: string;
+  /** Null when the product has since been deleted from the catalog, or never
+   * had a code — the order itself only snapshots the name, not the code. */
+  productCode: string | null;
   productImage: string | null;
   quantity: number;
   priceAtOrder: number;
@@ -267,9 +286,10 @@ export async function getOrdererOrders(
   );
   const { data: productRows } =
     productIds.length > 0
-      ? await admin.from("products").select("id, images").in("id", productIds)
-      : { data: [] as { id: string; images: string[] | null }[] };
+      ? await admin.from("products").select("id, images, product_code").in("id", productIds)
+      : { data: [] as { id: string; images: string[] | null; product_code: string | null }[] };
   const imageByProductId = new Map((productRows ?? []).map((p) => [p.id, p.images?.[0] ?? null]));
+  const codeByProductId = new Map((productRows ?? []).map((p) => [p.id, p.product_code ?? null]));
 
   // Representative warehouse for the whole invoice — the one attached to
   // whichever active order was touched most recently (mirrors the top
@@ -297,6 +317,7 @@ export async function getOrdererOrders(
     id: row.id,
     orderNumber: row.order_number,
     productName: row.product_name?.[locale] ?? row.product_name?.ru ?? "",
+    productCode: row.product_id ? codeByProductId.get(row.product_id) ?? null : null,
     productImage: row.product_id ? imageByProductId.get(row.product_id) ?? null : null,
     quantity: row.quantity,
     priceAtOrder: Number(row.price_at_order),

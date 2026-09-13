@@ -62,7 +62,7 @@ export default async function OrdererOrdersPage({
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
               <tr>
-                <th className="px-4 py-3 font-medium">{dict.admin.orderNumberLabel}</th>
+                <th className="px-4 py-3 font-medium">{dict.admin.productsColProductCode}</th>
                 <th className="px-4 py-3 font-medium">{dict.admin.orderColumnProduct}</th>
                 <th className="px-4 py-3 font-medium">{dict.admin.orderColumnQuantity}</th>
                 <th className="px-4 py-3 font-medium">{dict.admin.orderColumnUnitPrice}</th>
@@ -76,7 +76,9 @@ export default async function OrdererOrdersPage({
                 const effectivePrice = line.discountedPrice ?? line.priceAtOrder;
                 return (
                   <tr key={line.id}>
-                    <td className="px-4 py-3 text-xs text-zinc-400">№{line.orderNumber}</td>
+                    <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50">
+                      {line.productCode || "—"}
+                    </td>
                     <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50">{line.productName}</td>
                     <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{line.quantity}</td>
                     <td className="px-4 py-3">

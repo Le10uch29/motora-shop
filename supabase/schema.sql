@@ -411,6 +411,49 @@ create policy "orderer_read_own_orders" on orders for select to authenticated us
 create sequence if not exists order_number_seq start 100000;
 alter table orders add column if not exists order_number int not null default nextval('order_number_seq');
 
+-- Номер заказа принадлежит покупке, а не товару: положил покупатель в корзину
+-- один товар или пять — оформление одно, значит и номер один. Следующая его
+-- покупка получает уже другой номер.
+--
+-- Раньше номер брался из default колонки, то есть nextval срабатывал на каждой
+-- строке отдельно — заказ из трёх товаров получал три разных номера. Теперь
+-- default убран, а номер выдаёт триггер: первая строка покупки берёт новый
+-- номер из последовательности и кладёт его в транзакционную переменную
+-- (set_config с is_local = true), остальные строки того же INSERT читают её и
+-- получают тот же номер. Переменная живёт только внутри транзакции, а
+-- PostgREST выполняет каждый запрос в своей транзакции, поэтому следующее
+-- оформление гарантированно начинает с нового номера. Так номер выдаётся без
+-- гонок (в отличие от max(order_number) + 1) и по-прежнему не может быть
+-- подделан покупателем — колонка не входит в grant insert ниже.
+alter table orders alter column order_number drop default;
+
+create or replace function set_order_number_per_checkout()
+returns trigger as $$
+declare
+  pending text;
+begin
+  -- Явно переданный номер (серверные сценарии, перенос данных) не трогаем.
+  if new.order_number is not null then
+    return new;
+  end if;
+
+  pending := current_setting('app.checkout_order_number', true);
+  if pending is null or pending = '' then
+    new.order_number := nextval('order_number_seq');
+    perform set_config('app.checkout_order_number', new.order_number::text, true);
+  else
+    new.order_number := pending::int;
+  end if;
+
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists orders_set_order_number on orders;
+create trigger orders_set_order_number
+  before insert on orders
+  for each row execute function set_order_number_per_checkout();
+
 -- Этапы выполнения заказа. ALTER TYPE ... ADD VALUE не может идти внутри
 -- do $$ ... $$ вместе с другим DDL в одной транзакции на старых Postgres,
 -- поэтому это простые верхнеуровневые команды — их безопасно повторять

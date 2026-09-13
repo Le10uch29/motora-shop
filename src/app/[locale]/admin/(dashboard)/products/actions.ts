@@ -1,11 +1,12 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAction } from "@/lib/logs";
 import { isLocale, type Locale } from "@/i18n/locales";
 import { mergeImportedName } from "./importName";
+import { PRODUCTS_CACHE_TAG } from "@/lib/productFilterMeta";
 
 export type ProductActionState = { error: string | null };
 
@@ -200,6 +201,7 @@ export async function createProductAction(
   await logAction(actor, "create", "product", fields.name.ru, { entityId: created.id });
   revalidatePath(`/${locale}/admin/products`);
   revalidatePath(`/${locale}/catalog`);
+  updateTag(PRODUCTS_CACHE_TAG);
   revalidatePath(`/${locale}`);
   return { error: null };
 }
@@ -261,6 +263,7 @@ export async function updateProductAction(
   await logAction(actor, "update", "product", fields.name.ru, { entityId: id });
   revalidatePath(`/${locale}/admin/products`);
   revalidatePath(`/${locale}/catalog`);
+  updateTag(PRODUCTS_CACHE_TAG);
   revalidatePath(`/${locale}/catalog/${fields.slug}`);
   revalidatePath(`/${locale}`);
   return { error: null };
@@ -668,6 +671,7 @@ export async function importProductsAction(
   );
   revalidatePath(`/${locale}/admin/products`);
   revalidatePath(`/${locale}/catalog`);
+  updateTag(PRODUCTS_CACHE_TAG);
   revalidatePath(`/${locale}`);
   revalidatePath(`/${locale}/admin/warehouses`);
 
@@ -756,6 +760,7 @@ export async function deleteProductAction(
   await logAction(actor, "delete", "product", label, { entityId: id });
   revalidatePath(`/${locale}/admin/products`);
   revalidatePath(`/${locale}/catalog`);
+  updateTag(PRODUCTS_CACHE_TAG);
   revalidatePath(`/${locale}`);
   return { error: null };
 }
@@ -774,6 +779,7 @@ export async function deleteProductsAction(
   await logAction(actor, "delete", "product", `Массовое удаление: ${count ?? ids.length} товаров`, {});
   revalidatePath(`/${locale}/admin/products`);
   revalidatePath(`/${locale}/catalog`);
+  updateTag(PRODUCTS_CACHE_TAG);
   revalidatePath(`/${locale}`);
   return { error: null };
 }
@@ -795,6 +801,7 @@ export async function deleteAllProductsAction(locale: Locale): Promise<{ error: 
   await logAction(actor, "delete", "product", `Удалены все товары: ${count ?? 0}`, {});
   revalidatePath(`/${locale}/admin/products`);
   revalidatePath(`/${locale}/catalog`);
+  updateTag(PRODUCTS_CACHE_TAG);
   revalidatePath(`/${locale}`);
   return { error: null };
 }

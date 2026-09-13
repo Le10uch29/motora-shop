@@ -4,8 +4,13 @@ import { createClient } from "@/lib/supabase/server";
 
 export type PlaceOrderState = { error: string | null };
 
-/** Turns the current cart into order rows — one per product line. Any logged-in
- * user can order (customer or staff — see schema.sql's note on orders.customer_id).
+/** Turns the current cart into order rows — one per product line, all sharing
+ * a single order number. The whole cart is sent as one insert on purpose: the
+ * orders_set_order_number trigger gives every row of one insert the same
+ * number, so a checkout of five products is order №100014, not five separate
+ * orders. Splitting this into per-item inserts would hand each item its own
+ * number again. Any logged-in user can order (customer or staff — see
+ * schema.sql's note on orders.customer_id).
  * Runs on the caller's own session (relies on the `orderer_insert_own_orders`
  * RLS policy), same approach as `updateOwnPhotoAction`.
  *

@@ -22,6 +22,9 @@ export default async function InvoicePage({
 
   const ordererName = `${orderer.firstName} ${orderer.lastName}`;
   const activeLines = lines.filter((line) => line.status !== "cancelled");
+  const orderNumbers = Array.from(new Set(activeLines.map((line) => line.orderNumber))).sort(
+    (a, b) => a - b
+  );
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-2 py-10 print:max-w-none print:gap-6 print:px-0 print:py-0">
@@ -54,6 +57,18 @@ export default async function InvoicePage({
           <p className="text-sm text-zinc-600 dark:text-zinc-400 print:text-black">
             {dict.admin.companyPhoneLabel}: {COMPANY_PHONE}
           </p>
+
+          {/* Order numbers moved off the table and under the company block:
+              an invoice covers every active order one person placed, so the
+              numbers belong to the document as a whole, not to its rows. */}
+          {orderNumbers.length > 0 && (
+            <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400 print:text-black">
+              {dict.admin.orderNumberLabel}:{" "}
+              <span className="font-semibold text-zinc-900 dark:text-zinc-50 print:text-black">
+                {orderNumbers.map((number) => `№${number}`).join(", ")}
+              </span>
+            </p>
+          )}
         </div>
 
         {/* Customer info — right side. */}
@@ -80,7 +95,7 @@ export default async function InvoicePage({
         <thead className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500 print:border-black print:text-black">
           <tr>
             <th className="py-2 pr-3 font-medium" />
-            <th className="py-2 pr-3 font-medium">{dict.admin.orderNumberLabel}</th>
+            <th className="py-2 pr-3 font-medium">{dict.admin.productsColProductCode}</th>
             <th className="py-2 pr-3 font-medium">{dict.admin.orderColumnProduct}</th>
             <th className="py-2 pr-3 font-medium">{dict.admin.orderColumnQuantity}</th>
             <th className="py-2 pr-3 font-medium">{dict.admin.orderColumnUnitPrice}</th>
@@ -104,7 +119,9 @@ export default async function InvoicePage({
                     <div className="h-10 w-10 rounded-md bg-zinc-100 dark:bg-zinc-800 print:hidden" />
                   )}
                 </td>
-                <td className="py-2 pr-3 text-zinc-500 print:text-black">№{line.orderNumber}</td>
+                <td className="py-2 pr-3 font-medium text-zinc-900 dark:text-zinc-50 print:text-black">
+                  {line.productCode || "—"}
+                </td>
                 <td className="py-2 pr-3 font-medium text-zinc-900 dark:text-zinc-50 print:text-black">
                   {line.productName}
                 </td>

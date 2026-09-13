@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { filterProducts, getAllProducts } from "@/lib/products";
+import { getCatalogPage } from "@/lib/products";
 import { getBrands } from "@/lib/brands";
 import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
@@ -32,14 +32,12 @@ export default async function CatalogPage({
 
   const hasActiveFilters = Boolean(make || model || brand || priceMin !== undefined || priceMax !== undefined || yearFrom !== undefined || yearTo !== undefined);
 
-  const allProducts = await getAllProducts();
-  const items = filterProducts(
-    allProducts,
+  const { items: pageItems, total } = await getCatalogPage(
     { query, make, model, brand, priceMin, priceMax, yearFrom, yearTo },
-    locale
+    locale,
+    page,
+    CATALOG_PAGE_SIZE
   );
-  const pageStart = (page - 1) * CATALOG_PAGE_SIZE;
-  const pageItems = items.slice(pageStart, pageStart + CATALOG_PAGE_SIZE);
 
   return (
     <main className="mx-auto flex w-full max-w-[120rem] flex-1 flex-col gap-6 px-2 py-10">
@@ -48,7 +46,7 @@ export default async function CatalogPage({
           {dict.catalog.title}
         </h1>
         <p className="text-zinc-600 dark:text-zinc-400">
-          {dict.catalog.productCount(items.length)}
+          {dict.catalog.productCount(total)}
           {query ? ` ${dict.catalog.forQuery(query)}` : ""}
           {hasActiveFilters && (
             <>
@@ -77,7 +75,7 @@ export default async function CatalogPage({
       <Pagination
         basePath={`/${locale}/catalog`}
         currentPage={page}
-        total={items.length}
+        total={total}
         pageSize={CATALOG_PAGE_SIZE}
         searchParams={{
           q: query,

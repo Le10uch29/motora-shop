@@ -204,17 +204,6 @@ export const getProductsForCart = cache(async (): Promise<CartProductSummary[]> 
   return (data ?? []) as CartProductSummary[];
 });
 
-/** Just the three columns the header's search-filter dropdown needs (make,
- * model, price) — used instead of {@link getAllProducts} on pages that don't
- * otherwise render the full catalog, so Header doesn't drag in every
- * product's images/specs/description in three languages just to compute a
- * make/model list and a price range. */
-export const getProductFilterMeta = cache(async (): Promise<{ make: string; model: string; price: number }[]> => {
-  const supabase = createPublicClient();
-  const { data } = await supabase.from("products").select("make, model, price");
-  return (data ?? []).map((row) => ({ make: row.make, model: row.model ?? "", price: Number(row.price) }));
-});
-
 /** Models grouped by make, both derived live from whatever products
  * currently exist — a make/model with no products left simply isn't in the
  * result, and reappears the moment a matching product is added again. */
@@ -230,6 +219,105 @@ export function computeModelsByMake(products: { make: string; model: string }[])
   }
   return result;
 }
+
+/** One word of a search query, turned into a PostgREST `or=` clause covering
+ * the same fields {@link filterProducts} matches on. The words of a query are
+ * ANDed (one `.or()` call each) while the fields inside a word are ORed, so
+ * "toyota camry" finds a Toyota Camry part the way the in-JS substring match
+ * used to — searching for the make and the model at once still works even
+ * though they live in different columns. */
+function searchClauseForWord(word: string, locale: Locale): string | null {
+  // PostgREST's filter-string syntax breaks on these in a raw value.
+  const safe = word.replace(/[,()]/g, "").trim();
+  if (!safe) return null;
+
+  const parts = [
+    `name->>${locale}.ilike.%${safe}%`,
+    `description->>${locale}.ilike.%${safe}%`,
+    `product_code.ilike.%${safe}%`,
+    `origin_code.ilike.%${safe}%`,
+    `make.ilike.%${safe}%`,
+    `model.ilike.%${safe}%`,
+  ];
+
+  // "Мерседес" has to find make "mercedes-benz": the localized label only
+  // exists in the app, so it's resolved to make ids before querying.
+  const matchingMakeIds = Object.keys(makeLabels).filter((id) =>
+    t(makeLabels[id], locale).toLowerCase().includes(safe)
+  );
+  if (matchingMakeIds.length > 0) parts.push(`make.in.(${matchingMakeIds.join(",")})`);
+
+  return parts.join(",");
+}
+
+/** One page of the catalog, filtered, counted and sliced by Postgres itself.
+ *
+ * The whole catalog used to be fetched and then filtered and paginated in JS —
+ * with a few hundred products that meant ~250 KB and well over a second of
+ * every catalog render just to show 12 cards. Everything here maps 1:1 onto
+ * what {@link filterProducts} did, so results stay the same; only the place
+ * the work happens changed. */
+export async function getCatalogPage(
+  filters: ProductFilters,
+  locale: Locale,
+  page: number,
+  pageSize: number
+): Promise<{ items: Product[]; total: number }> {
+  const supabase = createPublicClient();
+
+  let brandId: string | undefined;
+  if (filters.brand) {
+    // Resolved to an id rather than filtering through `brands!inner(slug)`:
+    // an inner join would also drop products whose brand was deleted, which
+    // the old in-JS filter kept visible whenever no brand filter was active.
+    const { data: brandRow } = await supabase
+      .from("brands")
+      .select("id")
+      .eq("slug", filters.brand)
+      .maybeSingle();
+    if (!brandRow) return { items: [], total: 0 };
+    brandId = brandRow.id;
+  }
+
+  let query = supabase.from("products").select(SELECT_COLUMNS, { count: "exact" });
+
+  if (brandId) query = query.eq("brand_id", brandId);
+  if (filters.make) query = query.eq("make", filters.make);
+  if (filters.model) query = query.eq("model", filters.model);
+  if (filters.priceMin !== undefined) query = query.gte("price", filters.priceMin);
+  if (filters.priceMax !== undefined) query = query.lte("price", filters.priceMax);
+  // A part fits the wanted years when its own range overlaps them.
+  if (filters.yearFrom !== undefined) query = query.gte("year_to", filters.yearFrom);
+  if (filters.yearTo !== undefined) query = query.lte("year_from", filters.yearTo);
+
+  for (const word of filters.query?.trim().toLowerCase().split(/\s+/) ?? []) {
+    const clause = searchClauseForWord(word, locale);
+    if (clause) query = query.or(clause);
+  }
+
+  const safePage = page > 0 ? page : 1;
+  const from = (safePage - 1) * pageSize;
+  // `id` breaks ties, and it has to: a bulk Excel import writes hundreds of
+  // products with the identical created_at, and Postgres is free to return
+  // equal rows in any order it likes per query. Ordering by created_at alone
+  // therefore made .range() pages overlap and skip products — paging through
+  // the catalog showed some twice and hid others entirely. This didn't come
+  // up while the whole catalog was fetched and sliced in one go.
+  const { data, count } = await query
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: true })
+    .range(from, from + pageSize - 1);
+
+  return { items: ((data ?? []) as unknown as ProductRow[]).map(mapRow), total: count ?? 0 };
+}
+
+/** Just the slugs, for generateStaticParams — it builds a route per product
+ * per locale and needs nothing but the slug. */
+export const getAllProductSlugs = cache(async (): Promise<string[]> => {
+  const supabase = createPublicClient();
+  const { data } = await supabase.from("products").select("slug");
+  return (data ?? []).map((row) => row.slug);
+});
 
 export type ProductFilters = {
   make?: string;

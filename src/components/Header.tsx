@@ -3,12 +3,12 @@ import { Suspense } from "react";
 import type { Locale } from "@/i18n/locales";
 import type { Dictionary } from "@/i18n/dictionary";
 import {
-  getProductFilterMeta,
   computeCarMakes,
   computeModelsByMake,
   computePriceBounds,
   localizedMakes,
 } from "@/lib/products";
+import { getProductFilterMeta } from "@/lib/productFilterMeta";
 import { getCatalogBrands } from "@/lib/brands";
 import { getCurrentStaff, getCurrentCustomer } from "@/lib/auth";
 import CartIndicator from "@/components/CartIndicator";

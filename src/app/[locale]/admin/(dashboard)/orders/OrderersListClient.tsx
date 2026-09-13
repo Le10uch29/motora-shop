@@ -36,6 +36,7 @@ export default function OrderersListClient({
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
               <tr>
+                <th className="px-4 py-3 font-medium">{dict.orderNumberLabel}</th>
                 <th className="px-4 py-3 font-medium">{dict.orderColumnCustomer}</th>
                 <th className="px-4 py-3 font-medium">{dict.orderColumnStatus}</th>
                 <th className="px-4 py-3 font-medium">{dict.warehouseAssignedLabel}</th>
@@ -47,6 +48,9 @@ export default function OrderersListClient({
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
               {orderers.map((row) => (
                 <tr key={row.id}>
+                  <td className="px-4 py-3 text-zinc-500">
+                    {row.orderNumber != null ? `№${row.orderNumber}` : "—"}
+                  </td>
                   <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50">{row.name}</td>
                   <td className="px-4 py-3">
                     {row.status ? (
