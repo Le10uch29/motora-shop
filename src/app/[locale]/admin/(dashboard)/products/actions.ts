@@ -269,6 +269,39 @@ export async function updateProductAction(
   return { error: null };
 }
 
+/** Uploads pictures that were embedded in the imported spreadsheet and hands
+ * back their public URLs, in the same order the files came in.
+ *
+ * Separate from importProductsAction, and called in batches, because the rows
+ * of a price list are small while its photos are not — sending a few hundred
+ * of them alongside the row data would blow past the request size limit in one
+ * go. The import itself then only ever deals in URLs, exactly as it does for a
+ * spreadsheet whose photo column holds links. */
+export async function uploadImportPhotosAction(
+  locale: Locale,
+  formData: FormData
+): Promise<{ urls: string[]; error: string | null }> {
+  await requireAdmin(locale);
+  const admin = createAdminClient();
+
+  const urls: string[] = [];
+  for (const entry of formData.getAll("photos")) {
+    if (!(entry instanceof File) || entry.size === 0) {
+      urls.push("");
+      continue;
+    }
+    const ext = entry.name.split(".").pop() || "png";
+    const path = `products/import-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { error } = await admin.storage.from("product-media").upload(path, entry, {
+      contentType: entry.type || "image/png",
+    });
+    if (error) return { urls: [], error: error.message };
+    urls.push(admin.storage.from("product-media").getPublicUrl(path).data.publicUrl);
+  }
+
+  return { urls, error: null };
+}
+
 export type ImportRow = {
   productCode: string;
   originCode?: string;

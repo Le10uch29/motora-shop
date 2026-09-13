@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { listAllAuthUsers } from "@/lib/supabase/authUsers";
 import { ADMIN_PAGE_SIZE } from "@/components/admin/Pagination";
 import { getWarehouseOptions } from "../warehouses/data";
 import type { StaffRow } from "./StaffListClient";
@@ -15,8 +16,8 @@ export async function getStaffList(
     .eq("role", role)
     .order("created_at", { ascending: false });
 
-  const { data: usersList } = await admin.auth.admin.listUsers();
-  const emailById = new Map(usersList.users.map((u) => [u.id, u.email ?? ""]));
+  const authUsers = await listAllAuthUsers(admin);
+  const emailById = new Map(authUsers.map((u) => [u.id, u.email ?? ""]));
   const warehouses = await getWarehouseOptions();
   const warehouseNameById = new Map(warehouses.map((w) => [w.id, w.name]));
 

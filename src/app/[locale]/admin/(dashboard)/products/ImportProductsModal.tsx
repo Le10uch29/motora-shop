@@ -3,7 +3,13 @@
 import { useMemo, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import * as XLSX from "xlsx";
-import { importProductsAction, type ImportRow, type ImportResult } from "./actions";
+import {
+  importProductsAction,
+  uploadImportPhotosAction,
+  type ImportRow,
+  type ImportResult,
+} from "./actions";
+import { extractEmbeddedImages, type EmbeddedImage } from "@/lib/xlsxImages";
 import type { Locale } from "@/i18n/locales";
 import type { Dictionary } from "@/i18n/dictionary";
 
@@ -26,6 +32,11 @@ type FieldKey =
 /** The three name columns get their own row in the mapping UI, so they're
  * not mistaken for one another or for the rest of the columns. */
 const NAME_FIELDS = ["nameRu", "nameAz", "nameKa"] as const satisfies readonly FieldKey[];
+
+/** Embedded photos go up a handful per request rather than all at once — a
+ * price list can carry hundreds, and one request holding all of them would run
+ * past the server's request size limit. */
+const PHOTO_UPLOAD_BATCH = 5;
 
 const FIELD_ORDER: FieldKey[] = [
   "productCode",
@@ -115,6 +126,9 @@ export default function ImportProductsModal({
   const [headers, setHeaders] = useState<string[] | null>(null);
   const [dataRows, setDataRows] = useState<unknown[][]>([]);
   const [mapping, setMapping] = useState<Partial<Record<FieldKey, number>>>({});
+  // Pictures pasted into the spreadsheet, keyed by data-row index.
+  const [embeddedPhotos, setEmbeddedPhotos] = useState<Map<number, EmbeddedImage>>(new Map());
+  const [uploadedPhotos, setUploadedPhotos] = useState(0);
   const [brandId, setBrandId] = useState<string>(brands[0]?.id ?? "");
   const [warehouseId, setWarehouseId] = useState<string>("");
   const [parseError, setParseError] = useState<string | null>(null);
@@ -163,15 +177,32 @@ export default function ImportProductsModal({
       const workbook = XLSX.read(buf, { type: "array" });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       const rows2d = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1 });
-      const nonEmpty = rows2d.filter((r) => Array.isArray(r) && r.some((c) => String(c ?? "").trim() !== ""));
+      // The sheet row each kept row came from is remembered, because blank
+      // rows are dropped here while embedded pictures are anchored to the
+      // file's own row numbers — matching them up by position alone would put
+      // photos on the wrong products in any file with a gap in it.
+      const nonEmpty = rows2d
+        .map((row, sheetRow) => ({ row, sheetRow }))
+        .filter(({ row }) => Array.isArray(row) && row.some((c) => String(c ?? "").trim() !== ""));
       const [headerRow, ...rest] = nonEmpty;
       if (!headerRow || rest.length === 0) {
         setParseError(dict.importParseErrorLabel);
         return;
       }
-      const headerStrings = headerRow.map((h, i) => String(h ?? "").trim() || `#${i + 1}`);
+      const headerStrings = headerRow.row.map((h, i) => String(h ?? "").trim() || `#${i + 1}`);
+
+      // Photos pasted into the sheet itself, rather than linked in a column.
+      const dataRowBySheetRow = new Map(rest.map((entry, index) => [entry.sheetRow, index]));
+      const photos = new Map<number, EmbeddedImage>();
+      for (const image of extractEmbeddedImages(new Uint8Array(buf))) {
+        const index = dataRowBySheetRow.get(image.sheetRow);
+        // First picture wins when a row carries several.
+        if (index !== undefined && !photos.has(index)) photos.set(index, image);
+      }
+
       setHeaders(headerStrings);
-      setDataRows(rest);
+      setDataRows(rest.map((entry) => entry.row));
+      setEmbeddedPhotos(photos);
       setMapping(guessMapping(headerStrings));
     } catch {
       setParseError(dict.importParseErrorLabel);
@@ -193,8 +224,9 @@ export default function ImportProductsModal({
       return Number.isFinite(n) ? n : undefined;
     }
 
-    const importRows: ImportRow[] = dataRows
-      .map((row) => ({
+    const importRows: (ImportRow & { rowIndex: number })[] = dataRows
+      .map((row, rowIndex) => ({
+        rowIndex,
         productCode: cell(row, codeIdx),
         originCode: cell(row, mapping.originCode) || undefined,
         price: cellNumber(row, mapping.price),
@@ -213,6 +245,41 @@ export default function ImportProductsModal({
       .filter((r) => r.productCode);
 
     startTransition(async () => {
+      setUploadedPhotos(0);
+
+      // Pictures that live inside the spreadsheet are uploaded first and turn
+      // into URLs, so the import itself sees them exactly as it sees a photo
+      // column full of links. A row that has both keeps the link it was given.
+      const pending = importRows.filter(
+        (row) => !row.photoUrl && embeddedPhotos.has(row.rowIndex)
+      );
+
+      for (let i = 0; i < pending.length; i += PHOTO_UPLOAD_BATCH) {
+        const batch = pending.slice(i, i + PHOTO_UPLOAD_BATCH);
+        const formData = new FormData();
+        for (const row of batch) {
+          const image = embeddedPhotos.get(row.rowIndex)!;
+          formData.append(
+            "photos",
+            new File([new Uint8Array(image.bytes)], image.fileName, { type: image.contentType })
+          );
+        }
+
+        const uploaded = await uploadImportPhotosAction(locale, formData);
+        if (uploaded.error) {
+          setResult({
+            created: 0, updated: 0, skipped: 0, conflicts: 0,
+            warehouseStockSet: 0, unchanged: 0, error: uploaded.error,
+          });
+          return;
+        }
+        batch.forEach((row, index) => {
+          const url = uploaded.urls[index];
+          if (url) row.photoUrl = url;
+        });
+        setUploadedPhotos((count) => count + batch.length);
+      }
+
       const res = await importProductsAction(locale, brandId, importRows, warehouseId || undefined);
       setResult(res);
     });
@@ -319,6 +386,12 @@ export default function ImportProductsModal({
           <div className="flex flex-col gap-4">
             <p className="text-xs text-zinc-400">
               {dict.importRowsDetectedLabel} {dataRows.length}
+              {embeddedPhotos.size > 0 && (
+                <>
+                  {" · "}
+                  {dict.importPhotosDetectedLabel} {embeddedPhotos.size}
+                </>
+              )}
             </p>
 
             <div className="flex flex-col gap-1.5">
@@ -399,7 +472,9 @@ export default function ImportProductsModal({
                 onClick={handleSubmit}
                 className="flex-1 rounded-full bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-orange-500 disabled:opacity-60"
               >
-                {dict.importSubmitButton}
+                {pending && embeddedPhotos.size > 0 && uploadedPhotos < embeddedPhotos.size
+                  ? `${dict.importPhotosUploadingLabel} ${uploadedPhotos}/${embeddedPhotos.size}`
+                  : dict.importSubmitButton}
               </button>
             </div>
           </div>

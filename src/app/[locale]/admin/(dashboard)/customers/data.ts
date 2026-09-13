@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { listAllAuthUsers } from "@/lib/supabase/authUsers";
 import { isPhoneAliasEmail } from "@/lib/phoneLogin";
 import { ADMIN_PAGE_SIZE } from "@/components/admin/Pagination";
 import type { Locale } from "@/i18n/locales";
@@ -17,11 +18,11 @@ export async function getCustomersList(
     )
     .order("created_at", { ascending: false });
 
-  const { data: usersList } = await admin.auth.admin.listUsers();
+  const authUsers = await listAllAuthUsers(admin);
   // A phone-derived stand-in address isn't a real contact — it exists only so
   // the account can be signed into by phone, so it reads as "no email" here.
   const emailById = new Map(
-    usersList.users.map((u) => [u.id, isPhoneAliasEmail(u.email) ? "" : u.email ?? ""])
+    authUsers.map((u) => [u.id, isPhoneAliasEmail(u.email) ? "" : u.email ?? ""])
   );
 
   let rows: CustomerRow[] = (customerRows ?? []).map((row) => ({

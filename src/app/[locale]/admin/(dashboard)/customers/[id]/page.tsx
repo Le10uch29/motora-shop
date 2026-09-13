@@ -4,6 +4,7 @@ import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getAuthUserById } from "@/lib/supabase/authUsers";
 import { isPhoneAliasEmail } from "@/lib/phoneLogin";
 import { actionLabel } from "../../logs/labels";
 import DetailsToggle, { type LogDetails } from "../../logs/DetailsToggle";
@@ -31,7 +32,7 @@ export default async function CustomerDetailPage({
 
   if (!row) notFound();
 
-  const { data: userData } = await admin.auth.admin.getUserById(id);
+  const authUser = await getAuthUserById(admin, id);
 
   const purchases = await getCustomerPurchaseHistory(id, locale);
 
@@ -45,7 +46,7 @@ export default async function CustomerDetailPage({
 
   // A phone-derived stand-in address is an internal login detail, not a
   // contact the customer gave — shown as "—", the same as having none.
-  const email = isPhoneAliasEmail(userData.user?.email) ? "" : userData.user?.email ?? "";
+  const email = isPhoneAliasEmail(authUser?.email) ? "" : authUser?.email ?? "";
 
   const fields: [string, string][] = [
     [dict.admin.firstNameLabel, row.first_name],

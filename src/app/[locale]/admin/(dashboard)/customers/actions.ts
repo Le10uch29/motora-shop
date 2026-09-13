@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getAuthUserById } from "@/lib/supabase/authUsers";
 import { requireAdmin } from "@/lib/auth";
 import { logAction } from "@/lib/logs";
 import { generateTempPassword } from "@/lib/password";
@@ -228,10 +229,10 @@ export async function updateCustomerAction(
   // derived from the old number moves with it, so it stays in step with the
   // phone (and can't collide with a new customer given that old number).
   if (fields.phone !== before.phone) {
-    const { data: authUser } = await admin.auth.admin.getUserById(id);
+    const authUser = await getAuthUserById(admin, id);
     const { error: phoneError } = await admin.auth.admin.updateUserById(id, {
       phone: normalizePhoneForAuth(fields.phone),
-      ...(isPhoneAliasEmail(authUser.user?.email)
+      ...(isPhoneAliasEmail(authUser?.email)
         ? { email: phoneAliasEmail(fields.phone), email_confirm: true }
         : {}),
     });

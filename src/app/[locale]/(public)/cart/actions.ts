@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/supabase/authUsers";
 
 export type PlaceOrderState = { error: string | null };
 
@@ -26,9 +27,7 @@ export async function placeOrderAction(
   if (items.length === 0) return { error: "empty_cart" };
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser(supabase);
   if (!user) return { error: "not_authenticated" };
 
   const productIds = items.map((item) => item.productId);

@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getAuthUserById, listAllAuthUsers } from "@/lib/supabase/authUsers";
 import type { Locale } from "@/i18n/locales";
 
 export const ORDERS_PAGE_SIZE = 20;
@@ -55,8 +56,8 @@ async function resolveOrderers(
 
   // One bulk fetch instead of a getUserById() per orderer — same approach
   // getStaffList()/getCustomersList() use to join emails.
-  const { data: usersList } = await admin.auth.admin.listUsers();
-  const emailById = new Map(usersList.users.map((u) => [u.id, u.email ?? ""]));
+  const authUsers = await listAllAuthUsers(admin);
+  const emailById = new Map(authUsers.map((u) => [u.id, u.email ?? ""]));
 
   for (const row of customerRows ?? []) {
     result.set(row.id, {
@@ -423,12 +424,12 @@ export async function getOrderDetail(id: string, locale: Locale): Promise<OrderD
   let staffOrderer: OrderDetail["staffOrderer"] = null;
 
   if (customerRow) {
-    const { data: userData } = await admin.auth.admin.getUserById(customerRow.id);
+    const authUser = await getAuthUserById(admin, customerRow.id);
     customer = {
       id: customerRow.id,
       firstName: customerRow.first_name,
       lastName: customerRow.last_name,
-      email: userData.user?.email ?? "",
+      email: authUser?.email ?? "",
       phone: customerRow.phone,
       idCardNumber: customerRow.id_card_number,
       organizationName: customerRow.organization_name,

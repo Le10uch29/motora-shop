@@ -4,6 +4,7 @@ import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getAuthUserById } from "@/lib/supabase/authUsers";
 import { getWarehouseOptions } from "../../warehouses/data";
 import { actionLabel } from "../../logs/labels";
 import DetailsToggle, { type LogDetails } from "../../logs/DetailsToggle";
@@ -27,7 +28,7 @@ export default async function StaffDetailPage({
 
   if (!row) notFound();
 
-  const { data: userData } = await admin.auth.admin.getUserById(id);
+  const authUser = await getAuthUserById(admin, id);
   const warehouses = await getWarehouseOptions();
   const warehouseName = row.warehouse_id
     ? warehouses.find((w) => w.id === row.warehouse_id)?.name ?? ""
@@ -44,7 +45,7 @@ export default async function StaffDetailPage({
   const fields: [string, string][] = [
     [dict.admin.firstNameLabel, row.first_name],
     [dict.admin.lastNameLabel, row.last_name],
-    ["Email", userData.user?.email ?? "—"],
+    ["Email", authUser?.email ?? "—"],
     [dict.admin.phoneLabel, row.phone ?? "—"],
     [dict.admin.idCardLabel, row.id_card_number ?? "—"],
     [dict.admin.roleLabel, row.role === "admin" ? dict.admin.roleAdmin : dict.admin.roleSeller],
@@ -71,7 +72,7 @@ export default async function StaffDetailPage({
           passwordLabel={dict.auth.passwordLabel}
           values={{
             id: row.id,
-            email: userData.user?.email ?? "",
+            email: authUser?.email ?? "",
             firstName: row.first_name,
             lastName: row.last_name,
             phone: row.phone ?? "",

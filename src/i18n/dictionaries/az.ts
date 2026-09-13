@@ -273,6 +273,8 @@ const az: Dictionary = {
     importSubmitButton: "Məhsulları əlavə et",
     importBackButton: "← Geri",
     importRowsDetectedLabel: "Tapılan sətir sayı:",
+    importPhotosDetectedLabel: "fayldakı foto:",
+    importPhotosUploadingLabel: "Fotoların yüklənməsi:",
     importResultDonePrefix: "Hazırdır:",
     importResultCreatedLabel: "yeni",
     importResultUpdatedLabel: "yenilənib",

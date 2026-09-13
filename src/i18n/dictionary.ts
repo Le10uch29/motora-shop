@@ -271,6 +271,8 @@ export type Dictionary = {
     importSubmitButton: string;
     importBackButton: string;
     importRowsDetectedLabel: string;
+    importPhotosDetectedLabel: string;
+    importPhotosUploadingLabel: string;
     importResultDonePrefix: string;
     importResultCreatedLabel: string;
     importResultUpdatedLabel: string;

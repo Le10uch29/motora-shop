@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { locales, defaultLocale } from "@/i18n/locales";
+import { getAuthUser } from "@/lib/supabase/authUsers";
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -38,9 +39,15 @@ export async function proxy(request: NextRequest) {
   );
 
   // Refreshes the auth session cookie if it's close to expiring.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  //
+  // Wrapped because this runs on every single request, and Supabase Auth
+  // re-throws anything that isn't an auth error — a momentary network blip
+  // included. Unhandled here that took down whichever page was being loaded
+  // with Next's "This page couldn't load" 500. Treating an unreachable auth
+  // service as "not signed in" sends the visitor to the login page instead,
+  // which is both recoverable and consistent with the gate below; the page
+  // guards (requireStaff / requireAdmin) enforce access either way.
+  const user = await getAuthUser(supabase);
 
   const adminPrefix = `/${matchedLocale}/admin`;
   const isAdminRoute = pathname === adminPrefix || pathname.startsWith(`${adminPrefix}/`);

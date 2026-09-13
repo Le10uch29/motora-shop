@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getAuthUserById } from "@/lib/supabase/authUsers";
 import { normalizePhone, normalizePhoneForAuth } from "@/lib/phone";
 
 /** Domain for the stand-in address given to an account whose owner has no
@@ -47,6 +48,6 @@ export async function resolveLoginEmail(identifier: string): Promise<string | nu
   const userId = customer?.id ?? staff?.id;
   if (!userId) return null;
 
-  const { data } = await admin.auth.admin.getUserById(userId);
-  return data.user?.email ?? null;
+  const authUser = await getAuthUserById(admin, userId);
+  return authUser?.email ?? null;
 }

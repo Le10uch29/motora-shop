@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/supabase/authUsers";
 
 export type ChangePasswordState = { error: string | null; success: boolean };
 
@@ -24,9 +25,7 @@ export async function changePasswordAction(
   }
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser(supabase);
 
   if (!user?.email) {
     return { error: wrongCurrentMessage, success: false };

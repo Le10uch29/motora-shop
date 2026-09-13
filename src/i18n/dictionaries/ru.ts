@@ -282,6 +282,8 @@ const ru: Dictionary = {
     importSubmitButton: "Добавить товары",
     importBackButton: "← Назад",
     importRowsDetectedLabel: "Найдено строк:",
+    importPhotosDetectedLabel: "фото в файле:",
+    importPhotosUploadingLabel: "Загрузка фото:",
     importResultDonePrefix: "Готово:",
     importResultCreatedLabel: "новых",
     importResultUpdatedLabel: "обновлено",

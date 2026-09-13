@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/supabase/authUsers";
 import { isLocale } from "@/i18n/locales";
 
 export type UpdatePhotoState = { error: string | null };
@@ -20,9 +21,7 @@ export async function updateOwnPhotoAction(
   }
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser(supabase);
   if (!user) return { error: "not_authenticated" };
 
   const ext = file.name.split(".").pop() || "jpg";

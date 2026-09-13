@@ -273,6 +273,8 @@ const ka: Dictionary = {
     importSubmitButton: "პროდუქტების დამატება",
     importBackButton: "← უკან",
     importRowsDetectedLabel: "ნაპოვნია სტრიქონები:",
+    importPhotosDetectedLabel: "ფოტო ფაილში:",
+    importPhotosUploadingLabel: "ფოტოების ატვირთვა:",
     importResultDonePrefix: "დასრულდა:",
     importResultCreatedLabel: "ახალი",
     importResultUpdatedLabel: "განახლდა",

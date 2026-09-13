@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/supabase/authUsers";
 import type { Locale } from "@/i18n/locales";
 
 export type StaffRole = "admin" | "seller";
@@ -18,9 +19,7 @@ export type CurrentStaff = {
 /** The logged-in staff member (admin or seller), or null if not logged in / no staff profile. */
 export async function getCurrentStaff(): Promise<CurrentStaff | null> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser(supabase);
   if (!user) return null;
 
   const { data: staff } = await supabase
@@ -70,9 +69,7 @@ export type CurrentCustomer = {
 /** The logged-in customer, or null if not logged in / no customer profile (e.g. staff). */
 export async function getCurrentCustomer(): Promise<CurrentCustomer | null> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser(supabase);
   if (!user) return null;
 
   const { data: customer } = await supabase
