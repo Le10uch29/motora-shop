@@ -7,6 +7,7 @@ import { logAction } from "@/lib/logs";
 import { isLocale, type Locale } from "@/i18n/locales";
 import { mergeImportedName } from "./importName";
 import { PRODUCTS_CACHE_TAG } from "@/lib/productFilterMeta";
+import { storeProductImage } from "@/lib/productImageStorage";
 
 export type ProductActionState = { error: string | null };
 
@@ -120,14 +121,12 @@ async function uploadImages(
   const urls: string[] = [];
   for (const file of files) {
     if (!(file instanceof File) || file.size === 0) continue;
-    const ext = file.name.split(".").pop() || "jpg";
-    const path = `products/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-    const { error } = await admin.storage.from("product-media").upload(path, file, {
-      contentType: file.type || "image/jpeg",
-    });
-    if (error) throw new Error(error.message);
-    const { data } = admin.storage.from("product-media").getPublicUrl(path);
-    urls.push(data.publicUrl);
+    urls.push(
+      await storeProductImage(admin, new Uint8Array(await file.arrayBuffer()), {
+        name: file.name,
+        contentType: file.type || "image/jpeg",
+      })
+    );
     if (urls.length >= MAX_IMAGES) break;
   }
   return urls;
@@ -289,14 +288,10 @@ export async function uploadImportPhotosAction(
   // came in, which is what pairs each URL back with its row.
   const uploads = formData.getAll("photos").map(async (entry) => {
     if (!(entry instanceof File) || entry.size === 0) return "";
-
-    const ext = entry.name.split(".").pop() || "png";
-    const path = `products/import-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-    const { error } = await admin.storage.from("product-media").upload(path, entry, {
+    return storeProductImage(admin, new Uint8Array(await entry.arrayBuffer()), {
+      name: entry.name,
       contentType: entry.type || "image/png",
     });
-    if (error) throw new Error(error.message);
-    return admin.storage.from("product-media").getPublicUrl(path).data.publicUrl;
   });
 
   try {
@@ -304,6 +299,45 @@ export async function uploadImportPhotosAction(
   } catch (error) {
     return { urls: [], error: error instanceof Error ? error.message : String(error) };
   }
+}
+
+/**
+ * Of the given product codes, the ones that already have a picture in this
+ * brand.
+ *
+ * An import never replaces a photo a product already has, so sending its
+ * picture up would only leave an unused file behind in storage — and running
+ * the same file a second time would copy every photo in it all over again.
+ * Asking first keeps a repeat import quick and the bucket clean.
+ */
+export async function findProductCodesWithPhotoAction(
+  locale: Locale,
+  brandId: string,
+  codes: string[]
+): Promise<string[]> {
+  await requireAdmin(locale);
+  const admin = createAdminClient();
+
+  const wanted = new Set(codes.map((code) => code.trim().toLowerCase()).filter(Boolean));
+  if (wanted.size === 0) return [];
+
+  // Read unfiltered for the same reason the import itself does: `.in()` is
+  // case-sensitive and would miss a stored "21202Ap" for a file's "21202ap".
+  const { data, error } = await admin
+    .from("products")
+    .select("product_code, images, brand_id")
+    .not("product_code", "is", null);
+  // On failure nothing is reported as photographed: the import still works,
+  // it just uploads pictures it may not need.
+  if (error) return [];
+
+  const found: string[] = [];
+  for (const row of data ?? []) {
+    const key = row.product_code?.trim().toLowerCase();
+    if (!key || row.brand_id !== brandId || !wanted.has(key)) continue;
+    if (Array.isArray(row.images) && row.images.length > 0) found.push(key);
+  }
+  return found;
 }
 
 export type ImportRow = {

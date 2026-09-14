@@ -10,6 +10,7 @@ import MissingDataModal from "./MissingDataModal";
 import { RowActionLink, RowActionButton, EyeIcon, PencilIcon, TrashIcon } from "@/components/admin/RowActions";
 import type { AdminProductRow } from "./data";
 import { formatGel } from "@/lib/currency";
+import { productThumbUrl } from "@/lib/productImageUrl";
 import type { Dictionary } from "@/i18n/dictionary";
 import type { Locale } from "@/i18n/locales";
 
@@ -267,7 +268,13 @@ export default function ProductsListClient({
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
                       {row.images[0] ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={row.images[0]} alt="" className="h-full w-full object-cover" />
+                        <img
+                          src={productThumbUrl(row.images[0])}
+                          alt=""
+                          loading="lazy"
+                          decoding="async"
+                          className="h-full w-full bg-white object-contain"
+                        />
                       ) : (
                         <span className="text-xs text-zinc-400">—</span>
                       )}

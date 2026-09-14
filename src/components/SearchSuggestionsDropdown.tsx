@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { SearchSuggestion } from "@/lib/actions/search";
 import { formatGel } from "@/lib/currency";
 import ProductVisual from "@/components/ProductVisual";
+import { productThumbUrl } from "@/lib/productImageUrl";
 import type { Locale } from "@/i18n/locales";
 import type { Dictionary } from "@/i18n/dictionary";
 
@@ -48,7 +49,12 @@ export default function SearchSuggestionsDropdown({
                 <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-800">
                   {result.image ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={result.image} alt="" className="h-full w-full object-cover" />
+                    <img
+                      src={productThumbUrl(result.image)}
+                      alt=""
+                      decoding="async"
+                      className="h-full w-full bg-white object-contain"
+                    />
                   ) : (
                     <ProductVisual className="h-full w-full" />
                   )}

@@ -320,7 +320,12 @@ export default function ProductFormModal({
             <div className="flex flex-wrap gap-2">
               {initialValues.images.map((src) => (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img key={src} src={src} alt="" className="h-16 w-16 rounded-lg object-cover" />
+                <img
+                  key={src}
+                  src={productThumbUrl(src)}
+                  alt=""
+                  className="h-16 w-16 rounded-lg bg-white object-contain"
+                />
               ))}
             </div>
           )}

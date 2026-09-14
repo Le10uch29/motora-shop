@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import ProductVisual from "@/components/ProductVisual";
+import { productThumbUrl } from "@/lib/productImageUrl";
 
 const MAX_PHOTOS = 4;
 
@@ -33,7 +34,10 @@ export default function ProductGallery({
         <img
           src={photos[selected] ?? photos[0]}
           alt={alt}
-          className="aspect-square w-full object-cover"
+          width={800}
+          height={600}
+          decoding="async"
+          className="aspect-square w-full bg-white object-contain"
         />
         {overlay}
       </div>
@@ -51,7 +55,13 @@ export default function ProductGallery({
               }`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={photo} alt="" className="h-full w-full object-cover" />
+              <img
+                src={productThumbUrl(photo)}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                className="h-full w-full bg-white object-contain"
+              />
             </button>
           ))}
         </div>

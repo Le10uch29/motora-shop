@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import * as XLSX from "xlsx";
 import {
+  findProductCodesWithPhotoAction,
   importProductsAction,
   uploadImportPhotosAction,
   type ImportRow,
@@ -262,8 +263,21 @@ export default function ImportProductsModal({
       // Pictures that live inside the spreadsheet are uploaded first and turn
       // into URLs, so the import itself sees them exactly as it sees a photo
       // column full of links. A row that has both keeps the link it was given.
+      // Products that already have a picture keep it, so theirs isn't sent up.
+      const alreadyPhotographed = new Set(
+        embeddedPhotos.size > 0
+          ? await findProductCodesWithPhotoAction(
+              locale,
+              brandId,
+              importRows.map((row) => row.productCode)
+            )
+          : []
+      );
       const withPhoto = importRows.filter(
-        (row) => !row.photoUrl && embeddedPhotos.has(row.rowIndex)
+        (row) =>
+          !row.photoUrl &&
+          embeddedPhotos.has(row.rowIndex) &&
+          !alreadyPhotographed.has(row.productCode.trim().toLowerCase())
       );
       setPhotosToUpload(withPhoto.length);
 

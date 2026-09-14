@@ -31,7 +31,10 @@ export default function ProductCard({
             <img
               src={product.images[0]}
               alt={t(product.name, locale)}
-              className="aspect-[4/3] w-full object-cover"
+              width={800}
+              height={600}
+              decoding="async"
+              className="aspect-[4/3] w-full bg-white object-contain"
             />
           ) : (
             <ProductVisual className="aspect-[4/3] w-full" />
