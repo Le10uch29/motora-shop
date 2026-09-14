@@ -877,6 +877,27 @@ export async function deleteAllProductsAction(locale: Locale): Promise<{ error: 
   return { error: null };
 }
 
+/** Deletes every product with nothing in stock (stock 0 or below). Orders that
+ * included one keep their line, marked as a deleted product, as with any other
+ * product deletion. */
+export async function deleteZeroStockProductsAction(locale: Locale): Promise<{ error: string | null }> {
+  const actor = await requireAdmin(locale);
+
+  const admin = createAdminClient();
+  const { error, count } = await admin
+    .from("products")
+    .delete({ count: "exact" })
+    .lte("stock", 0);
+  if (error) return { error: error.message };
+
+  await logAction(actor, "delete", "product", `Удалены товары с нулевым остатком: ${count ?? 0}`, {});
+  revalidatePath(`/${locale}/admin/products`);
+  revalidatePath(`/${locale}/catalog`);
+  updateTag(PRODUCTS_CACHE_TAG);
+  revalidatePath(`/${locale}`);
+  return { error: null };
+}
+
 export type ProductCompletenessRow = {
   id: string;
   productCode: string;

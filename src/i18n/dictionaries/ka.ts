@@ -296,6 +296,8 @@ const ka: Dictionary = {
     deleteAllProductsButton: "ყველა პროდუქტის წაშლა",
     confirmDeleteAllProducts: "წავშალოთ ყველა პროდუქტი? ეს მოქმედება შეუქცევადია.",
     confirmDeleteAllProductsCountLabel: "პროდუქტების რაოდენობა:",
+    deleteZeroStockProductsButton: "ნულოვანი ნაშთის პროდუქტების წაშლა",
+    confirmDeleteZeroStockProducts: "წავშალოთ ყველა პროდუქტი, რომლის ნაშთი 0-ია? ეს მოქმედება შეუქცევადია.",
     missingDataButton: "ნაკლული მონაცემები",
     missingDataModalTitle: "პროდუქტები ნაკლული მონაცემებით",
     missingDataFilterLabel: "ჩვენება:",

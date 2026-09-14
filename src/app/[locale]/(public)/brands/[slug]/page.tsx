@@ -87,7 +87,7 @@ export default async function BrandDetailPage({
       </div>
 
       {items.length > 0 ? (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 min-[85rem]:grid-cols-4 min-[106rem]:grid-cols-5">
           {items.map((product) => (
             <ProductCard key={product.id} product={product} locale={locale} dict={dict} brands={[brand]} />
           ))}

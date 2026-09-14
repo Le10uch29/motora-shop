@@ -1,7 +1,12 @@
 "use client";
 
 import { useState, useTransition, type ReactNode } from "react";
-import { deleteProductAction, deleteProductsAction, deleteAllProductsAction } from "./actions";
+import {
+  deleteProductAction,
+  deleteProductsAction,
+  deleteAllProductsAction,
+  deleteZeroStockProductsAction,
+} from "./actions";
 import ProductFormModal, { type ProductFormValues } from "./ProductFormModal";
 import ProductWarehousesModal from "./ProductWarehousesModal";
 import ImportProductsModal from "./ImportProductsModal";
@@ -10,7 +15,7 @@ import MissingDataModal from "./MissingDataModal";
 import { RowActionLink, RowActionButton, EyeIcon, PencilIcon, TrashIcon } from "@/components/admin/RowActions";
 import type { AdminProductRow } from "./data";
 import { formatGel } from "@/lib/currency";
-import { productThumbUrl } from "@/lib/productImageUrl";
+import { productImageUrl } from "@/lib/productImageUrl";
 import type { Dictionary } from "@/i18n/dictionary";
 import type { Locale } from "@/i18n/locales";
 
@@ -23,6 +28,7 @@ export default function ProductsListClient({
   brands,
   warehouses,
   stockByProduct,
+  zeroStockCount,
   searchSlot,
 }: {
   locale: Locale;
@@ -33,6 +39,8 @@ export default function ProductsListClient({
   brands: { id: string; name: string }[];
   warehouses: { id: string; name: string }[];
   stockByProduct: Record<string, Record<string, number>>;
+  /** Products with nothing in stock, across the whole catalog (not just this page). */
+  zeroStockCount: number;
   searchSlot?: ReactNode;
 }) {
   const [modal, setModal] = useState<{ mode: "create" | "edit"; values?: ProductFormValues } | null>(null);
@@ -97,6 +105,22 @@ export default function ProductsListClient({
     }
     startTransition(async () => {
       const result = await deleteAllProductsAction(locale);
+      setDeleteError(result.error);
+      setSelectedIds(new Set());
+    });
+  }
+
+  function handleDeleteZeroStock() {
+    if (zeroStockCount === 0) return;
+    if (
+      !window.confirm(
+        `${dict.confirmDeleteZeroStockProducts}\n${dict.confirmDeleteAllProductsCountLabel} ${zeroStockCount}`
+      )
+    ) {
+      return;
+    }
+    startTransition(async () => {
+      const result = await deleteZeroStockProductsAction(locale);
       setDeleteError(result.error);
       setSelectedIds(new Set());
     });
@@ -168,7 +192,17 @@ export default function ProductsListClient({
       </div>
 
       {isAdmin && total > 0 && (
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          {zeroStockCount > 0 && (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={handleDeleteZeroStock}
+              className="rounded-full border border-red-300 px-4 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-60 dark:border-red-900 dark:hover:bg-red-950/40"
+            >
+              {dict.deleteZeroStockProductsButton} ({zeroStockCount})
+            </button>
+          )}
           <button
             type="button"
             disabled={pending}
@@ -268,13 +302,7 @@ export default function ProductsListClient({
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
                       {row.images[0] ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={productThumbUrl(row.images[0])}
-                          alt=""
-                          loading="lazy"
-                          decoding="async"
-                          className="h-full w-full bg-white object-contain"
-                        />
+                        <img src={productImageUrl(row.images[0], "thumb")} alt="" className="h-full w-full object-fill" />
                       ) : (
                         <span className="text-xs text-zinc-400">—</span>
                       )}

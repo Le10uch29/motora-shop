@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { createProductAction, updateProductAction, type ProductActionState } from "./actions";
 import type { LocalizedText } from "@/lib/products";
+import { productImageUrl } from "@/lib/productImageUrl";
 import type { Locale } from "@/i18n/locales";
 import type { Dictionary } from "@/i18n/dictionary";
 
@@ -320,12 +321,7 @@ export default function ProductFormModal({
             <div className="flex flex-wrap gap-2">
               {initialValues.images.map((src) => (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  key={src}
-                  src={productThumbUrl(src)}
-                  alt=""
-                  className="h-16 w-16 rounded-lg bg-white object-contain"
-                />
+                <img key={src} src={productImageUrl(src, "thumb")} alt="" className="h-16 w-16 rounded-lg object-fill" />
               ))}
             </div>
           )}

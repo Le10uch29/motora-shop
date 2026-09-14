@@ -294,6 +294,8 @@ export type Dictionary = {
     deleteAllProductsButton: string;
     confirmDeleteAllProducts: string;
     confirmDeleteAllProductsCountLabel: string;
+    deleteZeroStockProductsButton: string;
+    confirmDeleteZeroStockProducts: string;
     missingDataButton: string;
     missingDataModalTitle: string;
     missingDataFilterLabel: string;

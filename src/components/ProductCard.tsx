@@ -31,18 +31,10 @@ export default function ProductCard({
             <img
               src={product.images[0]}
               alt={t(product.name, locale)}
-              width={800}
-              height={600}
-              decoding="async"
-              className="aspect-[4/3] w-full bg-white object-contain"
+              className="aspect-[4/3] w-full object-fill"
             />
           ) : (
             <ProductVisual className="aspect-[4/3] w-full" />
-          )}
-          {product.stock <= 0 && (
-            <span className="absolute right-3 top-3 rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-600">
-              {dict.product.onOrder}
-            </span>
           )}
           <BrandLogo
             logoUrl={brand?.badgeLogoUrl}

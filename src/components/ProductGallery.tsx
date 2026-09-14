@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import ProductVisual from "@/components/ProductVisual";
-import { productThumbUrl } from "@/lib/productImageUrl";
+import { productImageUrl } from "@/lib/productImageUrl";
 
 const MAX_PHOTOS = 4;
 
@@ -32,12 +32,9 @@ export default function ProductGallery({
       <div className="relative overflow-hidden rounded-2xl">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={photos[selected] ?? photos[0]}
+          src={productImageUrl(photos[selected] ?? photos[0], "square")}
           alt={alt}
-          width={800}
-          height={600}
-          decoding="async"
-          className="aspect-square w-full bg-white object-contain"
+          className="aspect-square w-full object-fill"
         />
         {overlay}
       </div>
@@ -55,13 +52,7 @@ export default function ProductGallery({
               }`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={productThumbUrl(photo)}
-                alt=""
-                loading="lazy"
-                decoding="async"
-                className="h-full w-full bg-white object-contain"
-              />
+              <img src={productImageUrl(photo, "thumb")} alt="" className="h-full w-full object-fill" />
             </button>
           ))}
         </div>

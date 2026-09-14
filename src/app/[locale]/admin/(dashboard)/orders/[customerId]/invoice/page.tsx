@@ -4,6 +4,7 @@ import { getDictionary } from "@/i18n/getDictionary";
 import { requireStaff } from "@/lib/auth";
 import { getOrdererOrders } from "../../data";
 import { formatGel } from "@/lib/currency";
+import { productImageUrl } from "@/lib/productImageUrl";
 import PrintButton from "./PrintButton";
 
 const COMPANY_PHONE = "+995 577 46 66 11";
@@ -111,9 +112,9 @@ export default async function InvoicePage({
                   {line.productImage ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={line.productImage}
+                      src={productImageUrl(line.productImage, "thumb")}
                       alt=""
-                      className="h-10 w-10 rounded-md object-cover print:h-8 print:w-8"
+                      className="h-10 w-10 rounded-md object-fill print:h-8 print:w-8"
                     />
                   ) : (
                     <div className="h-10 w-10 rounded-md bg-zinc-100 dark:bg-zinc-800 print:hidden" />

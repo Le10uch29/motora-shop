@@ -48,7 +48,7 @@ export default async function Home({ params }: PageProps<"/[locale]">) {
               {dict.home.viewAll}
             </Link>
           </div>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 min-[85rem]:grid-cols-5 min-[100rem]:grid-cols-6 min-[115rem]:grid-cols-7">
             {featured.map((product) => (
               <ProductCard key={product.id} product={product} locale={locale} dict={dict} brands={brands} />
             ))}

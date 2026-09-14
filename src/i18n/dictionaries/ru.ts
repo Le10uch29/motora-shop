@@ -305,6 +305,8 @@ const ru: Dictionary = {
     deleteAllProductsButton: "Удалить все товары",
     confirmDeleteAllProducts: "Удалить ВСЕ товары? Это действие нельзя отменить.",
     confirmDeleteAllProductsCountLabel: "Количество товаров:",
+    deleteZeroStockProductsButton: "Удалить товары с нулевым остатком",
+    confirmDeleteZeroStockProducts: "Удалить все товары, у которых остаток 0? Это действие нельзя отменить.",
     missingDataButton: "Недостающие данные",
     missingDataModalTitle: "Товары с недостающими данными",
     missingDataFilterLabel: "Показать:",

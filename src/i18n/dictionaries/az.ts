@@ -296,6 +296,8 @@ const az: Dictionary = {
     deleteAllProductsButton: "Bütün məhsulları sil",
     confirmDeleteAllProducts: "BÜTÜN məhsulları silmək istəyirsiniz? Bu geri qaytarıla bilməz.",
     confirmDeleteAllProductsCountLabel: "Məhsul sayı:",
+    deleteZeroStockProductsButton: "Qalığı sıfır olan məhsulları sil",
+    confirmDeleteZeroStockProducts: "Qalığı 0 olan bütün məhsulları silmək istəyirsiniz? Bu geri qaytarıla bilməz.",
     missingDataButton: "Çatışmayan məlumatlar",
     missingDataModalTitle: "Məlumatı çatışmayan məhsullar",
     missingDataFilterLabel: "Göstər:",

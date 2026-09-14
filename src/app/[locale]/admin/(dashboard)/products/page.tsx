@@ -3,7 +3,13 @@ import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
 import { requireStaff } from "@/lib/auth";
 import { single } from "@/lib/searchParams";
-import { getAdminProducts, getBrandOptions, getProductsGrandTotal, PRODUCTS_PAGE_SIZE } from "./data";
+import {
+  getAdminProducts,
+  getBrandOptions,
+  getProductsGrandTotal,
+  getZeroStockProductsCount,
+  PRODUCTS_PAGE_SIZE,
+} from "./data";
 import { getWarehouseOptions, getProductStockMap } from "../warehouses/data";
 import ProductsListClient from "./ProductsListClient";
 import AdminSearchBox from "@/components/admin/AdminSearchBox";
@@ -32,6 +38,7 @@ export default async function AdminProductsPage({
   const isAdmin = staff.role === "admin";
   const warehouses = isAdmin ? await getWarehouseOptions() : [];
   const stockByProduct = isAdmin ? await getProductStockMap() : {};
+  const zeroStockCount = isAdmin ? await getZeroStockProductsCount() : 0;
 
   return (
     <main className="flex w-full flex-1 flex-col gap-6 px-2 py-10">
@@ -41,6 +48,7 @@ export default async function AdminProductsPage({
         isAdmin={isAdmin}
         rows={rows}
         total={grandTotal}
+        zeroStockCount={zeroStockCount}
         brands={brands}
         warehouses={warehouses}
         stockByProduct={stockByProduct}

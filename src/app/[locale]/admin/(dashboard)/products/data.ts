@@ -65,6 +65,16 @@ export async function getProductsGrandTotal(): Promise<number> {
   return count ?? 0;
 }
 
+/** How many products have nothing in stock — shown before an admin deletes them. */
+export async function getZeroStockProductsCount(): Promise<number> {
+  const supabase = await createClient();
+  const { count } = await supabase
+    .from("products")
+    .select("*", { count: "exact", head: true })
+    .lte("stock", 0);
+  return count ?? 0;
+}
+
 export async function getAdminProducts(
   locale: Locale,
   options: { query?: string; page?: number } = {}

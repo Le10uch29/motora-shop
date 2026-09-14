@@ -12,7 +12,7 @@ const IMMUTABLE_CACHE_SECONDS = "31536000";
 /**
  * Stores one product photo and returns the URL to save on the product.
  *
- * The photo is optimized into its container sizes first (see
+ * The photo is sized to each box it's shown in first (see
  * productImageOptimize). Should the file be something the image library can't
  * read, it's stored exactly as given instead, so an upload never fails just
  * because optimization did — it only misses out on it.
@@ -42,9 +42,9 @@ export async function storeProductImage(
   }
 
   const paths = optimizedImagePaths(randomUUID());
-  // The thumbnail goes first: a saved card URL is then a promise that its
-  // thumbnail exists too, since thumbnails are found from the card's name.
-  for (const variant of ["thumb", "card"] as const) {
+  // The card goes last: a saved card URL is then a promise that its sibling
+  // sizes exist too, since they're found from the card's name.
+  for (const variant of ["thumb", "square", "card"] as const) {
     const { error } = await storage.upload(paths[variant], variants[variant], {
       contentType: "image/webp",
       cacheControl: IMMUTABLE_CACHE_SECONDS,

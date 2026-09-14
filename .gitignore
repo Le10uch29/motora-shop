@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# backups written by scripts/optimize-product-images.ts
+/scripts/backups/
