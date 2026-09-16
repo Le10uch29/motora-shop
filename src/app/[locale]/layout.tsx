@@ -6,7 +6,7 @@ import { CartProvider } from "@/context/CartContext";
 import { locales, isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
 import { createClient } from "@/lib/supabase/server";
-import { getAuthUser } from "@/lib/supabase/authUsers";
+import { getAuthIdentity } from "@/lib/supabase/authUsers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -42,7 +42,7 @@ export default async function LocaleLayout({
   if (!isLocale(locale)) notFound();
 
   const supabase = await createClient();
-  const user = await getAuthUser(supabase);
+  const user = await getAuthIdentity(supabase);
 
   return (
     <html

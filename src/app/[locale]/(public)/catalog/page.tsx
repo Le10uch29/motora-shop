@@ -17,7 +17,6 @@ export default async function CatalogPage({
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
   const dict = await getDictionary(locale);
-  const brands = await getBrands();
 
   const sp = await searchParams;
   const query = single(sp.q)?.trim() || undefined;
@@ -32,12 +31,15 @@ export default async function CatalogPage({
 
   const hasActiveFilters = Boolean(make || model || brand || priceMin !== undefined || priceMax !== undefined || yearFrom !== undefined || yearTo !== undefined);
 
-  const { items: pageItems, total } = await getCatalogPage(
-    { query, make, model, brand, priceMin, priceMax, yearFrom, yearTo },
-    locale,
-    page,
-    CATALOG_PAGE_SIZE
-  );
+  const [brands, { items: pageItems, total }] = await Promise.all([
+    getBrands(),
+    getCatalogPage(
+      { query, make, model, brand, priceMin, priceMax, yearFrom, yearTo },
+      locale,
+      page,
+      CATALOG_PAGE_SIZE
+    ),
+  ]);
 
   return (
     <main className="mx-auto flex w-full max-w-[120rem] flex-1 flex-col gap-6 px-2 py-10">

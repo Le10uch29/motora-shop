@@ -41,22 +41,24 @@ async function resolveOrderers(
   const result = new Map<string, OrdererInfo>();
   if (ids.length === 0) return result;
 
-  const { data: customerRows } = await admin
-    .from("customers")
-    .select("id, first_name, last_name, organization_name, id_card_number, address, city, phone")
-    .in("id", ids);
+  // Staff is asked about the same ids rather than only the ones customers
+  // didn't claim: a superset costs nothing to filter afterwards, and asking
+  // all three at once turns three waits into one.
+  const [{ data: customerRows }, { data: allStaffRows }, authUsers] = await Promise.all([
+    admin
+      .from("customers")
+      .select("id, first_name, last_name, organization_name, id_card_number, address, city, phone")
+      .in("id", ids),
+    admin.from("staff").select("id, first_name, last_name, phone").in("id", ids),
+    // One bulk fetch instead of a getUserById() per orderer — same approach
+    // getStaffList()/getCustomersList() use to join emails.
+    listAllAuthUsers(admin),
+  ]);
 
-  const remainingAfterCustomers = ids.filter(
-    (id) => !(customerRows ?? []).some((row) => row.id === id)
+  // An id that is both is treated as a customer, as before.
+  const staffRows = (allStaffRows ?? []).filter(
+    (row) => !(customerRows ?? []).some((customer) => customer.id === row.id)
   );
-  const { data: staffRows } =
-    remainingAfterCustomers.length > 0
-      ? await admin.from("staff").select("id, first_name, last_name, phone").in("id", remainingAfterCustomers)
-      : { data: [] as { id: string; first_name: string; last_name: string; phone: string | null }[] };
-
-  // One bulk fetch instead of a getUserById() per orderer — same approach
-  // getStaffList()/getCustomersList() use to join emails.
-  const authUsers = await listAllAuthUsers(admin);
   const emailById = new Map(authUsers.map((u) => [u.id, u.email ?? ""]));
 
   for (const row of customerRows ?? []) {

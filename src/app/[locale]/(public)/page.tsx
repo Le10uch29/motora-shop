@@ -10,8 +10,7 @@ export default async function Home({ params }: PageProps<"/[locale]">) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
   const dict = await getDictionary(locale);
-  const brands = await getBrands();
-  const featured = await getFeaturedProducts(4);
+  const [brands, featured] = await Promise.all([getBrands(), getFeaturedProducts(4)]);
 
   return (
     <main className="flex flex-1 flex-col">

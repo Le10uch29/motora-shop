@@ -1,6 +1,7 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getAuthUser } from "@/lib/supabase/authUsers";
+import { getAuthIdentity } from "@/lib/supabase/authUsers";
 import type { Locale } from "@/i18n/locales";
 
 export type StaffRole = "admin" | "seller";
@@ -16,10 +17,13 @@ export type CurrentStaff = {
   warehouseId: string | null;
 };
 
-/** The logged-in staff member (admin or seller), or null if not logged in / no staff profile. */
-export async function getCurrentStaff(): Promise<CurrentStaff | null> {
+/** The logged-in staff member (admin or seller), or null if not logged in / no staff profile.
+ *
+ * Wrapped in React's `cache` so a request that asks more than once — a layout
+ * and its page both guarding the same route, say — costs one lookup, not two. */
+export const getCurrentStaff = cache(async function getCurrentStaff(): Promise<CurrentStaff | null> {
   const supabase = await createClient();
-  const user = await getAuthUser(supabase);
+  const user = await getAuthIdentity(supabase);
   if (!user) return null;
 
   const { data: staff } = await supabase
@@ -31,7 +35,7 @@ export async function getCurrentStaff(): Promise<CurrentStaff | null> {
 
   return {
     id: staff.id,
-    email: user.email ?? "",
+    email: user.email,
     firstName: staff.first_name,
     lastName: staff.last_name,
     phone: staff.phone,
@@ -39,7 +43,7 @@ export async function getCurrentStaff(): Promise<CurrentStaff | null> {
     role: staff.role,
     warehouseId: staff.warehouse_id,
   };
-}
+});
 
 /** Redirects to the admin login if not logged in as staff at all. */
 export async function requireStaff(locale: Locale): Promise<CurrentStaff> {
@@ -66,10 +70,12 @@ export type CurrentCustomer = {
   photoUrl: string | null;
 };
 
-/** The logged-in customer, or null if not logged in / no customer profile (e.g. staff). */
-export async function getCurrentCustomer(): Promise<CurrentCustomer | null> {
+/** The logged-in customer, or null if not logged in / no customer profile (e.g. staff).
+ *
+ * Cached per request for the same reason as {@link getCurrentStaff}. */
+export const getCurrentCustomer = cache(async function getCurrentCustomer(): Promise<CurrentCustomer | null> {
   const supabase = await createClient();
-  const user = await getAuthUser(supabase);
+  const user = await getAuthIdentity(supabase);
   if (!user) return null;
 
   const { data: customer } = await supabase
@@ -81,7 +87,7 @@ export async function getCurrentCustomer(): Promise<CurrentCustomer | null> {
 
   return {
     id: customer.id,
-    email: user.email ?? "",
+    email: user.email,
     firstName: customer.first_name,
     lastName: customer.last_name,
     phone: customer.phone,
@@ -89,7 +95,7 @@ export async function getCurrentCustomer(): Promise<CurrentCustomer | null> {
     organizationName: customer.organization_name,
     photoUrl: customer.photo_url,
   };
-}
+});
 
 /** Redirects to /login if not logged in at all; staff-only accounts go to their own account page. */
 export async function requireCustomer(locale: Locale): Promise<CurrentCustomer> {

@@ -40,6 +40,29 @@ export async function getAuthUser(supabase: SupabaseClient): Promise<User | null
   return result?.data.user ?? null;
 }
 
+export type AuthIdentity = { id: string; email: string };
+
+/**
+ * Who the session belongs to, taken from the session cookie's own token.
+ *
+ * `getUser()` asks Supabase on every single call — a round trip before the page
+ * can even start, on every request, which on this project measures 300-800ms.
+ * `getClaims()` instead verifies the token's signature locally against the
+ * project's public key (fetched once per server process) and only goes to the
+ * network when the token has actually expired and needs refreshing. The
+ * signature check is what makes it trustworthy: a forged or edited cookie fails
+ * it, exactly as `getUser()` would fail server-side.
+ *
+ * Use this for "who is this request", and `getAuthUser` only where the full,
+ * freshest user record is needed (metadata, email confirmation state).
+ */
+export async function getAuthIdentity(supabase: SupabaseClient): Promise<AuthIdentity | null> {
+  const result = await resilientAuthCall(() => supabase.auth.getClaims(), "getClaims");
+  const claims = result?.data?.claims;
+  if (!claims?.sub) return null;
+  return { id: claims.sub, email: typeof claims.email === "string" ? claims.email : "" };
+}
+
 /** One user by id, or null when unreachable. */
 export async function getAuthUserById(
   admin: SupabaseClient,

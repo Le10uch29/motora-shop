@@ -11,14 +11,15 @@ export async function getCustomersList(
 ): Promise<{ rows: CustomerRow[]; total: number }> {
   const admin = createAdminClient();
 
-  const { data: customerRows } = await admin
-    .from("customers")
-    .select(
-      "id, first_name, last_name, phone, id_card_number, organization_name, address, city, photo_url"
-    )
-    .order("created_at", { ascending: false });
-
-  const authUsers = await listAllAuthUsers(admin);
+  const [{ data: customerRows }, authUsers] = await Promise.all([
+    admin
+      .from("customers")
+      .select(
+        "id, first_name, last_name, phone, id_card_number, organization_name, address, city, photo_url"
+      )
+      .order("created_at", { ascending: false }),
+    listAllAuthUsers(admin),
+  ]);
   // A phone-derived stand-in address isn't a real contact — it exists only so
   // the account can be signed into by phone, so it reads as "no email" here.
   const emailById = new Map(

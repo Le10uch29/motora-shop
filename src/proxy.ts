@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { locales, defaultLocale } from "@/i18n/locales";
-import { getAuthUser } from "@/lib/supabase/authUsers";
+import { getAuthIdentity } from "@/lib/supabase/authUsers";
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -47,7 +47,7 @@ export async function proxy(request: NextRequest) {
   // service as "not signed in" sends the visitor to the login page instead,
   // which is both recoverable and consistent with the gate below; the page
   // guards (requireStaff / requireAdmin) enforce access either way.
-  const user = await getAuthUser(supabase);
+  const user = await getAuthIdentity(supabase);
 
   const adminPrefix = `/${matchedLocale}/admin`;
   const isAdminRoute = pathname === adminPrefix || pathname.startsWith(`${adminPrefix}/`);

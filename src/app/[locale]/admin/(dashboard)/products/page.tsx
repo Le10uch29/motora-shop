@@ -28,17 +28,24 @@ export default async function AdminProductsPage({
   const query = single(sp.q) ?? "";
   const page = Number(single(sp.page)) || 1;
 
-  const { rows, total } = await getAdminProducts(locale, { query, page });
-  const grandTotal = query ? await getProductsGrandTotal() : total;
-  const brands = await getBrandOptions();
   // Warehouse data (names, per-warehouse stock) is admin-only UI in
   // ProductsListClient — don't even fetch it for a seller, since props on a
   // Server Component still reach the browser in the RSC payload whether or
   // not the client actually renders them.
   const isAdmin = staff.role === "admin";
-  const warehouses = isAdmin ? await getWarehouseOptions() : [];
-  const stockByProduct = isAdmin ? await getProductStockMap() : {};
-  const zeroStockCount = isAdmin ? await getZeroStockProductsCount() : 0;
+
+  // All independent of each other, so they go together: one wait of ~330ms
+  // instead of six.
+  const [{ rows, total }, searchTotal, brands, warehouses, stockByProduct, zeroStockCount] =
+    await Promise.all([
+      getAdminProducts(locale, { query, page }),
+      query ? getProductsGrandTotal() : null,
+      getBrandOptions(),
+      isAdmin ? getWarehouseOptions() : [],
+      isAdmin ? getProductStockMap() : {},
+      isAdmin ? getZeroStockProductsCount() : 0,
+    ]);
+  const grandTotal = searchTotal ?? total;
 
   return (
     <main className="flex w-full flex-1 flex-col gap-6 px-2 py-10">
