@@ -120,3 +120,34 @@ input[type="radio"]:disabled {
     animation: none;
   }
 }
+
+/* Printing (the invoice). Without this the browser decides the sheet size and
+   margins itself, and photos are dropped as "background graphics" on some
+   setups — so an invoice printed from one machine looked nothing like the
+   same invoice from another. */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    background: #fff;
+  }
+
+  /* Photos are part of the document here, not decoration. */
+  img {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* A row of the table stays on one sheet, and the header repeats on each. */
+  thead {
+    display: table-header-group;
+  }
+
+  tr {
+    break-inside: avoid;
+  }
+}

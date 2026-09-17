@@ -96,9 +96,12 @@ export default async function InvoicePage({
         <thead className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500 print:border-black print:text-black">
           <tr>
             <th className="py-2 pr-3 font-medium" />
-            <th className="py-2 pr-3 font-medium">{dict.admin.productsColProductCode}</th>
+            <th className="py-2 pr-3 font-medium">
+              <span className="block">{dict.admin.invoiceColProductCodeShort} /</span>
+              <span className="block">{dict.admin.invoiceColOriginCodeShort}</span>
+            </th>
             <th className="py-2 pr-3 font-medium">{dict.admin.orderColumnProduct}</th>
-            <th className="py-2 pr-3 font-medium">{dict.admin.orderColumnQuantity}</th>
+            <th className="py-2 pr-3 font-medium">{dict.admin.invoiceColQuantityShort}</th>
             <th className="py-2 pr-3 font-medium">{dict.admin.orderColumnUnitPrice}</th>
             <th className="py-2 text-right font-medium">{dict.admin.orderColumnLineTotal}</th>
           </tr>
@@ -114,14 +117,17 @@ export default async function InvoicePage({
                     <img
                       src={productImageUrl(line.productImage, "thumb")}
                       alt=""
-                      className="h-10 w-10 rounded-md object-fill print:h-8 print:w-8"
+                      className="h-10 w-10 rounded-md object-fill print:h-[16mm] print:w-[16mm]"
                     />
                   ) : (
                     <div className="h-10 w-10 rounded-md bg-zinc-100 dark:bg-zinc-800 print:hidden" />
                   )}
                 </td>
                 <td className="py-2 pr-3 font-medium text-zinc-900 dark:text-zinc-50 print:text-black">
-                  {line.productCode || "—"}
+                  <span className="block">{line.productCode || "—"}</span>
+                  <span className="block font-normal text-zinc-500 dark:text-zinc-400 print:text-black">
+                    {line.originCode || "—"}
+                  </span>
                 </td>
                 <td className="py-2 pr-3 font-medium text-zinc-900 dark:text-zinc-50 print:text-black">
                   {line.productName}
@@ -150,26 +156,6 @@ export default async function InvoicePage({
         </div>
       </div>
 
-      <div className="mt-8 grid grid-cols-1 gap-8 text-sm sm:grid-cols-3 print:text-black">
-        <div className="flex flex-col">
-          <div className="h-12" />
-          <span className="border-t border-zinc-400 pt-2 text-zinc-600 dark:text-zinc-400 print:border-black print:text-black">
-            {dict.admin.invoiceCustomerSignatureLabel}
-          </span>
-        </div>
-        <div className="flex flex-col">
-          <div className="h-12" />
-          <span className="border-t border-zinc-400 pt-2 text-zinc-600 dark:text-zinc-400 print:border-black print:text-black">
-            {dict.admin.invoiceSellerSignatureLabel}
-          </span>
-        </div>
-        <div className="flex flex-col">
-          <div className="h-12" />
-          <span className="border-t border-zinc-400 pt-2 text-zinc-600 dark:text-zinc-400 print:border-black print:text-black">
-            {dict.admin.invoiceStampLabel}
-          </span>
-        </div>
-      </div>
     </main>
   );
 }

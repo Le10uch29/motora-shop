@@ -121,9 +121,6 @@ export type Dictionary = {
     discountedPriceLabel: string;
     companyPhoneLabel: string;
     personalNumberLabel: string;
-    invoiceCustomerSignatureLabel: string;
-    invoiceSellerSignatureLabel: string;
-    invoiceStampLabel: string;
     actionCancelOrder: string;
     confirmCancelOrder: string;
     confirmDeleteOrder: string;
@@ -141,6 +138,9 @@ export type Dictionary = {
     orderColumnUnitPrice: string;
     orderColumnLineTotal: string;
     orderNumberLabel: string;
+    invoiceColProductCodeShort: string;
+    invoiceColOriginCodeShort: string;
+    invoiceColQuantityShort: string;
     ordererOrdersTitle: string;
     orderGrandTotalLabel: string;
     printInvoiceButton: string;

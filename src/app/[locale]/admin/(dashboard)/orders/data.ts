@@ -235,6 +235,9 @@ export type OrdererOrderLine = {
   /** Null when the product has since been deleted from the catalog, or never
    * had a code — the order itself only snapshots the name, not the code. */
   productCode: string | null;
+  /** The manufacturer's own code for the same part, shown under the product
+   * code on the invoice. Null under the same conditions. */
+  originCode: string | null;
   productImage: string | null;
   quantity: number;
   priceAtOrder: number;
@@ -289,10 +292,20 @@ export async function getOrdererOrders(
   );
   const { data: productRows } =
     productIds.length > 0
-      ? await admin.from("products").select("id, images, product_code").in("id", productIds)
-      : { data: [] as { id: string; images: string[] | null; product_code: string | null }[] };
+      ? await admin.from("products").select("id, images, product_code, origin_code").in("id", productIds)
+      : {
+          data: [] as {
+            id: string;
+            images: string[] | null;
+            product_code: string | null;
+            origin_code: string | null;
+          }[],
+        };
   const imageByProductId = new Map((productRows ?? []).map((p) => [p.id, p.images?.[0] ?? null]));
   const codeByProductId = new Map((productRows ?? []).map((p) => [p.id, p.product_code ?? null]));
+  const originCodeByProductId = new Map(
+    (productRows ?? []).map((p) => [p.id, p.origin_code ?? null])
+  );
 
   // Representative warehouse for the whole invoice — the one attached to
   // whichever active order was touched most recently (mirrors the top
@@ -321,6 +334,7 @@ export async function getOrdererOrders(
     orderNumber: row.order_number,
     productName: row.product_name?.[locale] ?? row.product_name?.ru ?? "",
     productCode: row.product_id ? codeByProductId.get(row.product_id) ?? null : null,
+    originCode: row.product_id ? originCodeByProductId.get(row.product_id) ?? null : null,
     productImage: row.product_id ? imageByProductId.get(row.product_id) ?? null : null,
     quantity: row.quantity,
     priceAtOrder: Number(row.price_at_order),
