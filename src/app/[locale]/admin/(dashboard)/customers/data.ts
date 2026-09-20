@@ -15,7 +15,7 @@ export async function getCustomersList(
     admin
       .from("customers")
       .select(
-        "id, first_name, last_name, phone, id_card_number, organization_name, address, city, photo_url"
+        "id, first_name, last_name, phone, id_card_number, organization_name, organization_id_number, address, city, photo_url"
       )
       .order("created_at", { ascending: false }),
     listAllAuthUsers(admin),
@@ -34,6 +34,7 @@ export async function getCustomersList(
     phone: row.phone,
     idCardNumber: row.id_card_number,
     organizationName: row.organization_name,
+    organizationIdNumber: row.organization_id_number,
     address: row.address,
     city: row.city,
     photoUrl: row.photo_url,

@@ -17,6 +17,7 @@ export type CustomerFormValues = {
   phone: string;
   idCardNumber: string;
   organizationName: string;
+  organizationIdNumber: string;
   address: string;
   city: string;
   photoUrl: string | null;
@@ -30,6 +31,7 @@ const EMPTY_VALUES: CustomerFormValues = {
   phone: "",
   idCardNumber: "",
   organizationName: "",
+  organizationIdNumber: "",
   address: "",
   city: "",
   photoUrl: null,
@@ -60,6 +62,7 @@ export default function CustomerFormModal({
   const [state, formAction, pending] = useActionState(action, initialState);
   const [submitted, setSubmitted] = useState(false);
   const values = initialValues ?? EMPTY_VALUES;
+  const fullName = `${values.firstName} ${values.lastName}`.trim();
 
   useEffect(() => {
     if (!submitted || pending || state.error) return;
@@ -71,7 +74,7 @@ export default function CustomerFormModal({
   if (mode === "create" && state.createdPassword) {
     return createPortal(
       <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-16">
-        <div className="relative flex w-full max-w-md flex-col gap-4 rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900">
+        <div className="relative flex w-full max-w-lg flex-col gap-4 rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900">
           <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">{dict.tempPasswordTitle}</h2>
           <p className="text-sm text-zinc-500">{dict.tempPasswordHint}</p>
           <div className="flex flex-col gap-1.5 rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-800">
@@ -105,7 +108,7 @@ export default function CustomerFormModal({
       <form
         action={formAction}
         onSubmit={() => setSubmitted(true)}
-        className="relative flex w-full max-w-md flex-col gap-4 rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900"
+        className="relative flex max-h-[90vh] w-full max-w-3xl flex-col gap-4 overflow-y-auto rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900"
       >
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
@@ -125,32 +128,52 @@ export default function CustomerFormModal({
         <input type="hidden" name="locale" value={locale} />
         {mode === "edit" && <input type="hidden" name="id" value={values.id} />}
 
-        <div className="grid grid-cols-2 gap-3">
+        {/* 1. Fullname — one field, works with just a first name or a full name. */}
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="customer-fullName" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            {dict.fullNameLabel}
+          </label>
+          <input
+            id="customer-fullName"
+            name="fullName"
+            required
+            defaultValue={fullName}
+            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+          />
+        </div>
+
+        {/* 2–3. Personal ID card and organization identification number. */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="customer-firstName" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              {dict.firstNameLabel}
+            <label htmlFor="customer-idCard" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              {dict.idCardLabel}
             </label>
             <input
-              id="customer-firstName"
-              name="firstName"
+              id="customer-idCard"
+              name="idCardNumber"
               required
-              defaultValue={values.firstName}
+              defaultValue={values.idCardNumber}
               className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="customer-lastName" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              {dict.lastNameLabel}
+            <label
+              htmlFor="customer-organizationIdNumber"
+              className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
+            >
+              {dict.organizationIdNumberLabel}
             </label>
             <input
-              id="customer-lastName"
-              name="lastName"
-              defaultValue={values.lastName}
+              id="customer-organizationIdNumber"
+              name="organizationIdNumber"
+              required
+              defaultValue={values.organizationIdNumber}
               className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
             />
           </div>
         </div>
 
+        {/* 4. Organization name (or შპს in Georgian). */}
         <div className="flex flex-col gap-1.5">
           <label htmlFor="customer-organizationName" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
             {dict.organizationNameLabel}
@@ -165,77 +188,68 @@ export default function CustomerFormModal({
           />
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="customer-phone" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            {dict.phoneLabel}
-          </label>
-          <input
-            id="customer-phone"
-            name="phone"
-            type="tel"
-            required
-            defaultValue={values.phone}
-            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-          />
-        </div>
-
-        {mode === "create" ? (
+        {/* 5. Phone (with email alongside, since both are contact details). */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="customer-email" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Email
+            <label htmlFor="customer-phone" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              {dict.phoneLabel}
             </label>
             <input
-              id="customer-email"
-              name="email"
-              type="email"
+              id="customer-phone"
+              name="phone"
+              type="tel"
+              required
+              defaultValue={values.phone}
               className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
             />
-            <span className="text-xs text-zinc-500">{dict.customerEmailOptionalHint}</span>
           </div>
-        ) : (
+          {mode === "create" ? (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="customer-email" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Email
+              </label>
+              <input
+                id="customer-email"
+                name="email"
+                type="email"
+                className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+              />
+              <span className="text-xs text-zinc-500">{dict.customerEmailOptionalHint}</span>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Email</span>
+              <span className="text-sm text-zinc-500">{values.email || "—"}</span>
+            </div>
+          )}
+        </div>
+
+        {/* 6. City and address. */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Email</span>
-            <span className="text-sm text-zinc-500">{values.email || "—"}</span>
+            <label htmlFor="customer-city" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              {dict.cityLabel}
+            </label>
+            <input
+              id="customer-city"
+              name="city"
+              required
+              defaultValue={values.city}
+              className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+            />
           </div>
-        )}
-
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="customer-idCard" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            {dict.idCardLabel}
-          </label>
-          <input
-            id="customer-idCard"
-            name="idCardNumber"
-            required
-            defaultValue={values.idCardNumber}
-            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-          />
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="customer-address" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            {dict.addressLabel}
-          </label>
-          <input
-            id="customer-address"
-            name="address"
-            required
-            defaultValue={values.address}
-            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-          />
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="customer-city" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            {dict.cityLabel}
-          </label>
-          <input
-            id="customer-city"
-            name="city"
-            required
-            defaultValue={values.city}
-            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-          />
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="customer-address" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              {dict.addressLabel}
+            </label>
+            <input
+              id="customer-address"
+              name="address"
+              required
+              defaultValue={values.address}
+              className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+            />
+          </div>
         </div>
 
         <div className="flex flex-col gap-1.5">

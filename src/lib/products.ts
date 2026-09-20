@@ -204,14 +204,40 @@ export const getProductsForCart = cache(async (): Promise<CartProductSummary[]> 
   return (data ?? []) as CartProductSummary[];
 });
 
+/** A product's `model` field can list more than one chassis code, separated
+ * by "-" (e.g. "W124-W202-W210"), optionally followed by "/" and extra info
+ * that isn't a model at all — an engine size, say ("W124-W202-W210/ 4,4").
+ * This pulls out just the model tokens: everything before the first "/" is
+ * models, split on "-"; whatever comes after "/" is dropped here (it's
+ * descriptive info, not something to filter or list as a model). */
+export function parseModelTokens(rawModel: string): string[] {
+  const modelsPart = rawModel.split("/")[0];
+  return modelsPart
+    .split("-")
+    .map((token) => token.trim())
+    .filter(Boolean);
+}
+
+/** Whether a product's `model` field lists the given model among its
+ * "-"-separated tokens (case-insensitive) — the same rule the model filter
+ * dropdown and {@link getCatalogPage} use. */
+function productHasModel(productModel: string, wantedModel: string): boolean {
+  const wanted = wantedModel.trim().toLowerCase();
+  return parseModelTokens(productModel).some((token) => token.toLowerCase() === wanted);
+}
+
 /** Models grouped by make, both derived live from whatever products
  * currently exist — a make/model with no products left simply isn't in the
- * result, and reappears the moment a matching product is added again. */
+ * result, and reappears the moment a matching product is added again. Each
+ * product can contribute more than one model token (see
+ * {@link parseModelTokens}), so e.g. "W124-W202-W210" lists as three models,
+ * not one long string. */
 export function computeModelsByMake(products: { make: string; model: string }[]): Record<string, string[]> {
   const byMake: Record<string, Set<string>> = {};
   for (const p of products) {
     if (!p.model) continue;
-    (byMake[p.make] ??= new Set()).add(p.model);
+    const set = (byMake[p.make] ??= new Set());
+    for (const token of parseModelTokens(p.model)) set.add(token);
   }
   const result: Record<string, string[]> = {};
   for (const [make, models] of Object.entries(byMake)) {
@@ -283,7 +309,14 @@ export async function getCatalogPage(
 
   if (brandId) query = query.eq("brand_id", brandId);
   if (filters.make) query = query.eq("make", filters.make);
-  if (filters.model) query = query.eq("model", filters.model);
+  // `model` can hold several "-"-separated chassis codes plus a "/"-prefixed
+  // extra bit that isn't a model (see parseModelTokens) — matched here with a
+  // case-insensitive regex anchored on those separators, so filtering by
+  // "W202" finds "W124-W202-W210/ 4,4" without also matching "W2020".
+  if (filters.model) {
+    const escaped = filters.model.trim().replace(/[.^$*+?()[\]{}|\\]/g, "\\$&");
+    query = query.filter("model", "imatch", `(^|-)\\s*${escaped}\\s*(-|/|$)`);
+  }
   if (filters.priceMin !== undefined) query = query.gte("price", filters.priceMin);
   if (filters.priceMax !== undefined) query = query.lte("price", filters.priceMax);
   // A part fits the wanted years when its own range overlaps them.
@@ -338,7 +371,7 @@ export function filterProducts(
   const query = filters.query?.trim().toLowerCase();
   return products.filter((p) => {
     if (filters.make && p.make !== filters.make) return false;
-    if (filters.model && p.model !== filters.model) return false;
+    if (filters.model && !productHasModel(p.model, filters.model)) return false;
     if (filters.brand && p.brand !== filters.brand) return false;
     if (filters.priceMin !== undefined && p.price < filters.priceMin) return false;
     if (filters.priceMax !== undefined && p.price > filters.priceMax) return false;

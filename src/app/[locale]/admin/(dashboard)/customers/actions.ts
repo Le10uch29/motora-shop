@@ -31,14 +31,26 @@ function readLocale(formData: FormData): Locale {
   return raw;
 }
 
+// The form collects one "Fullname" field so a customer can be registered by
+// first name alone or by first + last name — split on the first space so the
+// rest (DB columns, orders, logs) keeps working with separate first/last names.
+function splitFullName(raw: string): { firstName: string; lastName: string } {
+  const normalized = raw.trim().replace(/\s+/g, " ");
+  if (!normalized) return { firstName: "", lastName: "" };
+  const [firstName, ...rest] = normalized.split(" ");
+  return { firstName, lastName: rest.join(" ") };
+}
+
 function readCustomerFields(formData: FormData) {
   const rawPhone = String(formData.get("phone") ?? "").trim();
+  const { firstName, lastName } = splitFullName(String(formData.get("fullName") ?? ""));
   return {
-    firstName: String(formData.get("firstName") ?? "").trim(),
-    lastName: String(formData.get("lastName") ?? "").trim(),
+    firstName,
+    lastName,
     phone: rawPhone ? normalizePhone(rawPhone) : "",
     idCardNumber: String(formData.get("idCardNumber") ?? "").trim(),
     organizationName: String(formData.get("organizationName") ?? "").trim(),
+    organizationIdNumber: String(formData.get("organizationIdNumber") ?? "").trim(),
     address: String(formData.get("address") ?? "").trim(),
     city: String(formData.get("city") ?? "").trim(),
   };
@@ -105,6 +117,7 @@ export async function createCustomerAction(
     !fields.phone ||
     !fields.idCardNumber ||
     !fields.organizationName ||
+    !fields.organizationIdNumber ||
     !fields.address ||
     !fields.city
   ) {
@@ -146,6 +159,7 @@ export async function createCustomerAction(
     phone: fields.phone,
     id_card_number: fields.idCardNumber,
     organization_name: fields.organizationName,
+    organization_id_number: fields.organizationIdNumber,
     address: fields.address,
     city: fields.city,
     photo_url: photoUrl,
@@ -181,6 +195,7 @@ export async function updateCustomerAction(
     !fields.phone ||
     !fields.idCardNumber ||
     !fields.organizationName ||
+    !fields.organizationIdNumber ||
     !fields.address ||
     !fields.city
   ) {
@@ -194,7 +209,9 @@ export async function updateCustomerAction(
 
   const { data: before } = await admin
     .from("customers")
-    .select("first_name, last_name, phone, id_card_number, organization_name, address, city, photo_url")
+    .select(
+      "first_name, last_name, phone, id_card_number, organization_name, organization_id_number, address, city, photo_url"
+    )
     .eq("id", id)
     .single();
 
@@ -216,6 +233,7 @@ export async function updateCustomerAction(
       phone: fields.phone,
       id_card_number: fields.idCardNumber,
       organization_name: fields.organizationName,
+      organization_id_number: fields.organizationIdNumber,
       address: fields.address,
       city: fields.city,
       photo_url: photoUrl,
@@ -253,6 +271,7 @@ export async function updateCustomerAction(
       phone: before.phone,
       idCardNumber: before.id_card_number,
       organizationName: before.organization_name,
+      organizationIdNumber: before.organization_id_number,
       address: before.address,
       city: before.city,
     },

@@ -34,6 +34,20 @@ function readLocale(formData: FormData): Locale {
   return raw;
 }
 
+// The admin form collects one "year" field (e.g. "2002-2015", or a single
+// "2015" for a part that fits one model-year) instead of separate from/to
+// number inputs. This reads the first 4-digit run as yearFrom, skips
+// whatever separator sits between them (dash, slash, punctuation, spaces),
+// and reads the next 4-digit run as yearTo — falling back to yearFrom when
+// there isn't a second one.
+function parseYearRange(raw: string): { yearFrom: number; yearTo: number } | null {
+  const match = raw.match(/(\d{4})(?:\D+(\d{4}))?/);
+  if (!match) return null;
+  const yearFrom = Number(match[1]);
+  const yearTo = match[2] ? Number(match[2]) : yearFrom;
+  return { yearFrom, yearTo };
+}
+
 function readLocalizedField(
   formData: FormData,
   prefix: string
@@ -70,8 +84,7 @@ function readFields(formData: FormData): ParsedFields | null {
   const brandId = String(formData.get("brandId") ?? "").trim();
   const make = String(formData.get("make") ?? "").trim();
   const model = String(formData.get("model") ?? "").trim();
-  const yearFrom = Number(formData.get("yearFrom"));
-  const yearTo = Number(formData.get("yearTo"));
+  const yearRange = parseYearRange(String(formData.get("year") ?? ""));
   const price = Number(formData.get("price"));
   const oldPriceRaw = String(formData.get("oldPrice") ?? "").trim();
   const stockRaw = String(formData.get("stock") ?? "").trim();
@@ -88,8 +101,7 @@ function readFields(formData: FormData): ParsedFields | null {
     !slugInput ||
     !brandId ||
     !make ||
-    !Number.isFinite(yearFrom) ||
-    !Number.isFinite(yearTo) ||
+    !yearRange ||
     !Number.isFinite(price)
   ) {
     return null;
@@ -100,8 +112,8 @@ function readFields(formData: FormData): ParsedFields | null {
     brandId,
     make,
     model: model || null,
-    yearFrom,
-    yearTo,
+    yearFrom: yearRange.yearFrom,
+    yearTo: yearRange.yearTo,
     price,
     oldPrice: oldPriceRaw ? Number(oldPriceRaw) : null,
     stock: stockRaw ? Number(stockRaw) || 0 : 0,

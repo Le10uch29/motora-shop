@@ -63,6 +63,12 @@ export default function ProductFormModal({
     if (submitted && !pending && !state.error) onClose();
   }, [submitted, pending, state.error, onClose]);
 
+  const initialYear = initialValues
+    ? initialValues.yearFrom === initialValues.yearTo
+      ? String(initialValues.yearFrom)
+      : `${initialValues.yearFrom}-${initialValues.yearTo}`
+    : "";
+
   const [price, setPrice] = useState(initialValues ? String(initialValues.price) : "");
   const [oldPrice, setOldPrice] = useState(
     initialValues?.oldPrice != null ? String(initialValues.oldPrice) : ""
@@ -180,31 +186,20 @@ export default function ProductFormModal({
           <div className="flex flex-col gap-1.5">
             <label htmlFor="product-model" className={labelClass}>{dict.productModelLabel}</label>
             <input id="product-model" name="model" defaultValue={initialValues?.model} className={inputClass} />
+            <span className="text-xs text-zinc-400">{dict.productModelHint}</span>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="product-year-from" className={labelClass}>{dict.productYearFromLabel}</label>
-              <input
-                id="product-year-from"
-                name="yearFrom"
-                type="number"
-                required
-                defaultValue={initialValues?.yearFrom}
-                className={inputClass}
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="product-year-to" className={labelClass}>{dict.productYearToLabel}</label>
-              <input
-                id="product-year-to"
-                name="yearTo"
-                type="number"
-                required
-                defaultValue={initialValues?.yearTo}
-                className={inputClass}
-              />
-            </div>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="product-year" className={labelClass}>{dict.productYearLabel}</label>
+            <input
+              id="product-year"
+              name="year"
+              required
+              placeholder="2002-2015"
+              defaultValue={initialYear}
+              className={inputClass}
+            />
+            <span className="text-xs text-zinc-400">{dict.productYearHint}</span>
           </div>
 
           <div className="flex flex-col gap-1.5">

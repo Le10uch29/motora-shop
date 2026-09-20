@@ -85,8 +85,10 @@ export type Dictionary = {
     actionDelete: string;
     customersTitle: string;
     addCustomer: string;
+    fullNameLabel: string;
     organizationNameLabel: string;
     organizationNamePlaceholder: string;
+    organizationIdNumberLabel: string;
     photoLabel: string;
     tableOrganization: string;
     passwordDeliveryLabel: string;
@@ -199,8 +201,11 @@ export type Dictionary = {
     productMakeLabel: string;
     productMakeHint: string;
     productModelLabel: string;
+    productModelHint: string;
     productYearFromLabel: string;
     productYearToLabel: string;
+    productYearLabel: string;
+    productYearHint: string;
     productPriceLabel: string;
     productOldPriceLabel: string;
     productStockLabel: string;

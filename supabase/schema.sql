@@ -277,6 +277,7 @@ create table if not exists customers (
 alter table customers add column if not exists address text not null default '';
 alter table customers add column if not exists postal_code text not null default '';
 alter table customers add column if not exists city text not null default '';
+alter table customers add column if not exists organization_id_number text not null default '';
 
 drop trigger if exists customers_set_updated_at on customers;
 create trigger customers_set_updated_at

@@ -25,7 +25,7 @@ export default async function CustomerDetailPage({
   const { data: row } = await admin
     .from("customers")
     .select(
-      "id, first_name, last_name, phone, id_card_number, organization_name, address, city, photo_url, created_at"
+      "id, first_name, last_name, phone, id_card_number, organization_name, organization_id_number, address, city, photo_url, created_at"
     )
     .eq("id", id)
     .single();
@@ -54,6 +54,7 @@ export default async function CustomerDetailPage({
     ["Email", email || "—"],
     [dict.admin.phoneLabel, row.phone],
     [dict.admin.idCardLabel, row.id_card_number],
+    [dict.admin.organizationIdNumberLabel, row.organization_id_number],
     [dict.admin.organizationNameLabel, row.organization_name],
     [dict.admin.cityLabel, row.city],
     [dict.admin.addressLabel, row.address],
@@ -81,6 +82,7 @@ export default async function CustomerDetailPage({
             phone: row.phone,
             idCardNumber: row.id_card_number,
             organizationName: row.organization_name,
+            organizationIdNumber: row.organization_id_number,
             address: row.address,
             city: row.city,
             photoUrl: row.photo_url,
