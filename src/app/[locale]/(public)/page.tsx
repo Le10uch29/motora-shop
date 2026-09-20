@@ -16,35 +16,32 @@ export default async function Home({ params }: PageProps<"/[locale]">) {
   return (
     <main className="flex flex-1 flex-col">
       <section className="mx-auto w-full max-w-[120rem] px-4 pt-6 sm:px-2">
-        <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-zinc-900 via-zinc-900 to-orange-900 shadow-xl">
-          <div className="grid grid-cols-1 items-center gap-8 px-6 py-14 sm:px-10 lg:grid-cols-2 lg:py-0">
-            <div className="flex flex-col gap-4 text-white">
-              <span className="text-sm font-medium uppercase tracking-widest text-orange-400">
-                {dict.home.brand}
-              </span>
-              <h1 className="max-w-xl text-4xl font-bold tracking-tight sm:text-5xl">
-                {dict.home.heroTitle}
-              </h1>
-              <p className="max-w-lg text-lg text-zinc-300">{dict.home.heroSubtitle}</p>
-              <div className="mt-4 flex flex-wrap gap-3">
-                <Link
-                  href={`/${locale}/catalog`}
-                  className="rounded-full bg-orange-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-orange-500"
-                >
-                  {dict.home.ctaCatalog}
-                </Link>
-              </div>
-            </div>
-            <div className="relative aspect-[3/2] w-full lg:h-full lg:min-h-[380px]">
-              <Image
-                src="/hero-1.jpeg"
-                alt=""
-                fill
-                preload
-                quality={100}
-                sizes="(min-width: 1024px) 50vw, 100vw"
-                className="object-cover"
-              />
+        <div className="relative min-h-[420px] overflow-hidden rounded-3xl shadow-xl sm:min-h-[480px] lg:min-h-[560px]">
+          <Image
+            src="/hero-1.jpeg"
+            alt=""
+            fill
+            preload
+            quality={100}
+            sizes="100vw"
+            className="object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/90 via-zinc-950/70 to-zinc-950/20" />
+          <div className="relative flex h-full flex-col justify-center gap-4 px-6 py-14 text-white sm:px-10 lg:px-14">
+            <span className="text-sm font-medium uppercase tracking-widest text-orange-400">
+              {dict.home.brand}
+            </span>
+            <h1 className="max-w-xl text-4xl font-bold tracking-tight sm:text-5xl">
+              {dict.home.heroTitle}
+            </h1>
+            <p className="max-w-lg text-lg text-zinc-300">{dict.home.heroSubtitle}</p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Link
+                href={`/${locale}/catalog`}
+                className="rounded-full bg-orange-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-orange-500"
+              >
+                {dict.home.ctaCatalog}
+              </Link>
             </div>
           </div>
         </div>
