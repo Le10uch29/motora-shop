@@ -15,7 +15,7 @@ export default async function Home({ params }: PageProps<"/[locale]">) {
 
   return (
     <main className="flex flex-1 flex-col">
-      <section className="mx-auto w-full max-w-6xl px-2 pt-6">
+      <section className="mx-auto w-full max-w-[120rem] px-4 pt-6 sm:px-2">
         <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-zinc-900 via-zinc-900 to-orange-900 shadow-xl">
           <div className="grid grid-cols-1 items-center gap-8 px-6 py-14 sm:px-10 lg:grid-cols-2 lg:py-0">
             <div className="flex flex-col gap-4 text-white">
@@ -35,14 +35,14 @@ export default async function Home({ params }: PageProps<"/[locale]">) {
                 </Link>
               </div>
             </div>
-            <div className="relative aspect-[738/500] w-full lg:h-full lg:min-h-[380px]">
+            <div className="relative aspect-[3/2] w-full lg:h-full lg:min-h-[380px]">
               <Image
                 src="/hero-1.jpeg"
                 alt=""
                 fill
                 preload
                 quality={100}
-                sizes="(min-width: 1024px) 36rem, 100vw"
+                sizes="(min-width: 1024px) 50vw, 100vw"
                 className="object-cover"
               />
             </div>
