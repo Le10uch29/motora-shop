@@ -2,6 +2,7 @@ import { cache } from "react";
 import type { Locale } from "@/i18n/locales";
 import type { BrandSlug } from "@/lib/brands";
 import { createPublicClient } from "@/lib/supabase/public";
+import { fitmentsOf, type Fitment } from "@/lib/fitments";
 
 export type LocalizedText = Record<Locale, string>;
 
@@ -11,13 +12,17 @@ export type Product = {
   id: string;
   slug: string;
   name: LocalizedText;
-  /** Vehicle make this part fits, as a key into {@link makeLabels}. "universal" if not make-specific. */
+  /** Every vehicle make this part fits, joined with "; " — for display and
+   * search only; filtering goes by {@link fitments}. */
   make: string;
-  /** Vehicle model (and chassis code, where relevant) this part fits. */
+  /** Every vehicle model this part fits, joined with "; ". */
   model: string;
+  /** The vehicles this part fits, each a make (a key into {@link makeLabels},
+   * "universal" if not make-specific), a model and a year range. */
+  fitments: Fitment[];
   /** Parts brand carried by the shop. */
   brand: BrandSlug;
-  /** Inclusive vehicle model-year range this part fits. */
+  /** Inclusive model-year range spanning all of {@link fitments}. */
   yearFrom: number;
   yearTo: number;
   /** Base price in Georgian Lari (GEL) */
@@ -74,6 +79,7 @@ type ProductRow = {
   name: LocalizedText;
   make: string;
   model: string | null;
+  fitments: Fitment[] | null;
   year_from: number;
   year_to: number;
   price: number;
@@ -90,7 +96,7 @@ type ProductRow = {
 };
 
 const SELECT_COLUMNS =
-  "id, slug, name, make, model, year_from, year_to, price, old_price, description, specs, stock, badge, images, origin_code, product_code, is_popular, brands(slug)";
+  "id, slug, name, make, model, fitments, year_from, year_to, price, old_price, description, specs, stock, badge, images, origin_code, product_code, is_popular, brands(slug)";
 
 function mapRow(row: ProductRow): Product {
   const brand = Array.isArray(row.brands) ? row.brands[0] : row.brands;
@@ -100,6 +106,7 @@ function mapRow(row: ProductRow): Product {
     name: row.name,
     make: row.make,
     model: row.model ?? "",
+    fitments: fitmentsOf({ ...row, yearFrom: row.year_from, yearTo: row.year_to }),
     brand: brand?.slug ?? "",
     yearFrom: row.year_from,
     yearTo: row.year_to,
@@ -204,40 +211,25 @@ export const getProductsForCart = cache(async (): Promise<CartProductSummary[]> 
   return (data ?? []) as CartProductSummary[];
 });
 
-/** A product's `model` field can list more than one chassis code, separated
- * by "-" (e.g. "W124-W202-W210"), optionally followed by "/" and extra info
- * that isn't a model at all — an engine size, say ("W124-W202-W210/ 4,4").
- * This pulls out just the model tokens: everything before the first "/" is
- * models, split on "-"; whatever comes after "/" is dropped here (it's
- * descriptive info, not something to filter or list as a model). */
-export function parseModelTokens(rawModel: string): string[] {
-  const modelsPart = rawModel.split("/")[0];
-  return modelsPart
-    .split("-")
-    .map((token) => token.trim())
-    .filter(Boolean);
-}
-
-/** Whether a product's `model` field lists the given model among its
- * "-"-separated tokens (case-insensitive) — the same rule the model filter
- * dropdown and {@link getCatalogPage} use. */
-function productHasModel(productModel: string, wantedModel: string): boolean {
-  const wanted = wantedModel.trim().toLowerCase();
-  return parseModelTokens(productModel).some((token) => token.toLowerCase() === wanted);
+/** Whether one of a product's vehicles matches the wanted make and/or model —
+ * both on the same vehicle, so a part for a MAZDA 6 and a BMW G30 isn't found
+ * as a "MAZDA G30". The same rule {@link getCatalogPage} applies in the DB. */
+function productFits(fitments: Fitment[], make: string | undefined, model: string | undefined): boolean {
+  const wantedModel = model?.trim().toLowerCase();
+  return fitments.some(
+    (f) => (!make || f.make === make) && (!wantedModel || f.model.toLowerCase() === wantedModel)
+  );
 }
 
 /** Models grouped by make, both derived live from whatever products
  * currently exist — a make/model with no products left simply isn't in the
- * result, and reappears the moment a matching product is added again. Each
- * product can contribute more than one model token (see
- * {@link parseModelTokens}), so e.g. "W124-W202-W210" lists as three models,
- * not one long string. */
-export function computeModelsByMake(products: { make: string; model: string }[]): Record<string, string[]> {
+ * result, and reappears the moment a matching product is added again. A
+ * product fitting several vehicles lists each model under its own make. */
+export function computeModelsByMake(products: { fitments: Fitment[] }[]): Record<string, string[]> {
   const byMake: Record<string, Set<string>> = {};
-  for (const p of products) {
-    if (!p.model) continue;
-    const set = (byMake[p.make] ??= new Set());
-    for (const token of parseModelTokens(p.model)) set.add(token);
+  for (const f of products.flatMap((p) => p.fitments)) {
+    if (!f.model) continue;
+    (byMake[f.make] ??= new Set()).add(f.model);
   }
   const result: Record<string, string[]> = {};
   for (const [make, models] of Object.entries(byMake)) {
@@ -267,11 +259,12 @@ function searchClauseForWord(word: string, locale: Locale): string | null {
   ];
 
   // "Мерседес" has to find make "mercedes-benz": the localized label only
-  // exists in the app, so it's resolved to make ids before querying.
+  // exists in the app, so it's resolved to make ids before querying. `make`
+  // lists every make of the part, so each id is looked for inside it.
   const matchingMakeIds = Object.keys(makeLabels).filter((id) =>
     t(makeLabels[id], locale).toLowerCase().includes(safe)
   );
-  if (matchingMakeIds.length > 0) parts.push(`make.in.(${matchingMakeIds.join(",")})`);
+  for (const id of matchingMakeIds) parts.push(`make.ilike.%${id}%`);
 
   return parts.join(",");
 }
@@ -308,14 +301,14 @@ export async function getCatalogPage(
   let query = supabase.from("products").select(SELECT_COLUMNS, { count: "exact" });
 
   if (brandId) query = query.eq("brand_id", brandId);
-  if (filters.make) query = query.eq("make", filters.make);
-  // `model` can hold several "-"-separated chassis codes plus a "/"-prefixed
-  // extra bit that isn't a model (see parseModelTokens) — matched here with a
-  // case-insensitive regex anchored on those separators, so filtering by
-  // "W202" finds "W124-W202-W210/ 4,4" without also matching "W2020".
-  if (filters.model) {
-    const escaped = filters.model.trim().replace(/[.^$*+?()[\]{}|\\]/g, "\\$&");
-    query = query.filter("model", "imatch", `(^|-)\\s*${escaped}\\s*(-|/|$)`);
+  // One vehicle of the part has to carry both the make and the model (jsonb
+  // containment matches them within a single array element), so a part for a
+  // MAZDA 6 and a BMW G30 doesn't turn up under "MAZDA G30".
+  if (filters.make || filters.model) {
+    const wanted: Partial<Fitment> = {};
+    if (filters.make) wanted.make = filters.make;
+    if (filters.model) wanted.model = filters.model.trim();
+    query = query.contains("fitments", JSON.stringify([wanted]));
   }
   if (filters.priceMin !== undefined) query = query.gte("price", filters.priceMin);
   if (filters.priceMax !== undefined) query = query.lte("price", filters.priceMax);
@@ -370,15 +363,17 @@ export function filterProducts(
 ): Product[] {
   const query = filters.query?.trim().toLowerCase();
   return products.filter((p) => {
-    if (filters.make && p.make !== filters.make) return false;
-    if (filters.model && !productHasModel(p.model, filters.model)) return false;
+    if ((filters.make || filters.model) && !productFits(p.fitments, filters.make, filters.model)) {
+      return false;
+    }
     if (filters.brand && p.brand !== filters.brand) return false;
     if (filters.priceMin !== undefined && p.price < filters.priceMin) return false;
     if (filters.priceMax !== undefined && p.price > filters.priceMax) return false;
     if (filters.yearFrom !== undefined && p.yearTo < filters.yearFrom) return false;
     if (filters.yearTo !== undefined && p.yearFrom > filters.yearTo) return false;
     if (query) {
-      const haystack = `${t(p.name, locale)} ${t(p.description, locale)} ${p.productCode ?? ""} ${p.originCode ?? ""} ${p.make} ${makeLabel(p.make, locale)} ${p.model}`
+      const vehicles = p.fitments.map((f) => `${f.make} ${makeLabel(f.make, locale)} ${f.model}`).join(" ");
+      const haystack = `${t(p.name, locale)} ${t(p.description, locale)} ${p.productCode ?? ""} ${p.originCode ?? ""} ${vehicles}`
         .toLowerCase();
       if (!haystack.includes(query)) return false;
     }
@@ -386,8 +381,10 @@ export function filterProducts(
   });
 }
 
-export function computeCarMakes(products: { make: string }[]): string[] {
-  return Array.from(new Set(products.map((p) => p.make))).sort((a, b) => a.localeCompare(b));
+export function computeCarMakes(products: { fitments: Fitment[] }[]): string[] {
+  return Array.from(new Set(products.flatMap((p) => p.fitments.map((f) => f.make)))).sort((a, b) =>
+    a.localeCompare(b)
+  );
 }
 
 export function computePriceBounds(products: { price: number }[]): { min: number; max: number } {

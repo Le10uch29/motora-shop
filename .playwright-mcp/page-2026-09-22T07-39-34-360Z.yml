@@ -1,0 +1,59 @@
+- generic [active] [ref=f2e1]:
+  - banner [ref=f2e2]:
+    - generic [ref=f2e3]:
+      - link "ARAZ MOTORS-2026" [ref=f2e4] [cursor=pointer]:
+        - /url: /ru
+      - generic [ref=f2e7]:
+        - search [ref=f2e8]:
+          - generic [ref=f2e9]:
+            - button "Найти" [ref=f2e10] [cursor=pointer]
+            - searchbox "Поиск" [ref=f2e14]
+        - button "Открыть фильтры" [ref=f2e15] [cursor=pointer]
+      - generic [ref=f2e18]:
+        - button "Выбрать язык" [ref=f2e21] [cursor=pointer]: RU
+        - link "Корзина" [ref=f2e22] [cursor=pointer]:
+          - /url: /ru/cart
+        - button "Открыть меню" [ref=f2e28] [cursor=pointer]
+  - main [ref=f2e31]:
+    - navigation [ref=f2e32]:
+      - link "Каталог" [ref=f2e33] [cursor=pointer]:
+        - /url: /ru/catalog
+      - text: / 13156AP
+    - generic [ref=f2e34]:
+      - generic [ref=f2e36]:
+        - img "13156AP" [ref=f2e37]
+        - img "APLUS AUTOMOTIVE" [ref=f2e38]
+      - generic [ref=f2e39]:
+        - generic [ref=f2e40]:
+          - generic [ref=f2e42]:
+            - generic [ref=f2e43]: "Origin code: —"
+            - generic [ref=f2e44]: "Product code: 13156AP"
+          - heading "13156AP" [level=1] [ref=f2e45]
+        - generic [ref=f2e46]: 8 GEL
+        - paragraph
+        - generic [ref=f2e49]:
+          - paragraph [ref=f2e50]: В наличии
+          - generic [ref=f2e51]: 38 шт. на складе
+        - generic [ref=f2e52]:
+          - generic [ref=f2e53]:
+            - generic [ref=f2e54]: Количество
+            - generic [ref=f2e55]:
+              - button "Уменьшить количество" [disabled] [ref=f2e56]: −
+              - generic [ref=f2e57]: "1"
+              - button "Увеличить количество" [ref=f2e58] [cursor=pointer]: +
+          - button "В корзину" [ref=f2e59] [cursor=pointer]
+        - generic [ref=f2e60]:
+          - term [ref=f2e61]: "Марка:"
+          - definition [ref=f2e62]:
+            - generic [ref=f2e63]: MERCEDES
+          - term [ref=f2e64]: "Модель:"
+          - definition [ref=f2e65]:
+            - generic [ref=f2e66]: W124-W202-W210
+          - term [ref=f2e67]: "Год:"
+          - definition [ref=f2e68]:
+            - generic [ref=f2e69]: 2000-2026
+        - generic [ref=f2e71]:
+          - term [ref=f2e72]: Бренд
+          - definition [ref=f2e73]: APLUS AUTOMOTIVE
+  - button "Open Next.js Dev Tools" [ref=f2e79] [cursor=pointer]
+  - alert [ref=f2e83]

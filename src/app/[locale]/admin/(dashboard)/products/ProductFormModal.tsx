@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { createProductAction, updateProductAction, type ProductActionState } from "./actions";
 import type { LocalizedText } from "@/lib/products";
+import { fitmentsToFields, type Fitment } from "@/lib/fitments";
 import { productImageUrl } from "@/lib/productImageUrl";
 import type { Locale } from "@/i18n/locales";
 import type { Dictionary } from "@/i18n/dictionary";
@@ -12,10 +13,7 @@ export type ProductFormValues = {
   id: string;
   slug: string;
   brandId: string;
-  make: string;
-  model: string;
-  yearFrom: number;
-  yearTo: number;
+  fitments: Fitment[];
   price: number;
   oldPrice: number | null;
   stock: number;
@@ -63,11 +61,8 @@ export default function ProductFormModal({
     if (submitted && !pending && !state.error) onClose();
   }, [submitted, pending, state.error, onClose]);
 
-  const initialYear = initialValues
-    ? initialValues.yearFrom === initialValues.yearTo
-      ? String(initialValues.yearFrom)
-      : `${initialValues.yearFrom}-${initialValues.yearTo}`
-    : "";
+  // Several vehicles show as ";"-separated lists, the n-th entries together.
+  const initialVehicle = initialValues ? fitmentsToFields(initialValues.fitments) : undefined;
 
   const [price, setPrice] = useState(initialValues ? String(initialValues.price) : "");
   const [oldPrice, setOldPrice] = useState(
@@ -179,13 +174,13 @@ export default function ProductFormModal({
 
           <div className="flex flex-col gap-1.5">
             <label htmlFor="product-make" className={labelClass}>{dict.productMakeLabel}</label>
-            <input id="product-make" name="make" required defaultValue={initialValues?.make} className={inputClass} />
+            <input id="product-make" name="make" required defaultValue={initialVehicle?.make} className={inputClass} />
             <span className="text-xs text-zinc-400">{dict.productMakeHint}</span>
           </div>
 
           <div className="flex flex-col gap-1.5">
             <label htmlFor="product-model" className={labelClass}>{dict.productModelLabel}</label>
-            <input id="product-model" name="model" defaultValue={initialValues?.model} className={inputClass} />
+            <input id="product-model" name="model" defaultValue={initialVehicle?.model} className={inputClass} />
             <span className="text-xs text-zinc-400">{dict.productModelHint}</span>
           </div>
 
@@ -196,7 +191,7 @@ export default function ProductFormModal({
               name="year"
               required
               placeholder="2002-2015"
-              defaultValue={initialYear}
+              defaultValue={initialVehicle?.years}
               className={inputClass}
             />
             <span className="text-xs text-zinc-400">{dict.productYearHint}</span>

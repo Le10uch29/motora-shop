@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Locale } from "@/i18n/locales";
 import type { LocalizedText, ProductSpec } from "@/lib/products";
+import { fitmentsOf, type Fitment } from "@/lib/fitments";
 
 export const PRODUCTS_PAGE_SIZE = 30;
 
@@ -9,6 +10,7 @@ export type AdminProductRow = {
   slug: string;
   make: string;
   model: string;
+  fitments: Fitment[];
   brandId: string;
   brandName: string;
   yearFrom: number;
@@ -32,6 +34,7 @@ type ProductRow = {
   slug: string;
   make: string;
   model: string | null;
+  fitments: Fitment[] | null;
   brand_id: string | null;
   year_from: number;
   year_to: number;
@@ -115,7 +118,7 @@ export async function getAdminProducts(
   let query = supabase
     .from("products")
     .select(
-      "id, slug, make, model, brand_id, year_from, year_to, price, old_price, stock, origin_code, product_code, name, description, specs, badge, images, is_popular, brands(name)",
+      "id, slug, make, model, fitments, brand_id, year_from, year_to, price, old_price, stock, origin_code, product_code, name, description, specs, badge, images, is_popular, brands(name)",
       { count: "exact" }
     );
 
@@ -143,6 +146,7 @@ export async function getAdminProducts(
       slug: p.slug,
       make: p.make,
       model: p.model ?? "",
+      fitments: fitmentsOf({ ...p, yearFrom: p.year_from, yearTo: p.year_to }),
       brandId: p.brand_id ?? "",
       brandName: brand?.name ?? "—",
       yearFrom: p.year_from,

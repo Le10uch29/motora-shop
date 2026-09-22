@@ -8,6 +8,15 @@ import { isLocale, type Locale } from "@/i18n/locales";
 import { mergeImportedName } from "./importName";
 import { PRODUCTS_CACHE_TAG } from "@/lib/productFilterMeta";
 import { storeProductImage } from "@/lib/productImageStorage";
+import {
+  UNIVERSAL_MAKE,
+  fitmentColumns,
+  fitmentsFromForm,
+  fitmentsFromImport,
+  fitmentsOf,
+  fitmentsToFields,
+  type Fitment,
+} from "@/lib/fitments";
 
 export type ProductActionState = { error: string | null };
 
@@ -34,20 +43,6 @@ function readLocale(formData: FormData): Locale {
   return raw;
 }
 
-// The admin form collects one "year" field (e.g. "2002-2015", or a single
-// "2015" for a part that fits one model-year) instead of separate from/to
-// number inputs. This reads the first 4-digit run as yearFrom, skips
-// whatever separator sits between them (dash, slash, punctuation, spaces),
-// and reads the next 4-digit run as yearTo — falling back to yearFrom when
-// there isn't a second one.
-function parseYearRange(raw: string): { yearFrom: number; yearTo: number } | null {
-  const match = raw.match(/(\d{4})(?:\D+(\d{4}))?/);
-  if (!match) return null;
-  const yearFrom = Number(match[1]);
-  const yearTo = match[2] ? Number(match[2]) : yearFrom;
-  return { yearFrom, yearTo };
-}
-
 function readLocalizedField(
   formData: FormData,
   prefix: string
@@ -62,10 +57,7 @@ function readLocalizedField(
 type ParsedFields = {
   slug: string;
   brandId: string;
-  make: string;
-  model: string | null;
-  yearFrom: number;
-  yearTo: number;
+  fitments: Fitment[];
   price: number;
   oldPrice: number | null;
   stock: number;
@@ -84,7 +76,9 @@ function readFields(formData: FormData): ParsedFields | null {
   const brandId = String(formData.get("brandId") ?? "").trim();
   const make = String(formData.get("make") ?? "").trim();
   const model = String(formData.get("model") ?? "").trim();
-  const yearRange = parseYearRange(String(formData.get("year") ?? ""));
+  // Several vehicles are written as lists separated by ";" or ":" — the n-th
+  // make goes with the n-th model and the n-th year range.
+  const fitments = fitmentsFromForm({ make, model, years: String(formData.get("year") ?? "") });
   const price = Number(formData.get("price"));
   const oldPriceRaw = String(formData.get("oldPrice") ?? "").trim();
   const stockRaw = String(formData.get("stock") ?? "").trim();
@@ -101,7 +95,7 @@ function readFields(formData: FormData): ParsedFields | null {
     !slugInput ||
     !brandId ||
     !make ||
-    !yearRange ||
+    !fitments ||
     !Number.isFinite(price)
   ) {
     return null;
@@ -110,10 +104,7 @@ function readFields(formData: FormData): ParsedFields | null {
   return {
     slug: slugify(slugInput),
     brandId,
-    make,
-    model: model || null,
-    yearFrom: yearRange.yearFrom,
-    yearTo: yearRange.yearTo,
+    fitments,
     price,
     oldPrice: oldPriceRaw ? Number(oldPriceRaw) : null,
     stock: stockRaw ? Number(stockRaw) || 0 : 0,
@@ -187,11 +178,8 @@ export async function createProductAction(
     .insert({
       slug: fields.slug,
       category: DEFAULT_CATEGORY,
-      make: fields.make,
-      model: fields.model,
+      ...fitmentColumns(fields.fitments),
       brand_id: fields.brandId,
-      year_from: fields.yearFrom,
-      year_to: fields.yearTo,
       price: fields.price,
       old_price: fields.oldPrice,
       stock: fields.stock,
@@ -251,11 +239,8 @@ export async function updateProductAction(
 
   const updates: Record<string, unknown> = {
     slug: fields.slug,
-    make: fields.make,
-    model: fields.model,
+    ...fitmentColumns(fields.fitments),
     brand_id: fields.brandId,
-    year_from: fields.yearFrom,
-    year_to: fields.yearTo,
     price: fields.price,
     old_price: fields.oldPrice,
     stock: fields.stock,
@@ -364,11 +349,14 @@ export type ImportRow = {
   nameAz?: string;
   nameKa?: string;
   description?: string;
+  /** Make, model and years as written in their cells. A part that fits
+   * several vehicles lists them separated by ";" or ":" — "MAZDA; BMW" with
+   * "6; G30" — and the n-th entries of each column belong together. */
   make?: string;
   model?: string;
   photoUrl?: string;
-  yearFrom?: number;
-  yearTo?: number;
+  yearFrom?: string;
+  yearTo?: string;
   /** Warehouse name as written in the file's own warehouse column, if one
    * was mapped — matched case-insensitively against real warehouse names.
    * Falls back to the whole-file warehouse selection when absent or when it
@@ -498,7 +486,7 @@ export async function importProductsAction(
       admin
         .from("products")
         .select(
-          "id, product_code, price, stock, origin_code, make, model, brand_id, images, name, description, year_from, year_to"
+          "id, product_code, price, stock, origin_code, make, model, fitments, brand_id, images, name, description, year_from, year_to"
         )
         .not("product_code", "is", null),
       admin
@@ -578,7 +566,10 @@ export async function importProductsAction(
     const originCode = row.originCode?.trim();
     const make = row.make?.trim();
     const model = row.model?.trim();
+    const yearFrom = row.yearFrom?.trim();
+    const yearTo = row.yearTo?.trim();
     const photoUrl = row.photoUrl?.trim();
+    const yearDefaults = { yearFrom: IMPORT_DEFAULT_YEAR_FROM, yearTo: currentYear };
 
     const resolvedWarehouseId = resolveWarehouseId(row.warehouseName);
     if (resolvedWarehouseId && row.stock) {
@@ -589,11 +580,8 @@ export async function importProductsAction(
       toInsert.push({
         slug: uniqueSlug(slugify(code)),
         category: DEFAULT_CATEGORY,
-        make: make || "universal",
-        model: model || null,
+        ...fitmentColumns(fitmentsFromImport({ make, model, yearFrom, yearTo }, yearDefaults)),
         brand_id: brandId,
-        year_from: row.yearFrom ?? IMPORT_DEFAULT_YEAR_FROM,
-        year_to: row.yearTo ?? currentYear,
         price: row.price ?? 0,
         old_price: null,
         stock: row.stock ?? 0,
@@ -613,8 +601,35 @@ export async function importProductsAction(
     if ((existing.price === 0 || existing.price == null) && row.price) patch.price = row.price;
     if ((existing.stock === 0 || existing.stock == null) && row.stock) patch.stock = row.stock;
     if (!existing.origin_code && originCode) patch.origin_code = originCode;
-    if ((!existing.make || existing.make === "universal") && make) patch.make = make;
-    if (!existing.model && model) patch.model = model;
+    // Vehicles follow the same "fill only what's empty" rule, column by column:
+    // the file's makes replace a product without one, its models one without
+    // models, its years one still on the default range. The result is paired
+    // up again as a whole, so the n-th make still meets the n-th model.
+    const fillMake = (!existing.make || existing.make === UNIVERSAL_MAKE) && Boolean(make);
+    const fillModel = !existing.model && Boolean(model);
+    const fillYears =
+      existing.year_from === IMPORT_DEFAULT_YEAR_FROM &&
+      existing.year_to === currentYear &&
+      Boolean(yearFrom || yearTo);
+    if (fillMake || fillModel || fillYears) {
+      const current = fitmentsToFields(
+        fitmentsOf({ ...existing, yearFrom: existing.year_from, yearTo: existing.year_to })
+      );
+      Object.assign(
+        patch,
+        fitmentColumns(
+          fitmentsFromImport(
+            {
+              make: fillMake ? make : current.make,
+              model: fillModel ? model : current.model,
+              yearFrom: fillYears ? yearFrom || current.yearFrom : current.yearFrom,
+              yearTo: fillYears ? yearTo || current.yearTo : current.yearTo,
+            },
+            yearDefaults
+          )
+        )
+      );
+    }
     if (!existing.brand_id && brandId) patch.brand_id = brandId;
     if ((!existing.images || existing.images.length === 0) && photoUrl) patch.images = [photoUrl];
 
@@ -634,11 +649,6 @@ export async function importProductsAction(
     if (descriptionEmpty && descriptionText) {
       patch.description = { ru: descriptionText, az: descriptionText, ka: descriptionText };
     }
-
-    const isDefaultYearRange =
-      existing.year_from === IMPORT_DEFAULT_YEAR_FROM && existing.year_to === currentYear;
-    if (isDefaultYearRange && row.yearFrom) patch.year_from = row.yearFrom;
-    if (isDefaultYearRange && row.yearTo) patch.year_to = row.yearTo;
 
     if (Object.keys(patch).length > 0) {
       toUpdate.push({ id: existing.id, code, patch });

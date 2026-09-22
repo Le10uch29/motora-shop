@@ -251,8 +251,10 @@ export default function ImportProductsModal({
         make: cell(row, mapping.make) || undefined,
         model: cell(row, mapping.model) || undefined,
         photoUrl: asPhotoLink(cell(row, mapping.photoUrl)),
-        yearFrom: cellNumber(row, mapping.yearFrom),
-        yearTo: cellNumber(row, mapping.yearTo),
+        // Read as text: a part fitting several vehicles lists their years
+        // like "2010;2016", matched up with the makes and models by position.
+        yearFrom: cell(row, mapping.yearFrom) || undefined,
+        yearTo: cell(row, mapping.yearTo) || undefined,
         warehouseName: cell(row, mapping.warehouse) || undefined,
       }))
       .filter((r) => r.productCode);

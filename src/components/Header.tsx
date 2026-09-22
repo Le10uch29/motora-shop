@@ -47,7 +47,7 @@ export default async function Header({
   const modelsByMake = computeModelsByMake(productMeta);
 
   return (
-    <header className="flame-header sticky top-0 z-30 border-b border-zinc-200 backdrop-blur dark:border-zinc-800">
+    <header className="flame-header sticky top-0 z-30 border-b border-zinc-200 shadow-md shadow-black/5 backdrop-blur dark:border-zinc-800">
       <div className="relative mx-auto flex max-w-[120rem] items-center gap-3 px-4 py-4 sm:gap-4 sm:px-2">
         <Link
           href={`/${locale}`}

@@ -1,5 +1,6 @@
 import { unstable_cache } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/public";
+import { fitmentsOf, type Fitment } from "@/lib/fitments";
 
 /** Cache tag for anything derived from the product catalog as a whole.
  * Product create/update/delete/import call revalidateTag() with it, so an
@@ -7,9 +8,9 @@ import { createPublicClient } from "@/lib/supabase/public";
  * the revalidate window below. */
 export const PRODUCTS_CACHE_TAG = "products";
 
-export type ProductFilterMeta = { make: string; model: string; price: number };
+export type ProductFilterMeta = { fitments: Fitment[]; price: number };
 
-/** Make/model/price of every product — the header's search-filter dropdown
+/** Vehicles (make/model) and price of every product — the header's search-filter dropdown
  * builds its make list, model list and price range from it on every page.
  *
  * Cached across requests, not just within one: the query itself is small per
@@ -25,10 +26,11 @@ export type ProductFilterMeta = { make: string; model: string; price: number };
 const fetchProductFilterMeta = unstable_cache(
   async (): Promise<ProductFilterMeta[]> => {
     const supabase = createPublicClient();
-    const { data } = await supabase.from("products").select("make, model, price");
+    const { data } = await supabase
+      .from("products")
+      .select("make, model, fitments, year_from, year_to, price");
     return (data ?? []).map((row) => ({
-      make: row.make,
-      model: row.model ?? "",
+      fitments: fitmentsOf({ ...row, yearFrom: row.year_from, yearTo: row.year_to }),
       price: Number(row.price),
     }));
   },

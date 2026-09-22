@@ -46,6 +46,24 @@ alter table products add column if not exists is_popular boolean not null defaul
 -- Категории автомобилей убраны из сайта и админки, но колонка остаётся NOT
 -- NULL — даём ей значение по умолчанию, чтобы вставка товара не требовала её.
 alter table products alter column category set default 'universal';
+-- Машины, к которым подходит деталь: [{make, model, yearFrom, yearTo}, ...].
+-- Одна деталь может подходить нескольким маркам/моделям (MAZDA 6 и BMW G30).
+-- По ней работают фильтры марки и модели; make/model хранят те же марки и
+-- модели через "; " — для поиска, year_from/year_to — общий диапазон годов.
+alter table products add column if not exists fitments jsonb not null default '[]'::jsonb;
+-- Перенос существующих товаров: одна машина из make/model/годов. Висящий в
+-- конце модели "-" (осталось от старого формата "PRIUS -") убирается.
+update products
+set
+  model = nullif(regexp_replace(model, '[\s-]+$', ''), ''),
+  fitments = jsonb_build_array(jsonb_build_object(
+    'make', make,
+    'model', coalesce(regexp_replace(model, '[\s-]+$', ''), ''),
+    'yearFrom', year_from,
+    'yearTo', year_to
+  ))
+where fitments = '[]'::jsonb;
+create index if not exists products_fitments_idx on products using gin (fitments jsonb_path_ops);
 
 -- Склады: физические точки хранения товара. Сколько и какого товара лежит
 -- на складе — отдельная таблица warehouse_stock, не влияет на product.stock
