@@ -12,7 +12,9 @@
       "Bash(curl -s http://localhost:3000/ru)",
       "Bash(node verify-discount.mjs)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/ru/admin/warehouses)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/ru/admin/warehouses/00000000-0000-0000-0000-000000000000)"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/ru/admin/warehouses/00000000-0000-0000-0000-000000000000)",
+      "Bash(cd \"C:/Users/Shadow Monarch/Desktop/frilans/NewLife/motora-shop\" && git status --short && echo \"--- lint on HEAD version of CartContext ---\" && git stash list | head -2; git show HEAD:src/context/CartContext.tsx > /tmp/cc.tsx 2>/dev/null && diff -q /tmp/cc.tsx src/context/CartContext.tsx && echo \"CartContext НЕ изменён \\(ошибка была раньше\\)\")",
+      "Read(//tmp/**)"
     ]
   }
 }

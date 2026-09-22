@@ -1,11 +1,11 @@
 import Link from "next/link";
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import { getFeaturedProducts } from "@/lib/products";
 import { getBrands } from "@/lib/brands";
 import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
 import ProductCard from "@/components/ProductCard";
+import Hero from "@/components/Hero";
 
 export default async function Home({ params }: PageProps<"/[locale]">) {
   const { locale } = await params;
@@ -16,21 +16,10 @@ export default async function Home({ params }: PageProps<"/[locale]">) {
   return (
     <main className="flex flex-1 flex-col">
       <section className="mx-auto w-full max-w-[120rem] px-4 pt-6 sm:px-2">
-        {/* Just the picture, whole and uncropped at its own proportions. The
-            heading stays for screen readers and search engines only. */}
+        {/* The banner carries no text of its own; the heading stays for screen
+            readers and search engines only. */}
         <h1 className="sr-only">{dict.home.heroTitle}</h1>
-        <div className="overflow-hidden rounded-3xl shadow-xl">
-          <Image
-            src="/hero-1.jpeg"
-            alt=""
-            width={738}
-            height={500}
-            preload
-            quality={100}
-            sizes="100vw"
-            className="h-auto w-full"
-          />
-        </div>
+        <Hero />
       </section>
 
       {featured.length > 0 && (
