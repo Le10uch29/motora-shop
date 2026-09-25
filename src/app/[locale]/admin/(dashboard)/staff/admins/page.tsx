@@ -38,7 +38,7 @@ export default async function AdminsPage({
         emptyMessage={query ? dict.admin.noResults : dict.admin.emptyStaff}
         warehouses={warehouses}
         searchSlot={
-          <form className="flex items-center gap-2">
+          <form key="search" className="flex items-center gap-2">
             <AdminSearchBox defaultValue={query} placeholder={dict.admin.searchPlaceholder} />
           </form>
         }

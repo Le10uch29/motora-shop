@@ -27,6 +27,9 @@ export type AdminProductRow = {
   images: string[];
   isPopular: boolean;
   displayName: string;
+  /** The product's main category (a subcategory, as a rule) — empty when it
+   * has none and the shop shows it under "Все товары". */
+  categoryId: string;
 };
 
 type ProductRow = {
@@ -139,7 +142,23 @@ export async function getAdminProducts(
     .order("id", { ascending: true })
     .range(from, from + PRODUCTS_PAGE_SIZE - 1);
 
-  const rows: AdminProductRow[] = ((data ?? []) as unknown as ProductRow[]).map((p) => {
+  const pageRows = (data ?? []) as unknown as ProductRow[];
+
+  // The primary category of just this page's products — one extra query for
+  // 30 rows, rather than embedding the join and risking duplicate products.
+  const { data: categoryLinks } = await supabase
+    .from("product_categories")
+    .select("product_id, category_id")
+    .eq("is_primary", true)
+    .in(
+      "product_id",
+      pageRows.map((p) => p.id)
+    );
+  const categoryByProduct = new Map(
+    (categoryLinks ?? []).map((link) => [link.product_id, link.category_id])
+  );
+
+  const rows: AdminProductRow[] = pageRows.map((p) => {
     const brand = Array.isArray(p.brands) ? p.brands[0] : p.brands;
     return {
       id: p.id,
@@ -163,6 +182,7 @@ export async function getAdminProducts(
       images: p.images ?? [],
       isPopular: p.is_popular,
       displayName: p.name?.[locale] ?? p.name?.ru ?? "",
+      categoryId: categoryByProduct.get(p.id) ?? "",
     };
   });
 

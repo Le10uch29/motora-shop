@@ -11,6 +11,7 @@ import {
   type ImportResult,
 } from "./actions";
 import { extractEmbeddedImages, type EmbeddedImage } from "@/lib/xlsxImages";
+import FileDropField from "@/components/admin/FileDropField";
 import type { Locale } from "@/i18n/locales";
 import type { Dictionary } from "@/i18n/dictionary";
 
@@ -28,6 +29,7 @@ type FieldKey =
   | "photoUrl"
   | "yearFrom"
   | "yearTo"
+  | "years"
   | "warehouse";
 
 /** The three name columns get their own row in the mapping UI, so they're
@@ -57,13 +59,16 @@ const FIELD_ORDER: FieldKey[] = [
   "make",
   "model",
   "photoUrl",
+  // "Год от"/"Год до" are offered before the single "Год" column so a file
+  // that has both pairs them up the specific way first.
   "yearFrom",
   "yearTo",
+  "years",
   "warehouse",
 ];
 
 const FIELD_KEYWORDS: Record<FieldKey, string[]> = {
-  productCode: ["код продукт", "код товар", "product code", "артикул", "sku"],
+  productCode: ["код продукт", "код товар", "product code", "артикул", "sku", "aplus"],
   originCode: ["оригинал", "origin", "oem"],
   price: ["цена", "price", "qiymət", "qiymet"],
   stock: ["кол-во", "количество", "остаток", "шт", "stock", "qty", "quantity", "miqdar"],
@@ -76,6 +81,9 @@ const FIELD_KEYWORDS: Record<FieldKey, string[]> = {
   photoUrl: ["фото", "photo", "image", "şəkil", "sekil"],
   yearFrom: ["год от", "год с", "year from", "ildən", "ilden"],
   yearTo: ["год до", "год по", "year to", "ilə qədər", "ile qeder"],
+  // One column holding the whole range ("2000:2002"). Claimed after the two
+  // specific ones, so "Год от" can't be swallowed by the bare "год" keyword.
+  years: ["год", "year", "წელი"],
   warehouse: ["склад", "магазин", "warehouse", "store", "anbar", "საწყობი"],
 };
 
@@ -117,6 +125,20 @@ function guessMapping(headers: string[]): Partial<Record<FieldKey, number>> {
     const idx = lower.findIndex((h, i) => !used.has(i) && h.trim() === "ad");
     if (idx !== -1) mapping.nameRu = idx;
   }
+  // 4. Headers too generic to claim earlier, once every specific field has had
+  //    its turn: "il" is Azerbaijani for year, and a bare latin "kod" is a
+  //    product code only if no other column asked for it first ("OEM KOD" is
+  //    claimed by the origin code above).
+  if (mapping.years == null) {
+    const idx = lower.findIndex(
+      (h, i) => !used.has(i) && ["il", "ili", "illər", "iller"].includes(h.trim())
+    );
+    if (idx !== -1) {
+      mapping.years = idx;
+      used.add(idx);
+    }
+  }
+  claim("productCode", ["kod"]);
   return mapping;
 }
 
@@ -167,6 +189,7 @@ export default function ImportProductsModal({
       photoUrl: dict.importFieldPhoto,
       yearFrom: dict.importFieldYearFrom,
       yearTo: dict.importFieldYearTo,
+      years: dict.importFieldYears,
       warehouse: dict.importFieldWarehouse,
     }),
     [dict]
@@ -179,9 +202,10 @@ export default function ImportProductsModal({
     setResult(null);
   }
 
-  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
+  async function handleFile(input: HTMLInputElement) {
+    const file = input.files?.[0];
+    // Cleared right away so picking the same file again still fires a change.
+    input.value = "";
     if (!file) return;
     setParseError(null);
     setResult(null);
@@ -251,8 +275,9 @@ export default function ImportProductsModal({
         make: cell(row, mapping.make) || undefined,
         model: cell(row, mapping.model) || undefined,
         photoUrl: asPhotoLink(cell(row, mapping.photoUrl)),
-        // Read as text: a part fitting several vehicles lists their years
-        // like "2010;2016", matched up with the makes and models by position.
+        // Read as text, not numbers: one cell can hold a whole range
+        // ("2000:2002") or a range per make group ("2000:2002//2010:2015").
+        years: cell(row, mapping.years) || undefined,
         yearFrom: cell(row, mapping.yearFrom) || undefined,
         yearTo: cell(row, mapping.yearTo) || undefined,
         warehouseName: cell(row, mapping.warehouse) || undefined,
@@ -386,15 +411,14 @@ export default function ImportProductsModal({
 
         {!headers ? (
           <div className="flex flex-col gap-2">
-            <label htmlFor="import-file" className={labelClass}>
-              {dict.importStepUploadLabel}
-            </label>
-            <input
+            <span className={labelClass}>{dict.importStepUploadLabel}</span>
+            <FileDropField
               id="import-file"
-              type="file"
+              name="importFile"
               accept=".xlsx,.xls"
-              onChange={handleFile}
-              className="text-sm text-zinc-600 dark:text-zinc-400"
+              buttonLabel={dict.importChooseFileLabel}
+              hint={dict.fileDropHint}
+              onSelect={handleFile}
             />
             {parseError && <p className="text-sm text-red-600">{parseError}</p>}
           </div>

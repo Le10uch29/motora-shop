@@ -117,6 +117,75 @@ function readFields(formData: FormData): ParsedFields | null {
   };
 }
 
+/**
+ * Files a product under its main category, replacing whatever it was under.
+ *
+ * A top-level category means "category known, subcategory not stated", so the
+ * product goes to that category's "Разное" — the same rule the category panel
+ * and the Excel import follow. An empty id leaves the product with no
+ * category at all, which is a valid state: the shop shows it under "Все
+ * товары" like everything else.
+ *
+ * Only the primary link is touched; any extra categories a product was given
+ * elsewhere stay as they are.
+ */
+async function setPrimaryCategory(
+  admin: ReturnType<typeof createAdminClient>,
+  productId: string,
+  requestedCategoryId: string
+): Promise<string | null> {
+  let categoryId = requestedCategoryId;
+
+  if (categoryId) {
+    const { data: category } = await admin
+      .from("categories")
+      .select("id, parent_id")
+      .eq("id", categoryId)
+      .maybeSingle();
+    if (!category) return null;
+    if (category.parent_id === null) {
+      const { data: fallback } = await admin
+        .from("categories")
+        .select("id")
+        .eq("parent_id", categoryId)
+        .eq("is_default", true)
+        .maybeSingle();
+      categoryId = fallback?.id ?? categoryId;
+    }
+  }
+
+  const { data: links } = await admin
+    .from("product_categories")
+    .select("category_id, is_primary")
+    .eq("product_id", productId);
+  const current = (links ?? []).find((link) => link.is_primary);
+  if (current?.category_id === categoryId) return null;
+
+  if (current) {
+    const { error } = await admin
+      .from("product_categories")
+      .delete()
+      .eq("product_id", productId)
+      .eq("category_id", current.category_id);
+    if (error) return error.message;
+  }
+  if (!categoryId) return null;
+
+  // Already linked without being primary (added from the category panel):
+  // promote that row instead of inserting a duplicate.
+  const existing = (links ?? []).find((link) => link.category_id === categoryId);
+  const { error } = existing
+    ? await admin
+        .from("product_categories")
+        .update({ is_primary: true })
+        .eq("product_id", productId)
+        .eq("category_id", categoryId)
+    : await admin
+        .from("product_categories")
+        .insert({ product_id: productId, category_id: categoryId, is_primary: true });
+  return error?.message ?? null;
+}
+
 async function uploadImages(
   admin: ReturnType<typeof createAdminClient>,
   files: FormDataEntryValue[]
@@ -197,6 +266,13 @@ export async function createProductAction(
 
   if (error) return { error: error.message };
 
+  const categoryError = await setPrimaryCategory(
+    admin,
+    created.id,
+    String(formData.get("categoryId") ?? "").trim()
+  );
+  if (categoryError) return { error: categoryError };
+
   await logAction(actor, "create", "product", fields.name.ru, { entityId: created.id });
   revalidatePath(`/${locale}/admin/products`);
   revalidatePath(`/${locale}/catalog`);
@@ -255,6 +331,13 @@ export async function updateProductAction(
 
   const { error } = await admin.from("products").update(updates).eq("id", id);
   if (error) return { error: error.message };
+
+  const categoryError = await setPrimaryCategory(
+    admin,
+    id,
+    String(formData.get("categoryId") ?? "").trim()
+  );
+  if (categoryError) return { error: categoryError };
 
   await logAction(actor, "update", "product", fields.name.ru, { entityId: id });
   revalidatePath(`/${locale}/admin/products`);
@@ -349,12 +432,17 @@ export type ImportRow = {
   nameAz?: string;
   nameKa?: string;
   description?: string;
-  /** Make, model and years as written in their cells. A part that fits
-   * several vehicles lists them separated by ";" or ":" — "MAZDA; BMW" with
-   * "6; G30" — and the n-th entries of each column belong together. */
+  /** Make, model and years as written in their cells. A part that fits several
+   * vehicles writes them with slashes — "TOYOTA/BMW" with "PRIUS V/PRIUS
+   * C//G30/X5" — where "//" closes one make's group of models; see
+   * {@link fitmentsFromImport} for the whole notation. */
   make?: string;
   model?: string;
   photoUrl?: string;
+  /** Years in one column of their own: "2000:2002", or a range per make group
+   * as "2000:2002//2010:2015". */
+  years?: string;
+  /** Years split across two columns instead — the older file layout. */
   yearFrom?: string;
   yearTo?: string;
   /** Warehouse name as written in the file's own warehouse column, if one
@@ -448,6 +536,7 @@ function mergeDuplicateImportRows(rows: ImportRow[]): {
       make: existing.make ?? raw.make,
       model: existing.model ?? raw.model,
       photoUrl: existing.photoUrl ?? raw.photoUrl,
+      years: existing.years ?? raw.years,
       yearFrom: existing.yearFrom ?? raw.yearFrom,
       yearTo: existing.yearTo ?? raw.yearTo,
       warehouseName: existing.warehouseName ?? raw.warehouseName,
@@ -566,6 +655,7 @@ export async function importProductsAction(
     const originCode = row.originCode?.trim();
     const make = row.make?.trim();
     const model = row.model?.trim();
+    const years = row.years?.trim();
     const yearFrom = row.yearFrom?.trim();
     const yearTo = row.yearTo?.trim();
     const photoUrl = row.photoUrl?.trim();
@@ -580,7 +670,7 @@ export async function importProductsAction(
       toInsert.push({
         slug: uniqueSlug(slugify(code)),
         category: DEFAULT_CATEGORY,
-        ...fitmentColumns(fitmentsFromImport({ make, model, yearFrom, yearTo }, yearDefaults)),
+        ...fitmentColumns(fitmentsFromImport({ make, model, years, yearFrom, yearTo }, yearDefaults)),
         brand_id: brandId,
         price: row.price ?? 0,
         old_price: null,
@@ -610,11 +700,16 @@ export async function importProductsAction(
     const fillYears =
       existing.year_from === IMPORT_DEFAULT_YEAR_FROM &&
       existing.year_to === currentYear &&
-      Boolean(yearFrom || yearTo);
+      Boolean(years || yearFrom || yearTo);
     if (fillMake || fillModel || fillYears) {
       const current = fitmentsToFields(
         fitmentsOf({ ...existing, yearFrom: existing.year_from, yearTo: existing.year_to })
       );
+      // Years the product already has are written back as one range per
+      // vehicle ("2000-2002; 2010-2015"), which reads as the file's own single
+      // year column would; the file's two columns are only consulted when it
+      // actually carries them and its years are the ones being filled in.
+      const keepYears = !fillYears || !(years || yearFrom || yearTo);
       Object.assign(
         patch,
         fitmentColumns(
@@ -622,8 +717,9 @@ export async function importProductsAction(
             {
               make: fillMake ? make : current.make,
               model: fillModel ? model : current.model,
-              yearFrom: fillYears ? yearFrom || current.yearFrom : current.yearFrom,
-              yearTo: fillYears ? yearTo || current.yearTo : current.yearTo,
+              years: keepYears ? current.years : years,
+              yearFrom: keepYears || years ? undefined : yearFrom,
+              yearTo: keepYears || years ? undefined : yearTo,
             },
             yearDefaults
           )

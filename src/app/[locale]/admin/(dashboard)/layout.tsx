@@ -26,6 +26,7 @@ export default async function AdminDashboardLayout({
     { href: `/${locale}/admin/brands`, label: dict.admin.navBrands, show: isAdmin },
     { href: `/${locale}/admin/warehouses`, label: dict.admin.navWarehouses, show: isAdmin },
     { href: `/${locale}/admin/products`, label: dict.admin.navProducts, show: true },
+    { href: `/${locale}/admin/categories`, label: dict.admin.navCategories, show: isAdmin },
     { href: `/${locale}/admin/orders`, label: dict.admin.navOrders, show: true },
     { href: `/${locale}/admin/logs`, label: dict.admin.navLogs, show: isAdmin },
   ];

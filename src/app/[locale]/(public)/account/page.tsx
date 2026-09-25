@@ -3,7 +3,6 @@ import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
 import { requireCustomer } from "@/lib/auth";
 import ChangePasswordForm from "@/components/ChangePasswordForm";
-import PhotoForm from "./PhotoForm";
 
 export default async function AccountPage({
   params,
@@ -23,11 +22,6 @@ export default async function AccountPage({
           {customer.firstName} {customer.lastName} · {customer.organizationName}
         </p>
       </div>
-
-      <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">{dict.admin.photoLabel}</h2>
-        <PhotoForm locale={locale} dict={dict.admin} photoUrl={customer.photoUrl} />
-      </section>
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">{dict.admin.changePasswordTitle}</h2>

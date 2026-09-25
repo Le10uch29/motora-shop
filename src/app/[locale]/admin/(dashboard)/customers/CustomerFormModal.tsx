@@ -20,7 +20,6 @@ export type CustomerFormValues = {
   organizationIdNumber: string;
   address: string;
   city: string;
-  photoUrl: string | null;
 };
 
 const EMPTY_VALUES: CustomerFormValues = {
@@ -34,7 +33,6 @@ const EMPTY_VALUES: CustomerFormValues = {
   organizationIdNumber: "",
   address: "",
   city: "",
-  photoUrl: null,
 };
 
 const initialState: CustomerActionState = { error: null, createdPassword: null, deliveryMethod: null };
@@ -250,23 +248,6 @@ export default function CustomerFormModal({
               className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
             />
           </div>
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="customer-photo" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            {dict.photoLabel}
-          </label>
-          {values.photoUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={values.photoUrl} alt="" className="h-14 w-14 rounded-full object-cover" />
-          )}
-          <input
-            id="customer-photo"
-            name="photo"
-            type="file"
-            accept="image/*"
-            className="text-sm text-zinc-600 dark:text-zinc-400"
-          />
         </div>
 
         {mode === "create" ? (

@@ -8,10 +8,10 @@ import { fitmentsOf, type Fitment } from "@/lib/fitments";
  * the revalidate window below. */
 export const PRODUCTS_CACHE_TAG = "products";
 
-export type ProductFilterMeta = { fitments: Fitment[]; price: number };
+export type ProductFilterMeta = { fitments: Fitment[] };
 
-/** Vehicles (make/model) and price of every product — the header's search-filter dropdown
- * builds its make list, model list and price range from it on every page.
+/** Vehicles (make/model) of every product — the header's search-filter dropdown
+ * builds its make list and model list from it on every page.
  *
  * Cached across requests, not just within one: the query itself is small per
  * row but there are hundreds of them, and it was costing the better part of a
@@ -28,10 +28,12 @@ const fetchProductFilterMeta = unstable_cache(
     const supabase = createPublicClient();
     const { data } = await supabase
       .from("products")
-      .select("make, model, fitments, year_from, year_to, price");
+      // Out-of-stock products are invisible in the shop, so the make/model
+      // lists must not offer a vehicle that only they fit.
+      .select("make, model, fitments, year_from, year_to")
+      .gt("stock", 0);
     return (data ?? []).map((row) => ({
       fitments: fitmentsOf({ ...row, yearFrom: row.year_from, yearTo: row.year_to }),
-      price: Number(row.price),
     }));
   },
   ["product-filter-meta"],

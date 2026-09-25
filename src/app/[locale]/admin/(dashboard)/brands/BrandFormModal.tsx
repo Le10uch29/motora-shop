@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { createBrandAction, updateBrandAction, type BrandActionState } from "./actions";
+import FileDropField from "@/components/admin/FileDropField";
 import type { Dictionary } from "@/i18n/dictionary";
 
 export type BrandFormValues = {
@@ -89,36 +90,36 @@ export default function BrandFormModal({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="brand-logo" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
             {dict.brandLogoLabel}
-          </label>
+          </span>
           {initialValues?.logoUrl && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={initialValues.logoUrl} alt="" className="h-14 w-14 rounded-lg object-contain" />
           )}
-          <input
+          <FileDropField
             id="brand-logo"
             name="logo"
-            type="file"
             accept="image/*"
-            className="text-sm text-zinc-600 dark:text-zinc-400"
+            buttonLabel={dict.fileDropButton}
+            hint={dict.fileDropHint}
           />
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="brand-badge" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
             {dict.brandBadgeLogoLabel}
-          </label>
+          </span>
           {initialValues?.badgeLogoUrl && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={initialValues.badgeLogoUrl} alt="" className="h-8 w-8 rounded-md object-contain" />
           )}
-          <input
+          <FileDropField
             id="brand-badge"
             name="badgeLogo"
-            type="file"
             accept="image/*"
-            className="text-sm text-zinc-600 dark:text-zinc-400"
+            buttonLabel={dict.fileDropButton}
+            hint={dict.fileDropHint}
           />
         </div>
 

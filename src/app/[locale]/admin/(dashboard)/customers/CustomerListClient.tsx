@@ -68,7 +68,6 @@ export default function CustomerListClient({
                 organizationIdNumber: "",
                 address: "",
                 city: "",
-                photoUrl: null,
               },
             })
           }

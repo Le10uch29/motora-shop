@@ -85,7 +85,6 @@ export default async function CustomerDetailPage({
             organizationIdNumber: row.organization_id_number,
             address: row.address,
             city: row.city,
-            photoUrl: row.photo_url,
           }}
         />
       </div>

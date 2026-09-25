@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { getProductBySlug, getAllProductSlugs, discountPercent, t } from "@/lib/products";
 import { formatGel } from "@/lib/currency";
 import { getBrandBySlug } from "@/lib/brands";
+import { primaryCategoryByProduct } from "@/lib/categories";
 import { locales, isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
 import ProductGallery from "@/components/ProductGallery";
@@ -37,15 +38,43 @@ export default async function ProductPage({
     notFound();
   }
 
-  const brand = await getBrandBySlug(product.brand);
+  const [brand, filings] = await Promise.all([
+    getBrandBySlug(product.brand),
+    primaryCategoryByProduct([product.id]),
+  ]);
+  const filing = filings[product.id];
   const percent = discountPercent(product);
 
   return (
     <main className="mx-auto flex w-full max-w-[120rem] flex-1 flex-col gap-8 px-2 py-10">
+      {/* Каталог → Категория → Подкатегория → Товар. Категории в крошках нет,
+          пока товар никуда не отнесён — тогда это просто Каталог → Товар. */}
       <nav className="text-sm text-zinc-500">
         <Link href={`/${locale}/catalog`} className="hover:text-orange-600">
           {dict.product.breadcrumbCatalog}
         </Link>
+        {filing?.parent && (
+          <>
+            {" / "}
+            <Link
+              href={`/${locale}/catalog/category/${filing.parent.slug}`}
+              className="hover:text-orange-600"
+            >
+              {filing.parent.name[locale] || filing.parent.name.ru}
+            </Link>
+          </>
+        )}
+        {filing?.parent && !filing.category.isDefault && (
+          <>
+            {" / "}
+            <Link
+              href={`/${locale}/catalog/category/${filing.parent.slug}/${filing.category.slug}`}
+              className="hover:text-orange-600"
+            >
+              {filing.category.name[locale] || filing.category.name.ru}
+            </Link>
+          </>
+        )}
         {" / "}
         <span className="text-zinc-700 dark:text-zinc-300">{t(product.name, locale)}</span>
       </nav>

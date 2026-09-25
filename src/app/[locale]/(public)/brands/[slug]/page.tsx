@@ -34,27 +34,18 @@ export default async function BrandDetailPage({
   const query = single(sp.q)?.trim() || undefined;
   const make = single(sp.make) || undefined;
   const model = single(sp.model) || undefined;
-  const priceMin = toNumber(single(sp.priceMin));
-  const priceMax = toNumber(single(sp.priceMax));
   const yearFrom = toNumber(single(sp.yearFrom));
   const yearTo = toNumber(single(sp.yearTo));
 
   const hasActiveFilters = Boolean(
-    query || make || model || priceMin !== undefined || priceMax !== undefined || yearFrom !== undefined || yearTo !== undefined
+    query || make || model || yearFrom !== undefined || yearTo !== undefined
   );
 
   const brandProducts = await getProductsByBrandSlug(brand.slug);
-  const items = filterProducts(
-    brandProducts,
-    { query, make, model, priceMin, priceMax, yearFrom, yearTo },
-    locale
-  );
+  const items = filterProducts(brandProducts, { query, make, model, yearFrom, yearTo }, locale);
 
   const brandMakes = localizedMakes(computeCarMakes(brandProducts), locale);
   const brandModelsByMake = computeModelsByMake(brandProducts);
-
-  const brandPrices = brandProducts.map((p) => p.price);
-  const maxPrice = brandPrices.length > 0 ? Math.max(...brandPrices) : 0;
 
   const basePath = `/${locale}/brands/${slug}`;
 
@@ -86,7 +77,6 @@ export default async function BrandDetailPage({
             dict={dict.search}
             carMakes={brandMakes}
             modelsByMake={brandModelsByMake}
-            maxPrice={maxPrice}
           />
         </Suspense>
       </div>

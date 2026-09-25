@@ -65,6 +65,89 @@ set
 where fitments = '[]'::jsonb;
 create index if not exists products_fitments_idx on products using gin (fitments jsonb_path_ops);
 
+-- Категории запчастей: "что это за деталь" (рычаг, колодка), в отличие от
+-- fitments, который отвечает "для какой машины". Две вещи независимы и
+-- намеренно хранятся раздельно.
+--
+-- Дерево ровно в два уровня в одной таблице: parent_id is null — основная
+-- категория ("Ходовая часть"), parent_id заполнен — подкатегория ("Рычаги").
+-- Глубину сторожит триггер ниже.
+--
+-- "Все товары" здесь НЕТ и быть не должно: это виртуальный раздел каталога,
+-- то есть просто отсутствие фильтра. Товар без категории — это товар без
+-- строк в product_categories, он никуда не пропадает и показывается в "Все
+-- товары" наравне с остальными.
+create table if not exists categories (
+  id uuid primary key default gen_random_uuid(),
+  parent_id uuid references categories(id) on delete cascade,
+  slug text unique not null,
+  name jsonb not null,
+  -- SEO: заполняется в админке, используется страницами категорий.
+  description jsonb,
+  meta_title jsonb,
+  meta_description jsonb,
+  image_url text,
+  sort_order int not null default 0,
+  is_active boolean not null default true,
+  -- Техническая подкатегория "Разное": сюда попадает товар, которому указали
+  -- категорию, но не указали подкатегорию. На витрине как отдельный пункт не
+  -- показывается, но её товары входят в свою основную категорию.
+  is_default boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists categories_parent_idx on categories (parent_id, sort_order);
+-- Ровно одна "Разное" на категорию.
+create unique index if not exists categories_one_default_per_parent
+  on categories (parent_id) where is_default;
+
+-- Дерево не глубже двух уровней: родителем может быть только корневая
+-- категория. Без этого админка со временем отрастила бы третий уровень,
+-- который не умеют показывать ни каталог, ни импорт.
+create or replace function categories_enforce_two_levels()
+returns trigger as $$
+begin
+  if new.parent_id is not null then
+    if new.parent_id = new.id then
+      raise exception 'Категория не может быть родителем самой себе';
+    end if;
+    if exists (select 1 from categories where id = new.parent_id and parent_id is not null) then
+      raise exception 'Поддерживаются только два уровня: категория -> подкатегория';
+    end if;
+  end if;
+  if new.is_default and new.parent_id is null then
+    raise exception '"Разное" может быть только подкатегорией';
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists categories_two_levels on categories;
+create trigger categories_two_levels
+  before insert or update on categories
+  for each row execute function categories_enforce_two_levels();
+
+-- Связь товара с категориями — отдельной таблицей, а не колонкой в products:
+-- товар технически может лежать в нескольких категориях. В интерфейсе он
+-- один — основная категория помечена is_primary.
+--
+-- on delete cascade с обеих сторон снимает связь, но НИКОГДА не трогает сам
+-- товар: удалённая категория оставляет товар без категории (и он уходит в
+-- "Все товары"), а не удаляет его.
+create table if not exists product_categories (
+  id uuid primary key default gen_random_uuid(),
+  product_id uuid not null references products(id) on delete cascade,
+  category_id uuid not null references categories(id) on delete cascade,
+  is_primary boolean not null default false,
+  created_at timestamptz not null default now(),
+  unique (product_id, category_id)
+);
+create index if not exists product_categories_category_idx on product_categories (category_id);
+create index if not exists product_categories_product_idx on product_categories (product_id);
+-- Основная категория у товара может быть только одна.
+create unique index if not exists product_categories_one_primary
+  on product_categories (product_id) where is_primary;
+
 -- Склады: физические точки хранения товара. Сколько и какого товара лежит
 -- на складе — отдельная таблица warehouse_stock, не влияет на product.stock
 -- (общий остаток на сайте) и не показывается на витрине.
@@ -148,6 +231,11 @@ create trigger products_set_updated_at
   before update on products
   for each row execute function set_updated_at();
 
+drop trigger if exists categories_set_updated_at on categories;
+create trigger categories_set_updated_at
+  before update on categories
+  for each row execute function set_updated_at();
+
 drop trigger if exists pages_set_updated_at on pages;
 create trigger pages_set_updated_at
   before update on pages
@@ -203,6 +291,8 @@ alter table staff enable row level security;
 alter table logs enable row level security;
 alter table warehouses enable row level security;
 alter table warehouse_stock enable row level security;
+alter table categories enable row level security;
+alter table product_categories enable row level security;
 
 -- Каталог (brands/products/pages): читать может кто угодно — витрина сайта
 -- работает без входа. Писать — только админ (не продавец: у него только
@@ -216,6 +306,19 @@ drop policy if exists "public_read_products" on products;
 create policy "public_read_products" on products for select using (true);
 drop policy if exists "admin_write_products" on products;
 create policy "admin_write_products" on products for all to authenticated using (is_admin()) with check (is_admin());
+
+-- Категории и их связь с товарами читает витрина (сайдбар каталога,
+-- страницы категорий, счётчики), поэтому чтение публичное; активность
+-- категории фильтруется запросами, как и остаток товара.
+drop policy if exists "public_read_categories" on categories;
+create policy "public_read_categories" on categories for select using (true);
+drop policy if exists "admin_write_categories" on categories;
+create policy "admin_write_categories" on categories for all to authenticated using (is_admin()) with check (is_admin());
+
+drop policy if exists "public_read_product_categories" on product_categories;
+create policy "public_read_product_categories" on product_categories for select using (true);
+drop policy if exists "admin_write_product_categories" on product_categories;
+create policy "admin_write_product_categories" on product_categories for all to authenticated using (is_admin()) with check (is_admin());
 
 drop policy if exists "public_read_pages" on pages;
 create policy "public_read_pages" on pages for select using (true);

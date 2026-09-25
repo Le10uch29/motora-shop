@@ -30,6 +30,7 @@ export type Dictionary = {
     dashboardTitle: string;
     navDashboard: string;
     navProducts: string;
+    navCategories: string;
     navWarehouses: string;
     navBrands: string;
     navPages: string;
@@ -101,8 +102,6 @@ export type Dictionary = {
     confirmDeleteCustomer: string;
     emptyCustomers: string;
     hideDetails: string;
-    changePhoto: string;
-    noPhoto: string;
     myAccountTitle: string;
     customerDetailsTitle: string;
     customerHistoryEmpty: string;
@@ -214,6 +213,9 @@ export type Dictionary = {
     productBadgeSectionLabel: string;
     productImagesLabel: string;
     productImagesHint: string;
+    /** Shared by every drag-and-drop file field (photos, logos, Excel import). */
+    fileDropButton: string;
+    fileDropHint: string;
     productImageUrlsLabel: string;
     productImageUrlsHint: string;
     confirmDeleteProduct: string;
@@ -268,6 +270,8 @@ export type Dictionary = {
     importFieldPhoto: string;
     importFieldYearFrom: string;
     importFieldYearTo: string;
+    /** One column holding the whole range, e.g. "2000:2002". */
+    importFieldYears: string;
     importFieldWarehouse: string;
     importWarehouseHint: string;
     importWarehouseStockSetLabel: string;
@@ -311,6 +315,65 @@ export type Dictionary = {
     missingDataLoading: string;
     missingDataEmpty: string;
     missingDataCountLabel: string;
+    // Категории запчастей.
+    categoriesTitle: string;
+    addCategory: string;
+    editCategory: string;
+    addSubcategory: string;
+    editSubcategory: string;
+    categoryOpen: string;
+    // Строки, а не функции-склонялки: весь dict.admin уходит пропсом в
+    // клиентские компоненты, а функцию через границу сервер→клиент передать
+    // нельзя. Количество подставляется рядом с меткой.
+    categorySubcategoriesLabel: string;
+    categoryProductsLabel: string;
+    categoryNameSectionLabel: string;
+    categorySlugLabel: string;
+    categorySlugHint: string;
+    categoryImageLabel: string;
+    categorySortOrderLabel: string;
+    categoryActiveLabel: string;
+    categorySeoSectionLabel: string;
+    categoryDescriptionLabel: string;
+    categoryMetaTitleLabel: string;
+    categoryMetaDescriptionLabel: string;
+    categoryDefaultBadge: string;
+    categoryInactiveBadge: string;
+    categoryHideButton: string;
+    categoryShowButton: string;
+    categoryHiddenHint: string;
+    categoryNoSubcategories: string;
+    categorySlugTaken: string;
+    categorySlugRequired: string;
+    confirmDeleteCategory: string;
+    deleteCategoryTitle: string;
+    deleteCategoryProductsQuestion: string;
+    deleteCategorySubcategoriesWarning: string;
+    deleteCategoryMoveToLabel: string;
+    deleteCategoryLeaveUncategorized: string;
+    deleteCategoryConfirmButton: string;
+    categoryProductsTitle: string;
+    addExistingProductButton: string;
+    addExistingProductTitle: string;
+    addExistingProductSearchPlaceholder: string;
+    addExistingProductEmpty: string;
+    addExistingProductAlreadyHere: string;
+    addToCategoryButton: string;
+    moveProductButton: string;
+    moveProductTitle: string;
+    moveProductTargetLabel: string;
+    detachProductButton: string;
+    confirmDetachProduct: string;
+    allProductsLabel: string;
+    uncategorizedLabel: string;
+    uncategorizedTitle: string;
+    uncategorizedEmpty: string;
+    assignCategoryButton: string;
+    assignCategoryTitle: string;
+    productCategoryLabel: string;
+    productSubcategoryLabel: string;
+    categoryNoneOption: string;
+    subcategoryDefaultOption: string;
   };
   search: {
     placeholder: string;
@@ -322,9 +385,6 @@ export type Dictionary = {
     yearLabel: string;
     yearFrom: string;
     yearTo: string;
-    priceLabel: string;
-    priceFrom: string;
-    priceTo: string;
     makeLabel: string;
     modelLabel: string;
     brandLabel: string;
@@ -342,11 +402,18 @@ export type Dictionary = {
     heroSubtitle: string;
     ctaCatalog: string;
     popular: string;
+    popularCategories: string;
     viewAll: string;
   };
   catalog: {
     title: string;
     empty: string;
+    /** The whole shop — the sidebar entry that applies no category filter. */
+    allProducts: string;
+    categoriesTitle: string;
+    /** Strings, not functions: the sidebar is a Client Component. */
+    toggleSubcategoriesAria: string;
+    categoryLabel: string;
     productCount: (count: number) => string;
     forQuery: (query: string) => string;
     clearFilters: string;

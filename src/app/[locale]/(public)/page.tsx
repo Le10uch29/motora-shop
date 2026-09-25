@@ -2,6 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getFeaturedProducts } from "@/lib/products";
 import { getBrands } from "@/lib/brands";
+import {
+  getPublicCategoryTree,
+  getCategoryProductCounts,
+  categoryProductTotal,
+} from "@/lib/categories";
 import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
 import ProductCard from "@/components/ProductCard";
@@ -11,7 +16,22 @@ export default async function Home({ params }: PageProps<"/[locale]">) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
   const dict = await getDictionary(locale);
-  const [brands, featured] = await Promise.all([getBrands(), getFeaturedProducts(4)]);
+  const [brands, featured, tree, counts] = await Promise.all([
+    getBrands(),
+    getFeaturedProducts(4),
+    getPublicCategoryTree(),
+    getCategoryProductCounts(),
+  ]);
+
+  // Every active category, whether or not anything is filed under it yet —
+  // the block is how a visitor sees what the shop carries, so it shouldn't
+  // wait for the catalog to be sorted out.
+  const categories = tree.map((node) => ({
+    slug: node.slug,
+    name: node.name[locale] || node.name.ru,
+    imageUrl: node.imageUrl,
+    count: categoryProductTotal(node, counts),
+  }));
 
   return (
     <main className="flex flex-1 flex-col">
@@ -22,8 +42,52 @@ export default async function Home({ params }: PageProps<"/[locale]">) {
         <Hero />
       </section>
 
-      {featured.length > 0 && (
+      {/* Categories with their photos come first, straight under the banner:
+          they're how a visitor picks a part. The popular products follow.
+          Clicking one opens everything filed under it, subcategories
+          included. */}
+      {categories.length > 0 && (
         <section className="mx-auto flex w-full max-w-[120rem] flex-col gap-6 px-2 py-12">
+          <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+            {dict.home.popularCategories}
+          </h2>
+          <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4 min-[100rem]:grid-cols-6">
+            {categories.map((category) => (
+              <Link
+                key={category.slug}
+                href={`/${locale}/catalog/category/${category.slug}`}
+                className="flex flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white transition-shadow hover:shadow-lg dark:border-zinc-800 dark:bg-zinc-900"
+              >
+                <div className="flex aspect-[4/3] w-full items-center justify-center bg-zinc-100 dark:bg-zinc-800">
+                  {category.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={category.imageUrl}
+                      alt={category.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="px-3 text-center text-sm font-semibold text-zinc-400 dark:text-zinc-600">
+                      {category.name}
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-col gap-1 p-4">
+                  <span className="font-semibold text-zinc-900 dark:text-zinc-50">
+                    {category.name}
+                  </span>
+                  <span className="text-sm text-zinc-500">
+                    {dict.catalog.productCount(category.count)}
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {featured.length > 0 && (
+        <section className="mx-auto flex w-full max-w-[120rem] flex-col gap-6 px-2 pb-12">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
               {dict.home.popular}

@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "tsx --env-file=.env.local scripts/seed-supabase.ts",
+    "seed:categories": "tsx --env-file=.env.local scripts/seed-categories.ts",
     "create-admin": "tsx --env-file=.env.local scripts/create-first-admin.ts",
     "optimize-images": "tsx --env-file=.env.local scripts/optimize-product-images.ts"
   },

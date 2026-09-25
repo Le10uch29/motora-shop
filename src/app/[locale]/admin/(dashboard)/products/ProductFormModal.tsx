@@ -6,6 +6,8 @@ import { createProductAction, updateProductAction, type ProductActionState } fro
 import type { LocalizedText } from "@/lib/products";
 import { fitmentsToFields, type Fitment } from "@/lib/fitments";
 import { productImageUrl } from "@/lib/productImageUrl";
+import FileDropField from "@/components/admin/FileDropField";
+import type { CategoryPickerNode } from "../categories/options";
 import type { Locale } from "@/i18n/locales";
 import type { Dictionary } from "@/i18n/dictionary";
 
@@ -13,6 +15,8 @@ export type ProductFormValues = {
   id: string;
   slug: string;
   brandId: string;
+  /** Main category — a subcategory id, or "" for a product filed nowhere. */
+  categoryId: string;
   fitments: Fitment[];
   price: number;
   oldPrice: number | null;
@@ -43,6 +47,7 @@ export default function ProductFormModal({
   dict,
   mode,
   brands,
+  categoryTree,
   initialValues,
   onClose,
 }: {
@@ -50,6 +55,7 @@ export default function ProductFormModal({
   dict: Dictionary["admin"];
   mode: "create" | "edit";
   brands: { id: string; name: string }[];
+  categoryTree: CategoryPickerNode[];
   initialValues?: ProductFormValues;
   onClose: () => void;
 }) {
@@ -63,6 +69,23 @@ export default function ProductFormModal({
 
   // Several vehicles show as ";"-separated lists, the n-th entries together.
   const initialVehicle = initialValues ? fitmentsToFields(initialValues.fitments) : undefined;
+
+  // The form holds the category as two selects but submits one id: the
+  // subcategory when one is chosen, otherwise the category itself, which the
+  // server files under its "Разное".
+  const initialRootId = initialValues?.categoryId
+    ? categoryTree.find((root) =>
+        root.id === initialValues.categoryId ||
+        root.children.some((child) => child.id === initialValues.categoryId)
+      )?.id ?? ""
+    : "";
+  const [categoryRootId, setCategoryRootId] = useState(initialRootId);
+  const [subcategoryId, setSubcategoryId] = useState(
+    initialValues?.categoryId && initialValues.categoryId !== initialRootId
+      ? initialValues.categoryId
+      : ""
+  );
+  const subcategories = categoryTree.find((root) => root.id === categoryRootId)?.children ?? [];
 
   const [price, setPrice] = useState(initialValues ? String(initialValues.price) : "");
   const [oldPrice, setOldPrice] = useState(
@@ -171,6 +194,47 @@ export default function ProductFormModal({
               ))}
             </select>
           </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="product-category" className={labelClass}>{dict.productCategoryLabel}</label>
+            <select
+              id="product-category"
+              value={categoryRootId}
+              onChange={(event) => {
+                setCategoryRootId(event.target.value);
+                setSubcategoryId("");
+              }}
+              className={inputClass}
+            >
+              <option value="">{dict.categoryNoneOption}</option>
+              {categoryTree.map((root) => (
+                <option key={root.id} value={root.id}>
+                  {root.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="product-subcategory" className={labelClass}>{dict.productSubcategoryLabel}</label>
+            <select
+              id="product-subcategory"
+              value={subcategoryId}
+              disabled={subcategories.length === 0}
+              onChange={(event) => setSubcategoryId(event.target.value)}
+              className={inputClass}
+            >
+              <option value="">{dict.subcategoryDefaultOption}</option>
+              {subcategories
+                .filter((child) => !child.isDefault)
+                .map((child) => (
+                  <option key={child.id} value={child.id}>
+                    {child.label}
+                  </option>
+                ))}
+            </select>
+          </div>
+          <input type="hidden" name="categoryId" value={subcategoryId || categoryRootId} />
 
           <div className="flex flex-col gap-1.5">
             <label htmlFor="product-make" className={labelClass}>{dict.productMakeLabel}</label>
@@ -306,7 +370,7 @@ export default function ProductFormModal({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="product-images" className={labelClass}>{dict.productImagesLabel}</label>
+          <span className={labelClass}>{dict.productImagesLabel}</span>
           {initialValues && initialValues.images.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {initialValues.images.map((src) => (
@@ -315,13 +379,13 @@ export default function ProductFormModal({
               ))}
             </div>
           )}
-          <input
+          <FileDropField
             id="product-images"
             name="images"
-            type="file"
             accept="image/*"
             multiple
-            className="text-sm text-zinc-600 dark:text-zinc-400"
+            buttonLabel={dict.fileDropButton}
+            hint={dict.fileDropHint}
           />
           <span className="text-xs text-zinc-400">{dict.productImagesHint}</span>
           <label htmlFor="product-image-urls" className={labelClass}>

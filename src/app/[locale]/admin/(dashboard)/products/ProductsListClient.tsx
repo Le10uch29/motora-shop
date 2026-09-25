@@ -14,6 +14,7 @@ import ImportConflictsModal from "./ImportConflictsModal";
 import MissingDataModal from "./MissingDataModal";
 import { RowActionLink, RowActionButton, EyeIcon, PencilIcon, TrashIcon } from "@/components/admin/RowActions";
 import type { AdminProductRow } from "./data";
+import type { CategoryPickerNode } from "../categories/options";
 import { formatGel } from "@/lib/currency";
 import { productImageUrl } from "@/lib/productImageUrl";
 import type { Dictionary } from "@/i18n/dictionary";
@@ -26,6 +27,7 @@ export default function ProductsListClient({
   rows,
   total,
   brands,
+  categoryTree,
   warehouses,
   stockByProduct,
   zeroStockCount,
@@ -37,6 +39,7 @@ export default function ProductsListClient({
   rows: AdminProductRow[];
   total: number;
   brands: { id: string; name: string }[];
+  categoryTree: CategoryPickerNode[];
   warehouses: { id: string; name: string }[];
   stockByProduct: Record<string, Record<string, number>>;
   /** Products with nothing in stock, across the whole catalog (not just this page). */
@@ -133,6 +136,7 @@ export default function ProductsListClient({
         id: row.id,
         slug: row.slug,
         brandId: row.brandId,
+        categoryId: row.categoryId,
         fitments: row.fitments,
         price: row.price,
         oldPrice: row.oldPrice,
@@ -375,6 +379,7 @@ export default function ProductsListClient({
           dict={dict}
           mode={modal.mode}
           brands={brands}
+          categoryTree={categoryTree}
           initialValues={modal.values}
           onClose={() => setModal(null)}
         />

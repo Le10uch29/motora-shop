@@ -67,23 +67,6 @@ function revalidateCustomerPaths(locale: Locale, id?: string) {
   if (id) revalidatePath(`/${locale}/admin/customers/${id}`);
 }
 
-async function uploadPhoto(
-  admin: ReturnType<typeof createAdminClient>,
-  userId: string,
-  file: FormDataEntryValue | null
-): Promise<string | null> {
-  if (!(file instanceof File) || file.size === 0) return null;
-  const ext = file.name.split(".").pop() || "jpg";
-  const path = `${userId}/photo-${Date.now()}.${ext}`;
-  const { error } = await admin.storage.from("customer-media").upload(path, file, {
-    contentType: file.type || "image/jpeg",
-    upsert: true,
-  });
-  if (error) throw new Error(error.message);
-  const { data } = admin.storage.from("customer-media").getPublicUrl(path);
-  return data.publicUrl;
-}
-
 type FieldDiff = { before: string; after: string };
 
 function diffTextFields(
@@ -143,15 +126,6 @@ export async function createCustomerAction(
     return { ...EMPTY_STATE, error: createError?.message ?? "create_user_failed" };
   }
 
-  let photoUrl: string | null = null;
-  try {
-    photoUrl = await uploadPhoto(admin, created.user.id, formData.get("photo"));
-  } catch (error) {
-    // Undo the auth user so we don't leave a login with no profile behind.
-    await admin.auth.admin.deleteUser(created.user.id);
-    return { ...EMPTY_STATE, error: error instanceof Error ? error.message : "upload_failed" };
-  }
-
   const { error: profileError } = await admin.from("customers").insert({
     id: created.user.id,
     first_name: fields.firstName,
@@ -162,7 +136,6 @@ export async function createCustomerAction(
     organization_id_number: fields.organizationIdNumber,
     address: fields.address,
     city: fields.city,
-    photo_url: photoUrl,
   });
 
   if (profileError) {
@@ -210,20 +183,12 @@ export async function updateCustomerAction(
   const { data: before } = await admin
     .from("customers")
     .select(
-      "first_name, last_name, phone, id_card_number, organization_name, organization_id_number, address, city, photo_url"
+      "first_name, last_name, phone, id_card_number, organization_name, organization_id_number, address, city"
     )
     .eq("id", id)
     .single();
 
   if (!before) return { ...EMPTY_STATE, error: "not_found" };
-
-  let photoUrl = before.photo_url;
-  try {
-    const uploaded = await uploadPhoto(admin, id, formData.get("photo"));
-    if (uploaded) photoUrl = uploaded;
-  } catch (error) {
-    return { ...EMPTY_STATE, error: error instanceof Error ? error.message : "upload_failed" };
-  }
 
   const { error } = await admin
     .from("customers")
@@ -236,7 +201,6 @@ export async function updateCustomerAction(
       organization_id_number: fields.organizationIdNumber,
       address: fields.address,
       city: fields.city,
-      photo_url: photoUrl,
     })
     .eq("id", id);
 
@@ -277,7 +241,6 @@ export async function updateCustomerAction(
     },
     fields
   );
-  if (photoUrl !== before.photo_url) details.photoUrl = true;
   if (newPassword) details.password = true;
 
   await logAction(actor, "update", "customer", `${fields.firstName} ${fields.lastName}`, {

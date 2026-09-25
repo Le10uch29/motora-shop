@@ -5,7 +5,6 @@ import type { Dictionary } from "@/i18n/dictionary";
 import {
   computeCarMakes,
   computeModelsByMake,
-  computePriceBounds,
   localizedMakes,
 } from "@/lib/products";
 import { getProductFilterMeta } from "@/lib/productFilterMeta";
@@ -43,7 +42,6 @@ export default async function Header({
   const customer = staff ? null : await getCurrentCustomer();
   const isLoggedIn = Boolean(staff) || Boolean(customer);
   const carMakes = computeCarMakes(productMeta);
-  const priceBounds = computePriceBounds(productMeta);
   const modelsByMake = computeModelsByMake(productMeta);
 
   return (
@@ -68,7 +66,6 @@ export default async function Header({
               carMakes={localizedMakes(carMakes, locale)}
               modelsByMake={modelsByMake}
               brands={catalogBrands}
-              maxPrice={priceBounds.max}
             />
           </Suspense>
         </div>

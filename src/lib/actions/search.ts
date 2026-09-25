@@ -51,20 +51,27 @@ export async function searchProductSuggestionsAction(
           )
           .or(orFilter)
           .eq("brands.slug", brandSlug)
+          .gt("stock", 0)
           .limit(RESULT_LIMIT),
         supabase
           .from("products")
           .select("id, brands!inner(slug)", { count: "exact", head: true })
           .or(orFilter)
-          .eq("brands.slug", brandSlug),
+          .eq("brands.slug", brandSlug)
+          .gt("stock", 0),
       ])
     : await Promise.all([
         supabase
           .from("products")
           .select("id, slug, name, price, old_price, images, product_code, stock")
           .or(orFilter)
+          .gt("stock", 0)
           .limit(RESULT_LIMIT),
-        supabase.from("products").select("id", { count: "exact", head: true }).or(orFilter),
+        supabase
+          .from("products")
+          .select("id", { count: "exact", head: true })
+          .or(orFilter)
+          .gt("stock", 0),
       ]);
   if (error || !data) return { results: [], total: 0 };
 

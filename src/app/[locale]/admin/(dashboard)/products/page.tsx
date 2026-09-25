@@ -11,6 +11,8 @@ import {
   PRODUCTS_PAGE_SIZE,
 } from "./data";
 import { getWarehouseOptions, getProductStockMap } from "../warehouses/data";
+import { getAdminCategoryTree } from "../categories/data";
+import { categoryPicker } from "../categories/options";
 import ProductsListClient from "./ProductsListClient";
 import AdminSearchBox from "@/components/admin/AdminSearchBox";
 import Pagination from "@/components/admin/Pagination";
@@ -36,15 +38,23 @@ export default async function AdminProductsPage({
 
   // All independent of each other, so they go together: one wait of ~330ms
   // instead of six.
-  const [{ rows, total }, searchTotal, brands, warehouses, stockByProduct, zeroStockCount] =
-    await Promise.all([
-      getAdminProducts(locale, { query, page }),
-      query ? getProductsGrandTotal() : null,
-      getBrandOptions(),
-      isAdmin ? getWarehouseOptions() : [],
-      isAdmin ? getProductStockMap() : {},
-      isAdmin ? getZeroStockProductsCount() : 0,
-    ]);
+  const [
+    { rows, total },
+    searchTotal,
+    brands,
+    categoryTree,
+    warehouses,
+    stockByProduct,
+    zeroStockCount,
+  ] = await Promise.all([
+    getAdminProducts(locale, { query, page }),
+    query ? getProductsGrandTotal() : null,
+    getBrandOptions(),
+    isAdmin ? getAdminCategoryTree() : [],
+    isAdmin ? getWarehouseOptions() : [],
+    isAdmin ? getProductStockMap() : {},
+    isAdmin ? getZeroStockProductsCount() : 0,
+  ]);
   const grandTotal = searchTotal ?? total;
 
   return (
@@ -57,10 +67,11 @@ export default async function AdminProductsPage({
         total={grandTotal}
         zeroStockCount={zeroStockCount}
         brands={brands}
+        categoryTree={categoryPicker(categoryTree, locale)}
         warehouses={warehouses}
         stockByProduct={stockByProduct}
         searchSlot={
-          <form className="flex items-center gap-2">
+          <form key="search" className="flex items-center gap-2">
             <AdminSearchBox defaultValue={query} placeholder={dict.admin.searchPlaceholder} />
           </form>
         }

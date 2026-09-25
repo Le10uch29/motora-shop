@@ -39,6 +39,10 @@ export default function StaffListClient({
   title: string;
   defaultRole: "admin" | "seller";
   emptyMessage: string;
+  /** Search box rendered by the page above the table. It's built in a Server
+   * Component and crosses into this one as a prop, so React re-creates it from
+   * the RSC payload and checks it the way it checks a list child — the element
+   * carries a `key` at every call site to keep that check quiet. */
   searchSlot?: ReactNode;
   warehouses: { id: string; name: string }[];
 }) {

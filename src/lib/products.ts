@@ -30,7 +30,8 @@ export type Product = {
   oldPrice?: number;
   description: LocalizedText;
   specs: ProductSpec[];
-  /** Units currently in stock. 0 means made-to-order. */
+  /** Units currently in stock. A product at 0 is never deleted, it just
+   * disappears from the shop until it's restocked. */
   stock: number;
   badge?: LocalizedText;
   /** Shown in the "Popular" section on the home page. */
@@ -98,6 +99,14 @@ type ProductRow = {
 const SELECT_COLUMNS =
   "id, slug, name, make, model, fitments, year_from, year_to, price, old_price, description, specs, stock, badge, images, origin_code, product_code, is_popular, brands(slug)";
 
+/* The shop only ever shows what's actually in stock, so every public query
+ * below carries `.gt("stock", 0)`.
+ *
+ * A product that runs out isn't deleted — it keeps its history and its orders,
+ * stays in the admin product list with a 0, and comes back on the site by
+ * itself the moment the stock is topped up again. The admin panel's own
+ * queries (src/app/[locale]/admin) deliberately have no such filter. */
+
 function mapRow(row: ProductRow): Product {
   const brand = Array.isArray(row.brands) ? row.brands[0] : row.brands;
   return {
@@ -137,8 +146,26 @@ export const getAllProducts = cache(async (): Promise<Product[]> => {
   const { data } = await supabase
     .from("products")
     .select(SELECT_COLUMNS)
+    .gt("stock", 0)
     .order("created_at", { ascending: false });
   return ((data ?? []) as unknown as ProductRow[]).map(mapRow);
+});
+
+/** One product by slug, or undefined when it doesn't exist *or* is out of
+ * stock — a sold-out product's page 404s like any unknown address, so a
+ * bookmark or a link can't reach what the catalog no longer lists. */
+/** How many products the shop has in stock, over the whole catalog.
+ *
+ * This is what "Все товары" counts in the category sidebar: it's the shop
+ * itself, not the sum of the categories — products nobody has filed yet
+ * belong to it too. */
+export const getInStockProductCount = cache(async (): Promise<number> => {
+  const supabase = createPublicClient();
+  const { count } = await supabase
+    .from("products")
+    .select("id", { count: "exact", head: true })
+    .gt("stock", 0);
+  return count ?? 0;
 });
 
 export const getProductBySlug = cache(async (slug: string): Promise<Product | undefined> => {
@@ -147,6 +174,7 @@ export const getProductBySlug = cache(async (slug: string): Promise<Product | un
     .from("products")
     .select(SELECT_COLUMNS)
     .eq("slug", slug)
+    .gt("stock", 0)
     .maybeSingle();
   return data ? mapRow(data as unknown as ProductRow) : undefined;
 });
@@ -162,6 +190,7 @@ export const getFeaturedProducts = cache(async (limit = 4): Promise<Product[]> =
     .from("products")
     .select(SELECT_COLUMNS)
     .eq("is_popular", true)
+    .gt("stock", 0)
     .order("created_at", { ascending: false })
     .limit(limit);
   return ((data ?? []) as unknown as ProductRow[]).map(mapRow);
@@ -180,6 +209,7 @@ export const getProductsByBrandSlug = cache(async (brandSlug: string): Promise<P
     .from("products")
     .select(SELECT_COLUMNS_BRAND_FILTER)
     .eq("brands.slug", brandSlug)
+    .gt("stock", 0)
     .order("created_at", { ascending: false });
   return ((data ?? []) as unknown as ProductRow[]).map(mapRow);
 });
@@ -189,7 +219,7 @@ export const getProductsByBrandSlug = cache(async (brandSlug: string): Promise<P
  * product's full row for the /brands listing page. */
 export const getProductCountsByBrandSlug = cache(async (): Promise<Record<string, number>> => {
   const supabase = createPublicClient();
-  const { data } = await supabase.from("products").select("brands(slug)");
+  const { data } = await supabase.from("products").select("brands(slug)").gt("stock", 0);
   const counts: Record<string, number> = {};
   for (const row of (data ?? []) as { brands: { slug: string } | { slug: string }[] | null }[]) {
     const brand = Array.isArray(row.brands) ? row.brands[0] : row.brands;
@@ -298,8 +328,15 @@ export async function getCatalogPage(
     brandId = brandRow.id;
   }
 
-  let query = supabase.from("products").select(SELECT_COLUMNS, { count: "exact" });
+  // No products at all in the chosen category: answer without asking the
+  // database, since `.in("id", [])` would be a pointless round trip.
+  if (filters.productIds && filters.productIds.length === 0) {
+    return { items: [], total: 0 };
+  }
 
+  let query = supabase.from("products").select(SELECT_COLUMNS, { count: "exact" }).gt("stock", 0);
+
+  if (filters.productIds) query = query.in("id", filters.productIds);
   if (brandId) query = query.eq("brand_id", brandId);
   // One vehicle of the part has to carry both the make and the model (jsonb
   // containment matches them within a single array element), so a part for a
@@ -310,8 +347,6 @@ export async function getCatalogPage(
     if (filters.model) wanted.model = filters.model.trim();
     query = query.contains("fitments", JSON.stringify([wanted]));
   }
-  if (filters.priceMin !== undefined) query = query.gte("price", filters.priceMin);
-  if (filters.priceMax !== undefined) query = query.lte("price", filters.priceMax);
   // A part fits the wanted years when its own range overlaps them.
   if (filters.yearFrom !== undefined) query = query.gte("year_to", filters.yearFrom);
   if (filters.yearTo !== undefined) query = query.lte("year_from", filters.yearTo);
@@ -338,10 +373,11 @@ export async function getCatalogPage(
 }
 
 /** Just the slugs, for generateStaticParams — it builds a route per product
- * per locale and needs nothing but the slug. */
+ * per locale and needs nothing but the slug. Out-of-stock products get no
+ * prebuilt page; if one is restocked its page is rendered on demand. */
 export const getAllProductSlugs = cache(async (): Promise<string[]> => {
   const supabase = createPublicClient();
-  const { data } = await supabase.from("products").select("slug");
+  const { data } = await supabase.from("products").select("slug").gt("stock", 0);
   return (data ?? []).map((row) => row.slug);
 });
 
@@ -349,8 +385,15 @@ export type ProductFilters = {
   make?: string;
   model?: string;
   brand?: BrandSlug;
-  priceMin?: number;
-  priceMax?: number;
+  /** Narrows the result to these products and nothing else.
+   *
+   * This is how the category filter works: the ids are looked up from the
+   * join table first (see productIdsInCategories) rather than joining it into
+   * the query here. A product filed under two subcategories of one category
+   * would otherwise come back twice and be counted twice, which breaks both
+   * the result list and its page count. An empty array means "nothing
+   * matches", which is different from leaving it out. */
+  productIds?: string[];
   yearFrom?: number;
   yearTo?: number;
   query?: string;
@@ -367,8 +410,6 @@ export function filterProducts(
       return false;
     }
     if (filters.brand && p.brand !== filters.brand) return false;
-    if (filters.priceMin !== undefined && p.price < filters.priceMin) return false;
-    if (filters.priceMax !== undefined && p.price > filters.priceMax) return false;
     if (filters.yearFrom !== undefined && p.yearTo < filters.yearFrom) return false;
     if (filters.yearTo !== undefined && p.yearFrom > filters.yearTo) return false;
     if (query) {
@@ -385,14 +426,6 @@ export function computeCarMakes(products: { fitments: Fitment[] }[]): string[] {
   return Array.from(new Set(products.flatMap((p) => p.fitments.map((f) => f.make)))).sort((a, b) =>
     a.localeCompare(b)
   );
-}
-
-export function computePriceBounds(products: { price: number }[]): { min: number; max: number } {
-  if (products.length === 0) return { min: 0, max: 0 };
-  return {
-    min: Math.min(...products.map((p) => p.price)),
-    max: Math.max(...products.map((p) => p.price)),
-  };
 }
 
 export function computeYearBounds(products: Product[]): { min: number; max: number } {

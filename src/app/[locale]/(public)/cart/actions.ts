@@ -13,7 +13,7 @@ export type PlaceOrderState = { error: string | null };
  * number again. Any logged-in user can order (customer or staff — see
  * schema.sql's note on orders.customer_id).
  * Runs on the caller's own session (relies on the `orderer_insert_own_orders`
- * RLS policy), same approach as `updateOwnPhotoAction`.
+ * RLS policy).
  *
  * price_at_order/product_name are intentionally NOT sent here — the
  * customer's own session only has INSERT privilege on
@@ -31,7 +31,14 @@ export async function placeOrderAction(
   if (!user) return { error: "not_authenticated" };
 
   const productIds = items.map((item) => item.productId);
-  const { data: products } = await supabase.from("products").select("id").in("id", productIds);
+  // Out of stock counts as not orderable, exactly as it counts as not visible
+  // in the shop: a line that sold out between adding it and checking out is
+  // dropped here rather than ordered.
+  const { data: products } = await supabase
+    .from("products")
+    .select("id")
+    .in("id", productIds)
+    .gt("stock", 0);
 
   if (!products || products.length === 0) return { error: "products_not_found" };
   const validProductIds = new Set(products.map((p) => p.id));

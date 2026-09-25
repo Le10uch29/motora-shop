@@ -14,7 +14,24 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/ru/admin/warehouses)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/ru/admin/warehouses/00000000-0000-0000-0000-000000000000)",
       "Bash(cd \"C:/Users/Shadow Monarch/Desktop/frilans/NewLife/motora-shop\" && git status --short && echo \"--- lint on HEAD version of CartContext ---\" && git stash list | head -2; git show HEAD:src/context/CartContext.tsx > /tmp/cc.tsx 2>/dev/null && diff -q /tmp/cc.tsx src/context/CartContext.tsx && echo \"CartContext НЕ изменён \\(ошибка была раньше\\)\")",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "PowerShell(npx tsc --noEmit -p tsconfig.json)",
+      "PowerShell(npx next lint --dir src 2>&1)",
+      "PowerShell(npx eslint src --ext .ts,.tsx 2>&1)",
+      "Bash(git rm *)",
+      "PowerShell(npx next build 2>&1)",
+      "Bash(cd \"c:/Users/Shadow Monarch/Desktop/frilans\" && find . -maxdepth 3 -path \"*node_modules*\" -prune -o \\\\\\( -iname \"*.xlsx\" -o -iname \"*.xls\" \\\\\\) -print 2>/dev/null | head -20; echo \"--- backups ---\"; ls \"NewLife/motora-shop/scripts/backups\" | head)",
+      "Read(//c/Users/Shadow Monarch/Desktop/frilans/**)",
+      "Bash(NODE_PATH=\"c:/Users/Shadow Monarch/Desktop/frilans/NewLife/motora-shop/node_modules\" npx tsx --env-file=.env.local \"C:/Users/SHADOW~1/AppData/Local/Temp/claude/c--Users-Shadow-Monarch-Desktop-frilans-NewLife-motora-shop/b1062a79-0990-4342-8188-9ff2b33f824a/scratchpad/check-categories-db.ts\")",
+      "Bash(NODE_PATH=\"c:/Users/Shadow Monarch/Desktop/frilans/NewLife/motora-shop/node_modules\" npx tsx --env-file=.env.local \"C:/Users/SHADOW~1/AppData/Local/Temp/claude/c--Users-Shadow-Monarch-Desktop-frilans-NewLife-motora-shop/b1062a79-0990-4342-8188-9ff2b33f824a/scratchpad/check-constraints.ts\")",
+      "Bash(grep -n \"ProductFormModal$\\\\|<ProductFormModal\" -A 10 \"src/app/[locale]/admin/\\(dashboard\\)/products/ProductsListClient.tsx\")",
+      "Bash(NODE_PATH=\"c:/Users/Shadow Monarch/Desktop/frilans/NewLife/motora-shop/node_modules\" npx tsx --env-file=.env.local \"C:/Users/SHADOW~1/AppData/Local/Temp/claude/c--Users-Shadow-Monarch-Desktop-frilans-NewLife-motora-shop/b1062a79-0990-4342-8188-9ff2b33f824a/scratchpad/check-cascade.ts\")",
+      "Bash(taskkill //F //IM node.exe //FI \"WINDOWTITLE eq *next*\")",
+      "Bash(curl -s -o /dev/null -w \"dev still up? %{http_code}\\\\n\" http://localhost:3000/ru)",
+      "Bash(grep -o '\"timestamp\":\"[^\"]*\",\"source\":\"[^\"]*\",\"level\":\"[^\"]*\",\"message\":\"[^\"]\\\\{0,120\\\\}')",
+      "Bash(grep -o 'Encountered a script tag[^\"]\\\\{0,400\\\\}' \".next/dev/logs/next-development.log\")",
+      "Bash(grep -o 'removeChild[^\"]\\\\{0,300\\\\}' \".next/dev/logs/next-development.log\")",
+      "mcp__claude_ai_Claude_Docs__guide"
     ]
   }
 }

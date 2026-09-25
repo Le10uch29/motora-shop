@@ -14,8 +14,6 @@ type FilterFieldsState = {
   make: string;
   model: string;
   brand: string;
-  priceMin: string;
-  priceMax: string;
   yearFrom: string;
   yearTo: string;
 };
@@ -24,8 +22,6 @@ const EMPTY_FILTERS: FilterFieldsState = {
   make: "",
   model: "",
   brand: "",
-  priceMin: "",
-  priceMax: "",
   yearFrom: "",
   yearTo: "",
 };
@@ -35,8 +31,6 @@ function filtersFromSearchParams(searchParams: URLSearchParams): FilterFieldsSta
     make: searchParams.get("make") ?? "",
     model: searchParams.get("model") ?? "",
     brand: searchParams.get("brand") ?? "",
-    priceMin: searchParams.get("priceMin") ?? "",
-    priceMax: searchParams.get("priceMax") ?? "",
     yearFrom: searchParams.get("yearFrom") ?? "",
     yearTo: searchParams.get("yearTo") ?? "",
   };
@@ -48,14 +42,12 @@ export default function HeaderSearch({
   carMakes,
   modelsByMake,
   brands,
-  maxPrice,
 }: {
   locale: Locale;
   dict: Dictionary["search"];
   carMakes: { id: string; label: string }[];
   modelsByMake: Record<string, string[]>;
   brands: Brand[];
-  maxPrice: number;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -84,14 +76,28 @@ export default function HeaderSearch({
     setFilters(filtersFromSearchParams(searchParams));
   }
 
+  /** Where filtering should land: the category page the visitor is already on,
+   * or the catalog as a whole from anywhere else.
+   *
+   * Staying on the category page is the point — picking a make while inside
+   * "Ходовая часть → Рычаги" narrows those levers, it doesn't throw the
+   * category away and search the whole shop. `page` is dropped because a new
+   * filter starts from the first page of results. */
+  function catalogPathForFilters(): string {
+    const categoryPath = `/${locale}/catalog/category/`;
+    if (pathname?.startsWith(categoryPath)) return pathname;
+    return `/${locale}/catalog`;
+  }
+
   function navigateWith(updates: Record<string, string | undefined>) {
     const params = new URLSearchParams(searchParams.toString());
     for (const [key, value] of Object.entries(updates)) {
       if (value) params.set(key, value);
       else params.delete(key);
     }
+    params.delete("page");
     const qs = params.toString();
-    const catalogPath = `/${locale}/catalog`;
+    const catalogPath = catalogPathForFilters();
     router.push(qs ? `${catalogPath}?${qs}` : catalogPath);
   }
 
@@ -112,8 +118,6 @@ export default function HeaderSearch({
       make: filters.make || undefined,
       model: filters.model || undefined,
       brand: filters.brand || undefined,
-      priceMin: filters.priceMin || undefined,
-      priceMax: filters.priceMax || undefined,
       yearFrom: filters.yearFrom || undefined,
       yearTo: filters.yearTo || undefined,
     });
@@ -126,8 +130,6 @@ export default function HeaderSearch({
       make: undefined,
       model: undefined,
       brand: undefined,
-      priceMin: undefined,
-      priceMax: undefined,
       yearFrom: undefined,
       yearTo: undefined,
     });
@@ -145,9 +147,6 @@ export default function HeaderSearch({
   const pathSegments = (pathname ?? "").split("/").filter(Boolean);
   const isOnBrandDetail = pathSegments[0] === locale && pathSegments[1] === "brands" && pathSegments.length >= 3;
   if (isOnBrandDetail) return null;
-
-  const priceMinValue = filters.priceMin ? Number(filters.priceMin) : 0;
-  const priceMaxValue = filters.priceMax ? Number(filters.priceMax) : maxPrice;
 
   return (
     <div className="flex w-full items-center gap-2">
@@ -333,61 +332,6 @@ export default function HeaderSearch({
                     onChange={(event) => setFilters((f) => ({ ...f, yearTo: event.target.value }))}
                     className="w-full min-w-0 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
                   />
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                    {dict.priceLabel}
-                  </span>
-                  <span className="text-sm text-zinc-500">
-                    {priceMinValue}–{priceMaxValue} GEL
-                  </span>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs text-zinc-400">{dict.priceFrom}</span>
-                  <input
-                    type="range"
-                    min={0}
-                    max={maxPrice}
-                    step={1}
-                    value={priceMinValue}
-                    onChange={(event) => {
-                      const next = Number(event.target.value);
-                      setFilters((f) => ({
-                        ...f,
-                        priceMin: event.target.value,
-                        // Never let the low end pass the high end — drag the
-                        // upper bound along with it instead of crossing over.
-                        priceMax: next > priceMaxValue ? event.target.value : f.priceMax,
-                      }));
-                    }}
-                    className="w-full accent-orange-600"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs text-zinc-400">{dict.priceTo}</span>
-                  <input
-                    type="range"
-                    min={0}
-                    max={maxPrice}
-                    step={1}
-                    value={priceMaxValue}
-                    onChange={(event) => {
-                      const next = Number(event.target.value);
-                      setFilters((f) => ({
-                        ...f,
-                        priceMax: event.target.value,
-                        priceMin: next < priceMinValue ? event.target.value : f.priceMin,
-                      }));
-                    }}
-                    className="w-full accent-orange-600"
-                  />
-                </div>
-                <div className="flex justify-between text-xs text-zinc-400">
-                  <span>0 GEL</span>
-                  <span>{maxPrice} GEL</span>
                 </div>
               </div>
 
