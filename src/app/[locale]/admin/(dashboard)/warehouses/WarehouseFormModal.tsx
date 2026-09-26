@@ -1,4 +1,5 @@
 "use client";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 import { useActionState, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -33,6 +34,8 @@ export default function WarehouseFormModal({
   useEffect(() => {
     if (submitted && !pending && !state.error) onClose();
   }, [submitted, pending, state.error, onClose]);
+
+  useEscapeKey(onClose);
 
   return createPortal(
     <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-16">

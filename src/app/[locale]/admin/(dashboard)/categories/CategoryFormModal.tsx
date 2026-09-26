@@ -1,4 +1,5 @@
 "use client";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 import { useActionState, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -59,6 +60,8 @@ export default function CategoryFormModal({
         ? dict.editSubcategory
         : dict.editCategory;
 
+  useEscapeKey(onClose);
+
   return createPortal(
     <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/40 px-3 py-6 sm:px-4 sm:py-16">
       <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
@@ -109,6 +112,7 @@ export default function CategoryFormModal({
               defaultValue={initialValues?.sortOrder ?? 0}
               className={inputClass}
             />
+            <span className="text-xs text-zinc-400">{dict.categorySortOrderHint}</span>
           </div>
         </div>
 
@@ -116,7 +120,11 @@ export default function CategoryFormModal({
           <span className={labelClass}>{dict.categoryImageLabel}</span>
           {initialValues?.imageUrl && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={initialValues.imageUrl} alt="" className="h-20 w-20 rounded-lg object-cover" />
+            <img
+              src={initialValues.imageUrl}
+              alt=""
+              className="h-20 w-20 rounded-lg bg-zinc-100 object-contain p-1 dark:bg-zinc-800"
+            />
           )}
           <FileDropField
             id="category-image"

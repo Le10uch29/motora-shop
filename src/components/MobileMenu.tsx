@@ -7,6 +7,7 @@ import type { Locale } from "@/i18n/locales";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import ThemeToggle from "@/components/ThemeToggle";
 import { signOutAction } from "@/lib/actions/auth";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 type NavLink = { href: string; label: string };
 
@@ -42,6 +43,7 @@ export default function MobileMenu({
   languageSwitcherAriaLabel: string;
 }) {
   const [open, setOpen] = useState(false);
+  useEscapeKey(() => setOpen(false), open);
   const pathname = usePathname();
   const [lastPathname, setLastPathname] = useState(pathname);
 
@@ -74,6 +76,16 @@ export default function MobileMenu({
           )}
         </svg>
       </button>
+
+      {/* Тап по странице под меню закрывает его. Подложка ниже панели (z-30) и
+          ниже самой шапки, поэтому по шапке тапать по-прежнему можно. */}
+      {open && (
+        <div
+          className="fixed inset-0 z-20"
+          onClick={() => setOpen(false)}
+          aria-hidden="true"
+        />
+      )}
 
       {open && (
         <div className="flame-sidebar absolute inset-x-0 top-full z-30 flex max-h-[80vh] flex-col overflow-y-auto border-t border-zinc-200 px-3 py-6 shadow-lg dark:border-zinc-800">

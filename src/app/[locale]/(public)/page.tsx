@@ -60,13 +60,16 @@ export default async function Home({ params }: PageProps<"/[locale]">) {
                 href={`/${locale}/catalog/category/${category.slug}`}
                 className="flex flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white transition-shadow hover:shadow-lg dark:border-zinc-800 dark:bg-zinc-900"
               >
-                <div className="flex aspect-[4/3] w-full items-center justify-center bg-zinc-100 dark:bg-zinc-800">
+                {/* object-contain, а не cover: фото деталей приходят в разных
+                    пропорциях, и обрезка съедала бы края товара. Картинка
+                    вписывается целиком, свободное место остаётся фоном. */}
+                <div className="flex aspect-[4/3] w-full items-center justify-center bg-zinc-100 p-2 dark:bg-zinc-800">
                   {category.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={category.imageUrl}
                       alt={category.name}
-                      className="h-full w-full object-cover"
+                      className="max-h-full max-w-full object-contain"
                     />
                   ) : (
                     <span className="px-3 text-center text-sm font-semibold text-zinc-400 dark:text-zinc-600">

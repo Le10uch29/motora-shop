@@ -1,4 +1,5 @@
 "use client";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 import { useState, useTransition } from "react";
 import { createPortal } from "react-dom";
@@ -28,6 +29,19 @@ export default function UncategorizedClient({
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [assignOpen, setAssignOpen] = useState(false);
+  const [nameSort, setNameSort] = useState<"none" | "asc" | "desc">("none");
+
+  /** Клик по «Название» ставит товары с похожими названиями подряд — так
+   * группу однотипных деталей видно целиком и можно отметить её одним
+   * проходом. Сортировка идёт по загруженному списку: страница отдаёт все
+   * товары без категории сразу, без пагинации. */
+  const displayProducts =
+    nameSort === "none"
+      ? products
+      : [...products].sort((a, b) => {
+          const compared = a.displayName.localeCompare(b.displayName, locale);
+          return nameSort === "asc" ? compared : -compared;
+        });
 
   const allSelected = products.length > 0 && products.every((p) => selected.has(p.id));
 
@@ -80,14 +94,35 @@ export default function UncategorizedClient({
               </th>
               <th className="px-4 py-3 font-medium">{dict.productsColPhoto}</th>
               <th className="px-4 py-3 font-medium">{dict.productProductCodeLabel}</th>
-              <th className="px-4 py-3 font-medium">{dict.tableName}</th>
+              <th className="px-4 py-3 font-medium">
+                <button
+                  type="button"
+                  onClick={() => setNameSort((prev) => (prev === "asc" ? "desc" : "asc"))}
+                  className="flex items-center gap-1 uppercase tracking-wide transition-colors hover:text-orange-600"
+                >
+                  {dict.tableName}
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={1.8}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className={`h-3.5 w-3.5 ${
+                      nameSort === "none" ? "opacity-40" : "text-orange-600"
+                    } ${nameSort === "desc" ? "rotate-180" : ""}`}
+                  >
+                    <path d="M12 5v14M6 13l6 6 6-6" />
+                  </svg>
+                </button>
+              </th>
               <th className="px-4 py-3 font-medium">{dict.productMakeLabel}</th>
               <th className="px-4 py-3 font-medium">{dict.productPriceLabel}</th>
               <th className="px-4 py-3 font-medium">{dict.productStockLabel}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-            {products.map((product) => (
+            {displayProducts.map((product) => (
               <tr key={product.id}>
                 <td className="px-4 py-3">
                   <input
@@ -173,6 +208,8 @@ function AssignCategoryModal({
       else onDone();
     });
   }
+
+  useEscapeKey(onClose);
 
   return createPortal(
     <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/40 px-3 py-6 sm:px-4 sm:py-16">

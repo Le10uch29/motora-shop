@@ -1,4 +1,5 @@
 "use client";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 import { useState, useTransition } from "react";
 import { createPortal } from "react-dom";
@@ -53,6 +54,8 @@ export default function DeleteCategoryModal({
   }
 
   const radioClass = "mt-0.5 h-4 w-4 shrink-0 border-zinc-300";
+
+  useEscapeKey(onClose);
 
   return createPortal(
     <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/40 px-3 py-6 sm:px-4 sm:py-16">

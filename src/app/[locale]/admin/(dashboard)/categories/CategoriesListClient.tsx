@@ -94,7 +94,11 @@ export default function CategoriesListClient({
             >
               {category.imageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={category.imageUrl} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" />
+                <img
+                  src={category.imageUrl}
+                  alt=""
+                  className="h-12 w-12 shrink-0 rounded-lg bg-zinc-100 object-contain p-0.5 dark:bg-zinc-800"
+                />
               ) : (
                 <div className="h-12 w-12 shrink-0 rounded-lg bg-zinc-100 dark:bg-zinc-800" />
               )}

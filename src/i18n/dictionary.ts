@@ -332,6 +332,7 @@ export type Dictionary = {
     categorySlugHint: string;
     categoryImageLabel: string;
     categorySortOrderLabel: string;
+    categorySortOrderHint: string;
     categoryActiveLabel: string;
     categorySeoSectionLabel: string;
     categoryDescriptionLabel: string;

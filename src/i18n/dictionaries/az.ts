@@ -328,6 +328,7 @@ const az: Dictionary = {
     categorySlugHint: "Latın hərfləri ilə, səhifənin ünvanına düşür. Boş buraxsanız — addan yaradılacaq.",
     categoryImageLabel: "Kateqoriya fotosu",
     categorySortOrderLabel: "Sıralama",
+    categorySortOrderHint: "Rəqəm nə qədər kiçikdir, kateqoriya kataloqda, ana səhifədə və bu siyahıda o qədər yuxarıdadır. Bərabər rəqəmlər — əlifba sırası ilə.",
     categoryActiveLabel: "Aktiv",
     categorySeoSectionLabel: "SEO",
     categoryDescriptionLabel: "Təsvir",

@@ -337,6 +337,7 @@ const ru: Dictionary = {
     categorySlugHint: "Латиницей, попадает в адрес страницы. Оставьте пустым — сделаем из названия.",
     categoryImageLabel: "Фото категории",
     categorySortOrderLabel: "Порядок сортировки",
+    categorySortOrderHint: "Чем меньше число, тем выше категория в каталоге, на главной и в этом списке. Одинаковые числа — по алфавиту.",
     categoryActiveLabel: "Активна",
     categorySeoSectionLabel: "SEO",
     categoryDescriptionLabel: "Описание",

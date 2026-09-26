@@ -1,4 +1,5 @@
 "use client";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 import { useActionState, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -61,6 +62,10 @@ export default function CustomerFormModal({
   const [submitted, setSubmitted] = useState(false);
   const values = initialValues ?? EMPTY_VALUES;
   const fullName = `${values.firstName} ${values.lastName}`.trim();
+
+  // Перед ветвлением ниже: у компонента два return'а, и хук должен вызываться
+  // на каждом рендере одинаково.
+  useEscapeKey(onClose);
 
   useEffect(() => {
     if (!submitted || pending || state.error) return;

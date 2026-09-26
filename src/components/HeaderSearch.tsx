@@ -7,6 +7,7 @@ import type { Locale } from "@/i18n/locales";
 import type { Dictionary } from "@/i18n/dictionary";
 import type { Brand } from "@/lib/brands";
 import { useSearchSuggestions } from "@/hooks/useSearchSuggestions";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 import SearchSuggestionsDropdown from "@/components/SearchSuggestionsDropdown";
 import type { SearchSuggestion } from "@/lib/actions/search";
 
@@ -57,6 +58,7 @@ export default function HeaderSearch({
   const searchFormRef = useRef<HTMLFormElement>(null);
   const suggestions = useSearchSuggestions(query, locale, { containerRef: searchFormRef });
   const [filtersOpen, setFiltersOpen] = useState(false);
+  useEscapeKey(() => setFiltersOpen(false), filtersOpen);
   const [filters, setFilters] = useState<FilterFieldsState>(() => filtersFromSearchParams(searchParams));
 
   // Re-sync local editable state whenever the URL's filter params change from

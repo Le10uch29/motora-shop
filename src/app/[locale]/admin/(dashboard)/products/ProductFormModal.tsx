@@ -1,4 +1,5 @@
 "use client";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -123,6 +124,8 @@ export default function ProductFormModal({
   const inputClass =
     "rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50";
   const labelClass = "text-sm font-medium text-zinc-700 dark:text-zinc-300";
+
+  useEscapeKey(onClose);
 
   return createPortal(
     <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-16">

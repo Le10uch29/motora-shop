@@ -1,4 +1,5 @@
 "use client";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 import { useMemo, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
@@ -391,6 +392,8 @@ export default function ImportProductsModal({
       </div>
     );
   }
+
+  useEscapeKey(onClose);
 
   return createPortal(
     <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-16">

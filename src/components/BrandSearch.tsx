@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import type { Dictionary } from "@/i18n/dictionary";
 import type { Locale } from "@/i18n/locales";
 import { useSearchSuggestions } from "@/hooks/useSearchSuggestions";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 import SearchSuggestionsDropdown from "@/components/SearchSuggestionsDropdown";
 import type { SearchSuggestion } from "@/lib/actions/search";
 
@@ -59,6 +60,7 @@ export default function BrandSearch({
   const searchFormRef = useRef<HTMLFormElement>(null);
   const suggestions = useSearchSuggestions(query, locale, { brandSlug, containerRef: searchFormRef });
   const [filtersOpen, setFiltersOpen] = useState(false);
+  useEscapeKey(() => setFiltersOpen(false), filtersOpen);
   const [filters, setFilters] = useState<FilterFieldsState>(() => filtersFromSearchParams(searchParams));
 
   const searchParamsKey = searchParams.toString();

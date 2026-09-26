@@ -328,6 +328,7 @@ const ka: Dictionary = {
     categorySlugHint: "ლათინური ასოებით, გამოიყენება გვერდის მისამართში. ცარიელი — შეიქმნება დასახელებიდან.",
     categoryImageLabel: "კატეგორიის ფოტო",
     categorySortOrderLabel: "დალაგების რიგი",
+    categorySortOrderHint: "რაც უფრო მცირეა რიცხვი, მით უფრო მაღლაა კატეგორია კატალოგში, მთავარ გვერდზე და ამ სიაში. თანაბარი რიცხვები — ანბანის მიხედვით.",
     categoryActiveLabel: "აქტიური",
     categorySeoSectionLabel: "SEO",
     categoryDescriptionLabel: "აღწერა",

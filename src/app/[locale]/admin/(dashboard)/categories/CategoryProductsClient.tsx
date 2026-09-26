@@ -1,4 +1,5 @@
 "use client";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 import { useState, useTransition } from "react";
 import { createPortal } from "react-dom";
@@ -216,6 +217,8 @@ function AddExistingProductModal({
     });
   }
 
+  useEscapeKey(onClose);
+
   return createPortal(
     <div className={overlayClass}>
       <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
@@ -333,6 +336,8 @@ function MoveProductModal({
       else onClose();
     });
   }
+
+  useEscapeKey(onClose);
 
   return createPortal(
     <div className={overlayClass}>
