@@ -50,7 +50,7 @@ export default function UncategorizedClient({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
           {dict.uncategorizedTitle} · {products.length}
         </h1>
@@ -175,7 +175,7 @@ function AssignCategoryModal({
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-16">
+    <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/40 px-3 py-6 sm:px-4 sm:py-16">
       <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
       <div className="relative flex w-full max-w-lg flex-col gap-4 rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900">
         <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">{dict.assignCategoryTitle}</h2>

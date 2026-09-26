@@ -142,12 +142,32 @@ export default async function CatalogView({
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
         {/* On a phone the sidebar rides above the products as a collapsed
             block, the same way the filters do, instead of eating the width. */}
-        <aside className="shrink-0 lg:w-64">
-          <details className="rounded-xl border border-zinc-200 p-2 lg:hidden dark:border-zinc-800" open={false}>
-            <summary className="cursor-pointer px-2 py-1.5 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-              {dict.catalog.categoriesTitle}
+        <aside className="shrink-0 lg:sticky lg:top-24 lg:w-64 lg:self-start">
+          {/* On a phone the list folds into one line that says where you are,
+              so it costs a tap to browse categories instead of a screenful of
+              scrolling before the first product. */}
+          <details className="group rounded-xl border border-zinc-200 bg-white lg:hidden dark:border-zinc-800 dark:bg-zinc-900">
+            <summary className="flex cursor-pointer items-center justify-between gap-2 px-4 py-3 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+              <span className="min-w-0 truncate">
+                {subcategory
+                  ? subcategory.name[locale] || subcategory.name.ru
+                  : category
+                    ? category.name[locale] || category.name.ru
+                    : `${dict.catalog.allProducts} (${allProductsCount})`}
+              </span>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.8}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-4 w-4 shrink-0 text-zinc-400 transition-transform group-open:rotate-180"
+              >
+                <path d="M6 9l6 6 6-6" />
+              </svg>
             </summary>
-            <div className="mt-2">
+            <div className="max-h-[60vh] overflow-y-auto border-t border-zinc-200 p-2 dark:border-zinc-800">
               <CategorySidebar
                 locale={locale}
                 labels={sidebarLabels}
@@ -158,7 +178,8 @@ export default async function CatalogView({
               />
             </div>
           </details>
-          <div className="hidden lg:block">
+
+          <div className="hidden lg:block lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
             <CategorySidebar
               locale={locale}
               labels={sidebarLabels}
@@ -189,8 +210,10 @@ export default async function CatalogView({
             </p>
           </div>
 
+          {/* Три колонки только с xl: на ноутбуке 1024px сайдбар забирает
+              256px, и третья колонка сжала бы карточки до нечитаемых. */}
           {pageItems.length > 0 ? (
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 min-[100rem]:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 xl:grid-cols-3 min-[100rem]:grid-cols-4">
               {pageItems.map((product) => (
                 <ProductCard
                   key={product.id}

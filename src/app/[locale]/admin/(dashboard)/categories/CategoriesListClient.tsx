@@ -66,7 +66,7 @@ export default function CategoriesListClient({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
           {parent ? parent.name[locale] || parent.name.ru : dict.categoriesTitle}
         </h1>
@@ -88,7 +88,9 @@ export default function CategoriesListClient({
           {items.map(({ category, productCount, subcategoryCount }) => (
             <li
               key={category.id}
-              className="flex items-center gap-4 rounded-xl border border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900"
+              // На узком экране кнопки уезжают на свою строку, а не сжимают
+              // название до нечитаемого обрывка.
+              className="flex flex-wrap items-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 sm:gap-4 dark:border-zinc-800 dark:bg-zinc-900"
             >
               {category.imageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -97,7 +99,7 @@ export default function CategoriesListClient({
                 <div className="h-12 w-12 shrink-0 rounded-lg bg-zinc-100 dark:bg-zinc-800" />
               )}
 
-              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <div className="flex min-w-0 flex-1 basis-40 flex-col gap-0.5">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-semibold text-zinc-900 dark:text-zinc-50">
                     {category.name[locale] || category.name.ru}
@@ -121,7 +123,7 @@ export default function CategoriesListClient({
                 </span>
               </div>
 
-              <div className="flex shrink-0 items-center gap-2">
+              <div className="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto">
                 {/* Hiding is one click from the list — it's the thing an admin
                     reaches for most often, and the edit form's "Активна"
                     checkbox does the same when the category is open anyway. */}

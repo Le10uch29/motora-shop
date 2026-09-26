@@ -61,8 +61,10 @@ export default function CategorySidebar({
     });
   }
 
+  // Roomier rows and a bigger chevron on a phone: these are thumb targets
+  // there, and a pointer-sized one is easy to miss.
   const itemClass =
-    "block rounded-lg px-3 py-2 text-sm transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800";
+    "block rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-zinc-100 lg:py-2 dark:hover:bg-zinc-800";
   const activeClass = "bg-orange-50 font-semibold text-orange-600 dark:bg-orange-950/40";
   const idleClass = "text-zinc-700 dark:text-zinc-300";
 
@@ -97,7 +99,7 @@ export default function CategorySidebar({
                   onClick={() => toggle(category.slug)}
                   aria-expanded={isOpen}
                   aria-label={labels.toggleSubcategoriesAria}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:text-orange-600"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:text-orange-600 lg:h-8 lg:w-8"
                 >
                   <svg
                     viewBox="0 0 24 24"

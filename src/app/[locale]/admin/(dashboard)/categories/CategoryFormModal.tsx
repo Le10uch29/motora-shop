@@ -60,7 +60,7 @@ export default function CategoryFormModal({
         : dict.editCategory;
 
   return createPortal(
-    <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-16">
+    <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/40 px-3 py-6 sm:px-4 sm:py-16">
       <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
       <form
         action={formAction}

@@ -47,11 +47,13 @@ export default async function Home({ params }: PageProps<"/[locale]">) {
           Clicking one opens everything filed under it, subcategories
           included. */}
       {categories.length > 0 && (
-        <section className="mx-auto flex w-full max-w-[120rem] flex-col gap-6 px-2 py-12">
-          <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+        <section className="mx-auto flex w-full max-w-[120rem] flex-col gap-4 px-2 py-8 sm:gap-6 sm:py-12">
+          <h2 className="text-xl font-bold tracking-tight text-zinc-900 sm:text-2xl dark:text-zinc-50">
             {dict.home.popularCategories}
           </h2>
-          <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4 min-[100rem]:grid-cols-6">
+          {/* Two across on a phone: the cards stay tappable and the block
+              doesn't push the products off the first screen. */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4 min-[100rem]:grid-cols-6">
             {categories.map((category) => (
               <Link
                 key={category.slug}
@@ -72,11 +74,11 @@ export default async function Home({ params }: PageProps<"/[locale]">) {
                     </span>
                   )}
                 </div>
-                <div className="flex flex-col gap-1 p-4">
-                  <span className="font-semibold text-zinc-900 dark:text-zinc-50">
+                <div className="flex flex-col gap-0.5 p-3 sm:gap-1 sm:p-4">
+                  <span className="text-sm font-semibold text-zinc-900 sm:text-base dark:text-zinc-50">
                     {category.name}
                   </span>
-                  <span className="text-sm text-zinc-500">
+                  <span className="text-xs text-zinc-500 sm:text-sm">
                     {dict.catalog.productCount(category.count)}
                   </span>
                 </div>

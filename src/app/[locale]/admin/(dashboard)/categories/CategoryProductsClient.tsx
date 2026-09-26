@@ -18,7 +18,7 @@ import type { Dictionary } from "@/i18n/dictionary";
 import type { Locale } from "@/i18n/locales";
 
 const overlayClass =
-  "fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-16";
+  "fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/40 px-3 py-6 sm:px-4 sm:py-16";
 const panelClass =
   "relative flex w-full max-w-2xl flex-col gap-4 rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900";
 const inputClass =
@@ -60,7 +60,7 @@ export default function CategoryProductsClient({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
           {dict.categoryProductsTitle} · {products.length}
         </h2>
