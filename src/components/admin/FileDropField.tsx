@@ -1,6 +1,8 @@
 "use client";
 
-import { useRef, useState, type ChangeEvent, type DragEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from "react";
+
+type Picked = { name: string; previewUrl: string | null };
 
 /**
  * A file field that looks like something you can actually drop a file on: a
@@ -33,11 +35,29 @@ export default function FileDropField({
   onSelect?: (input: HTMLInputElement) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [fileNames, setFileNames] = useState<string[]>([]);
+  const [picked, setPicked] = useState<Picked[]>([]);
   const [dragOver, setDragOver] = useState(false);
 
+  // Превью живут как blob-ссылки, поэтому их надо отзывать: при новом выборе и
+  // при размонтировании, иначе картинки остаются в памяти до перезагрузки.
+  const previewUrls = useRef<string[]>([]);
+  function revokePreviews() {
+    for (const url of previewUrls.current) URL.revokeObjectURL(url);
+    previewUrls.current = [];
+  }
+  useEffect(() => revokePreviews, []);
+
   function handleSelected(input: HTMLInputElement) {
-    setFileNames(Array.from(input.files ?? []).map((file) => file.name));
+    revokePreviews();
+    setPicked(
+      Array.from(input.files ?? []).map((file) => {
+        // Превью только для картинок: у таблицы Excel показывать нечего.
+        if (!file.type.startsWith("image/")) return { name: file.name, previewUrl: null };
+        const url = URL.createObjectURL(file);
+        previewUrls.current.push(url);
+        return { name: file.name, previewUrl: url };
+      })
+    );
     onSelect?.(input);
   }
 
@@ -88,9 +108,34 @@ export default function FileDropField({
       </svg>
       <span className="text-sm font-medium text-orange-600">{buttonLabel}</span>
       <span className="text-xs text-zinc-400">{hint}</span>
-      {fileNames.length > 0 && (
+      {/* Что выбрали: у картинок — сразу превью в рамке 4:3, той же формы, в
+          которой фото ляжет в карточку товара, и с object-contain, чтобы
+          сходу было видно, если фото не той пропорции. */}
+      {picked.some((file) => file.previewUrl) && (
+        <div className="flex max-w-full flex-wrap justify-center gap-2 pt-1">
+          {picked
+            .filter((file) => file.previewUrl)
+            .map((file) => (
+              <span key={file.previewUrl} className="flex w-24 flex-col items-center gap-1">
+                <span className="flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-lg border border-zinc-200 bg-white p-1 dark:border-zinc-700 dark:bg-zinc-950">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={file.previewUrl!}
+                    alt={file.name}
+                    className="max-h-full max-w-full object-contain"
+                  />
+                </span>
+                <span className="w-full truncate text-center text-[11px] text-zinc-500">
+                  {file.name}
+                </span>
+              </span>
+            ))}
+        </div>
+      )}
+
+      {picked.length > 0 && !picked.some((file) => file.previewUrl) && (
         <span className="max-w-full truncate text-xs font-medium text-zinc-600 dark:text-zinc-300">
-          {fileNames.join(", ")}
+          {picked.map((file) => file.name).join(", ")}
         </span>
       )}
       <input

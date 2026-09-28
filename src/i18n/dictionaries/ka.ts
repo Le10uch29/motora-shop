@@ -408,6 +408,8 @@ const ka: Dictionary = {
     title: "კატალოგი",
     empty: "პროდუქტები ჯერ არ დამატებულა.",
     allProducts: "ყველა პროდუქტი",
+    breadcrumbHome: "მთავარი",
+    backButton: "უკან",
     categoriesTitle: "კატალოგი",
     toggleSubcategoriesAria: "ქვეკატეგორიების ჩვენება",
     categoryLabel: "კატეგორია",

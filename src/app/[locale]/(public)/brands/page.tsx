@@ -4,6 +4,7 @@ import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
 import { getCatalogBrands } from "@/lib/brands";
 import { getProductCountsByBrandSlug } from "@/lib/products";
+import Breadcrumbs from "@/components/Breadcrumbs";
 
 function initials(name: string): string {
   return name
@@ -24,7 +25,12 @@ export default async function BrandsPage({
   const counts = await getProductCountsByBrandSlug();
 
   return (
-    <main className="mx-auto flex w-full max-w-[120rem] flex-1 flex-col gap-6 px-2 py-16">
+    <main className="mx-auto flex w-full max-w-[120rem] flex-1 flex-col gap-6 px-2 py-10">
+      <Breadcrumbs
+        locale={locale}
+        labels={{ home: dict.catalog.breadcrumbHome, back: dict.catalog.backButton }}
+        items={[{ label: dict.header.brands }]}
+      />
       <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
         {dict.header.brands}
       </h1>

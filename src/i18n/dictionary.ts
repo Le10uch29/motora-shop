@@ -411,6 +411,9 @@ export type Dictionary = {
     empty: string;
     /** The whole shop — the sidebar entry that applies no category filter. */
     allProducts: string;
+    /** Хлебные крошки и кнопка «Назад» — на всех страницах магазина. */
+    breadcrumbHome: string;
+    backButton: string;
     categoriesTitle: string;
     /** Strings, not functions: the sidebar is a Client Component. */
     toggleSubcategoriesAria: string;

@@ -3,6 +3,7 @@ import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
 import { requireCustomer } from "@/lib/auth";
 import ChangePasswordForm from "@/components/ChangePasswordForm";
+import Breadcrumbs from "@/components/Breadcrumbs";
 
 export default async function AccountPage({
   params,
@@ -14,6 +15,11 @@ export default async function AccountPage({
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-10 px-2 py-10">
+      <Breadcrumbs
+        locale={locale}
+        labels={{ home: dict.catalog.breadcrumbHome, back: dict.catalog.backButton }}
+        items={[{ label: dict.admin.myAccountTitle }]}
+      />
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
           {dict.admin.myAccountTitle}

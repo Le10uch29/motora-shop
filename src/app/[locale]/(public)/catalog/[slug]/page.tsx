@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getProductBySlug, getAllProductSlugs, discountPercent, t } from "@/lib/products";
@@ -11,6 +10,7 @@ import ProductGallery from "@/components/ProductGallery";
 import BrandLogo from "@/components/BrandLogo";
 import AddToCartButton from "@/components/AddToCartButton";
 import FitmentList from "@/components/FitmentList";
+import Breadcrumbs from "@/components/Breadcrumbs";
 
 export async function generateStaticParams() {
   const slugs = await getAllProductSlugs();
@@ -47,37 +47,32 @@ export default async function ProductPage({
 
   return (
     <main className="mx-auto flex w-full max-w-[120rem] flex-1 flex-col gap-8 px-2 py-10">
-      {/* Каталог → Категория → Подкатегория → Товар. Категории в крошках нет,
-          пока товар никуда не отнесён — тогда это просто Каталог → Товар. */}
-      <nav className="text-sm text-zinc-500">
-        <Link href={`/${locale}/catalog`} className="hover:text-orange-600">
-          {dict.product.breadcrumbCatalog}
-        </Link>
-        {filing?.parent && (
-          <>
-            {" / "}
-            <Link
-              href={`/${locale}/catalog/category/${filing.parent.slug}`}
-              className="hover:text-orange-600"
-            >
-              {filing.parent.name[locale] || filing.parent.name.ru}
-            </Link>
-          </>
-        )}
-        {filing?.parent && !filing.category.isDefault && (
-          <>
-            {" / "}
-            <Link
-              href={`/${locale}/catalog/category/${filing.parent.slug}/${filing.category.slug}`}
-              className="hover:text-orange-600"
-            >
-              {filing.category.name[locale] || filing.category.name.ru}
-            </Link>
-          </>
-        )}
-        {" / "}
-        <span className="text-zinc-700 dark:text-zinc-300">{t(product.name, locale)}</span>
-      </nav>
+      {/* Главная → Каталог → Категория → Подкатегория → Товар. Категории в
+          крошках нет, пока товар никуда не отнесён. */}
+      <Breadcrumbs
+        locale={locale}
+        labels={{ home: dict.catalog.breadcrumbHome, back: dict.catalog.backButton }}
+        items={[
+          { label: dict.product.breadcrumbCatalog, href: `/${locale}/catalog` },
+          ...(filing?.parent
+            ? [
+                {
+                  label: filing.parent.name[locale] || filing.parent.name.ru,
+                  href: `/${locale}/catalog/category/${filing.parent.slug}`,
+                },
+              ]
+            : []),
+          ...(filing?.parent && !filing.category.isDefault
+            ? [
+                {
+                  label: filing.category.name[locale] || filing.category.name.ru,
+                  href: `/${locale}/catalog/category/${filing.parent.slug}/${filing.category.slug}`,
+                },
+              ]
+            : []),
+          { label: t(product.name, locale) },
+        ]}
+      />
 
       <div className="grid grid-cols-1 items-start gap-10 lg:grid-cols-2">
         <ProductGallery

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, type ReactNode } from "react";
 import { useCart } from "@/context/CartContext";
 import { placeOrderAction } from "@/app/[locale]/(public)/cart/actions";
 import { t, type CartProductSummary } from "@/lib/products";
@@ -22,10 +22,15 @@ export default function CartView({
   locale,
   dict,
   products,
+  breadcrumbs,
 }: {
   locale: Locale;
   dict: Dictionary["cart"];
   products: CartProductSummary[];
+  /** Крошки с кнопкой «Назад». Приходят готовым элементом со страницы:
+   * собрать их здесь нельзя — в dict.catalog есть функции, а они не
+   * переживают границу сервер→клиент. */
+  breadcrumbs?: ReactNode;
 }) {
   const { items, setQuantity, removeItem, clear, orderPlaced, markOrdered } = useCart();
   const [orderError, setOrderError] = useState<string | null>(null);
@@ -68,6 +73,7 @@ export default function CartView({
   if (rows.length === 0) {
     return (
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center gap-4 px-2 py-24 text-center">
+        {breadcrumbs}
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
           {dict.emptyTitle}
         </h1>
@@ -84,6 +90,7 @@ export default function CartView({
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-2 py-10">
+      {breadcrumbs}
       <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
         {dict.title}
       </h1>

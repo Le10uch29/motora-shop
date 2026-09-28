@@ -1,10 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import CategoryFormModal from "./CategoryFormModal";
 import DeleteCategoryModal from "./DeleteCategoryModal";
 import { setCategoryActiveAction } from "./actions";
-import { RowActionLink, RowActionButton, EyeIcon, PencilIcon, TrashIcon } from "@/components/admin/RowActions";
+import { RowActionButton, PencilIcon, TrashIcon } from "@/components/admin/RowActions";
 import type { Category } from "@/lib/categories";
 import type { Dictionary } from "@/i18n/dictionary";
 import type { Locale } from "@/i18n/locales";
@@ -92,40 +93,48 @@ export default function CategoriesListClient({
               // название до нечитаемого обрывка.
               className="flex flex-wrap items-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 sm:gap-4 dark:border-zinc-800 dark:bg-zinc-900"
             >
-              {category.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={category.imageUrl}
-                  alt=""
-                  className="h-12 w-12 shrink-0 rounded-lg bg-zinc-100 object-contain p-0.5 dark:bg-zinc-800"
-                />
-              ) : (
-                <div className="h-12 w-12 shrink-0 rounded-lg bg-zinc-100 dark:bg-zinc-800" />
-              )}
+              {/* Вся левая часть строки — одна ссылка внутрь категории: фото,
+                  название и счётчики. Отдельная кнопка «Открыть» не нужна. */}
+              <Link
+                href={hrefFor(category)}
+                title={dict.categoryOpen}
+                className="group flex min-w-0 flex-1 basis-40 items-center gap-3 sm:gap-4"
+              >
+                {category.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={category.imageUrl}
+                    alt=""
+                    className="h-12 w-12 shrink-0 rounded-lg bg-zinc-100 object-contain p-0.5 dark:bg-zinc-800"
+                  />
+                ) : (
+                  <div className="h-12 w-12 shrink-0 rounded-lg bg-zinc-100 dark:bg-zinc-800" />
+                )}
 
-              <div className="flex min-w-0 flex-1 basis-40 flex-col gap-0.5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-semibold text-zinc-900 dark:text-zinc-50">
-                    {category.name[locale] || category.name.ru}
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-semibold text-zinc-900 transition-colors group-hover:text-orange-600 dark:text-zinc-50">
+                      {category.name[locale] || category.name.ru}
+                    </span>
+                    {category.isDefault && (
+                      <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-500 dark:bg-zinc-800">
+                        {dict.categoryDefaultBadge}
+                      </span>
+                    )}
+                    {!category.isActive && (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700 dark:bg-amber-950/60 dark:text-amber-500">
+                        {dict.categoryInactiveBadge}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-sm text-zinc-500">
+                    {!parent && `${dict.categorySubcategoriesLabel} ${subcategoryCount} · `}
+                    {dict.categoryProductsLabel} {productCount}
+                    {" · "}
+                    <span className="text-zinc-400">/{category.slug}</span>
                   </span>
-                  {category.isDefault && (
-                    <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-500 dark:bg-zinc-800">
-                      {dict.categoryDefaultBadge}
-                    </span>
-                  )}
-                  {!category.isActive && (
-                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700 dark:bg-amber-950/60 dark:text-amber-500">
-                      {dict.categoryInactiveBadge}
-                    </span>
-                  )}
                 </div>
-                <span className="text-sm text-zinc-500">
-                  {!parent && `${dict.categorySubcategoriesLabel} ${subcategoryCount} · `}
-                  {dict.categoryProductsLabel} {productCount}
-                  {" · "}
-                  <span className="text-zinc-400">/{category.slug}</span>
-                </span>
-              </div>
+              </Link>
 
               <div className="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto">
                 {/* Hiding is one click from the list — it's the thing an admin
@@ -144,9 +153,6 @@ export default function CategoriesListClient({
                 >
                   {category.isActive ? dict.categoryHideButton : dict.categoryShowButton}
                 </button>
-                <RowActionLink href={hrefFor(category)} label={dict.categoryOpen}>
-                  <EyeIcon />
-                </RowActionLink>
                 <RowActionButton
                   label={parent ? dict.editSubcategory : dict.editCategory}
                   onClick={() => setFormModal({ mode: "edit", category })}

@@ -408,6 +408,8 @@ const az: Dictionary = {
     title: "Kataloq",
     empty: "Hələ məhsul əlavə edilməyib.",
     allProducts: "Bütün məhsullar",
+    breadcrumbHome: "Ana səhifə",
+    backButton: "Geri",
     categoriesTitle: "Kataloq",
     toggleSubcategoriesAria: "Alt kateqoriyaları göstər",
     categoryLabel: "Kateqoriya",

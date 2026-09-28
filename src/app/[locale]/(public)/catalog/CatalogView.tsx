@@ -15,6 +15,7 @@ import type { Locale } from "@/i18n/locales";
 import ProductCard from "@/components/ProductCard";
 import Pagination from "@/components/Pagination";
 import CategorySidebar, { type SidebarCategory } from "@/components/CategorySidebar";
+import Breadcrumbs from "@/components/Breadcrumbs";
 
 const CATALOG_PAGE_SIZE = 12;
 
@@ -116,28 +117,26 @@ export default async function CatalogView({
 
   return (
     <main className="mx-auto flex w-full max-w-[120rem] flex-1 flex-col gap-6 px-2 py-10">
-      {category && (
-        <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-500">
-          <Link href={`/${locale}/catalog`} className="text-orange-600 hover:underline">
-            {dict.catalog.title}
-          </Link>
-          <span className="text-zinc-400">/</span>
-          {subcategory ? (
-            <>
-              <Link
-                href={`/${locale}/catalog/category/${category.slug}`}
-                className="text-orange-600 hover:underline"
-              >
-                {category.name[locale] || category.name.ru}
-              </Link>
-              <span className="text-zinc-400">/</span>
-              <span>{subcategory.name[locale] || subcategory.name.ru}</span>
-            </>
-          ) : (
-            <span>{category.name[locale] || category.name.ru}</span>
-          )}
-        </div>
-      )}
+      {/* «Каталог / Электрика / Датчики» — из подкатегории видно и раздел, и
+          куда подняться, а не только её собственное название. */}
+      <Breadcrumbs
+        locale={locale}
+        labels={{ home: dict.catalog.breadcrumbHome, back: dict.catalog.backButton }}
+        items={[
+          { label: dict.catalog.title, href: `/${locale}/catalog` },
+          ...(category
+            ? [
+                {
+                  label: category.name[locale] || category.name.ru,
+                  href: `/${locale}/catalog/category/${category.slug}`,
+                },
+              ]
+            : []),
+          ...(subcategory
+            ? [{ label: subcategory.name[locale] || subcategory.name.ru }]
+            : []),
+        ]}
+      />
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
         {/* On a phone the sidebar rides above the products as a collapsed

@@ -14,6 +14,7 @@ import { getDictionary } from "@/i18n/getDictionary";
 import { single, toNumber } from "@/lib/searchParams";
 import ProductCard from "@/components/ProductCard";
 import BrandSearch from "@/components/BrandSearch";
+import Breadcrumbs from "@/components/Breadcrumbs";
 
 export async function generateStaticParams() {
   const brands = await getBrands();
@@ -51,6 +52,14 @@ export default async function BrandDetailPage({
 
   return (
     <main className="mx-auto flex w-full max-w-[120rem] flex-1 flex-col gap-6 px-2 py-10">
+      <Breadcrumbs
+        locale={locale}
+        labels={{ home: dict.catalog.breadcrumbHome, back: dict.catalog.backButton }}
+        items={[
+          { label: dict.header.brands, href: `/${locale}/brands` },
+          { label: brand.name },
+        ]}
+      />
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">

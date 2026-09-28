@@ -20,6 +20,69 @@ import { productImageUrl } from "@/lib/productImageUrl";
 import type { Dictionary } from "@/i18n/dictionary";
 import type { Locale } from "@/i18n/locales";
 
+/** Колонки, по которым можно сортировать таблицу. */
+type SortKey = "productCode" | "originCode" | "displayName" | "brandName" | "price" | "stock";
+type Sort = { key: SortKey; dir: "asc" | "desc" };
+
+/** Пустое значение всегда внизу, в обе стороны: сортируют, чтобы найти
+ * заполненные строки, а не пустые. Товар без бренда приходит из data.ts уже
+ * с прочерком, поэтому прочерк тоже считается пустым. */
+function isBlank(value: string): boolean {
+  const trimmed = value.trim();
+  return trimmed === "" || trimmed === "—";
+}
+
+function comparatorFor({ key, dir }: Sort, locale: Locale) {
+  const sign = dir === "asc" ? 1 : -1;
+  return (a: AdminProductRow, b: AdminProductRow) => {
+    if (key === "price" || key === "stock") return (a[key] - b[key]) * sign;
+    const left = a[key];
+    const right = b[key];
+    if (isBlank(left) !== isBlank(right)) return isBlank(left) ? 1 : -1;
+    return left.localeCompare(right, locale) * sign;
+  };
+}
+
+function SortableHeader({
+  label,
+  sortKey,
+  sort,
+  onSort,
+  className = "",
+}: {
+  label: string;
+  sortKey: SortKey;
+  sort: Sort | null;
+  onSort: (key: SortKey) => void;
+  className?: string;
+}) {
+  const active = sort?.key === sortKey;
+  return (
+    <th className={`px-4 py-3 font-medium ${className}`}>
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className="flex items-center gap-1 uppercase tracking-wide text-zinc-500 transition-colors hover:text-orange-600 dark:text-zinc-400"
+      >
+        {label}
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={`h-3 w-3 shrink-0 transition-transform ${
+            active ? "text-orange-600" : "opacity-40"
+          } ${active && sort.dir === "asc" ? "rotate-180" : ""}`}
+        >
+          <path d="M12 5v14M12 19l-5-5M12 19l5-5" />
+        </svg>
+      </button>
+    </th>
+  );
+}
+
 export default function ProductsListClient({
   locale,
   dict,
@@ -53,17 +116,21 @@ export default function ProductsListClient({
   const [warehouseModalRow, setWarehouseModalRow] = useState<AdminProductRow | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [stockSort, setStockSort] = useState<"none" | "desc" | "asc">("none");
+  const [sort, setSort] = useState<Sort | null>(null);
   const [pending, startTransition] = useTransition();
 
-  function handleStockHeaderClick() {
-    setStockSort((prev) => (prev === "desc" ? "asc" : "desc"));
+  function toggleSort(key: SortKey) {
+    setSort((prev) => {
+      if (prev?.key === key) return { key, dir: prev.dir === "asc" ? "desc" : "asc" };
+      // Числовые колонки интереснее сверху вниз (самый дорогой, самый большой
+      // остаток), текстовые — по алфавиту.
+      return { key, dir: key === "price" || key === "stock" ? "desc" : "asc" };
+    });
   }
 
-  const displayRows =
-    stockSort === "none"
-      ? rows
-      : [...rows].sort((a, b) => (stockSort === "desc" ? b.stock - a.stock : a.stock - b.stock));
+  /** Sorts the rows this page holds — the list is paginated on the server, so
+   * this reorders the 30 rows in front of you, not the whole catalog. */
+  const displayRows = sort ? [...rows].sort(comparatorFor(sort, locale)) : rows;
 
   const allIds = rows.map((r) => r.id);
   const allSelected = allIds.length > 0 && allIds.every((id) => selectedIds.has(id));
@@ -255,33 +322,12 @@ export default function ProductsListClient({
                   </th>
                 )}
                 <th className="px-4 py-3 font-medium">{dict.productsColPhoto}</th>
-                <th className="px-4 py-3 font-medium">{dict.productsColProductCode}</th>
-                <th className="px-4 py-3 font-medium">{dict.productsColOriginCode}</th>
-                <th className="px-4 py-3 font-medium">{dict.productsColName}</th>
-                <th className="px-4 py-3 font-medium">{dict.productsColBrand}</th>
-                <th className="px-4 py-3 font-medium">{dict.productsColPrice}</th>
-                <th className="px-4 py-3 font-medium">
-                  <button
-                    type="button"
-                    onClick={handleStockHeaderClick}
-                    className="flex items-center gap-1 uppercase tracking-wide text-zinc-500 hover:text-orange-600 dark:text-zinc-400"
-                  >
-                    {dict.productsColStock}
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className={`h-3 w-3 shrink-0 transition-transform ${
-                        stockSort === "asc" ? "rotate-180" : ""
-                      } ${stockSort === "none" ? "opacity-40" : ""}`}
-                    >
-                      <path d="M12 5v14M12 19l-5-5M12 19l5-5" />
-                    </svg>
-                  </button>
-                </th>
+                <SortableHeader label={dict.productsColProductCode} sortKey="productCode" sort={sort} onSort={toggleSort} />
+                <SortableHeader label={dict.productsColOriginCode} sortKey="originCode" sort={sort} onSort={toggleSort} />
+                <SortableHeader label={dict.productsColName} sortKey="displayName" sort={sort} onSort={toggleSort} />
+                <SortableHeader label={dict.productsColBrand} sortKey="brandName" sort={sort} onSort={toggleSort} />
+                <SortableHeader label={dict.productsColPrice} sortKey="price" sort={sort} onSort={toggleSort} />
+                <SortableHeader label={dict.productsColStock} sortKey="stock" sort={sort} onSort={toggleSort} />
                 <th className="px-4 py-3 font-medium" />
               </tr>
             </thead>

@@ -417,6 +417,8 @@ const ru: Dictionary = {
     title: "Каталог",
     empty: "Товары пока не добавлены.",
     allProducts: "Все товары",
+    breadcrumbHome: "Главная",
+    backButton: "Назад",
     categoriesTitle: "Каталог",
     toggleSubcategoriesAria: "Показать подкатегории",
     categoryLabel: "Категория",
