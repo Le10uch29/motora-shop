@@ -649,6 +649,19 @@ drop policy if exists "admin_manage_import_conflicts" on import_conflicts;
 create policy "admin_manage_import_conflicts" on import_conflicts for all
   to authenticated using (is_admin()) with check (is_admin());
 
+-- Настройки панели: ключ-значение, по строке на настройку. Сейчас здесь живёт
+-- одна — дата, с которой дашборд считает продажи («обнулить статистику» на
+-- время тестов). Таблицу читает только дашборд, витрина про неё не знает.
+create table if not exists app_settings (
+  key text primary key,
+  value jsonb not null,
+  updated_at timestamptz not null default now()
+);
+alter table app_settings enable row level security;
+drop policy if exists "admin_manage_app_settings" on app_settings;
+create policy "admin_manage_app_settings" on app_settings for all
+  to authenticated using (is_admin()) with check (is_admin());
+
 revoke insert on orders from authenticated;
 grant insert (customer_id, product_id, quantity) on orders to authenticated;
 

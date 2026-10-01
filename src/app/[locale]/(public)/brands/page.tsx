@@ -4,7 +4,9 @@ import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
 import { getCatalogBrands } from "@/lib/brands";
 import { getProductCountsByBrandSlug } from "@/lib/products";
+import { single } from "@/lib/searchParams";
 import Breadcrumbs from "@/components/Breadcrumbs";
+import Pagination from "@/components/Pagination";
 
 function initials(name: string): string {
   return name
@@ -15,14 +17,28 @@ function initials(name: string): string {
     .toUpperCase();
 }
 
+const BRANDS_PAGE_SIZE = 12;
+
 export default async function BrandsPage({
   params,
+  searchParams,
 }: PageProps<"/[locale]/brands">) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
   const dict = await getDictionary(locale);
-  const catalogBrands = await getCatalogBrands();
-  const counts = await getProductCountsByBrandSlug();
+  const [allBrands, counts] = await Promise.all([
+    getCatalogBrands(),
+    getProductCountsByBrandSlug(),
+  ]);
+
+  // Брендов десятки, а не тысячи, и список уже закэширован целиком — режем
+  // страницу здесь, не гоняя отдельный запрос на каждую.
+  const page = Number(single((await searchParams).page)) || 1;
+  const safePage = Math.min(Math.max(1, page), Math.max(1, Math.ceil(allBrands.length / BRANDS_PAGE_SIZE)));
+  const catalogBrands = allBrands.slice(
+    (safePage - 1) * BRANDS_PAGE_SIZE,
+    safePage * BRANDS_PAGE_SIZE
+  );
 
   return (
     <main className="mx-auto flex w-full max-w-[120rem] flex-1 flex-col gap-6 px-2 py-10">
@@ -67,6 +83,14 @@ export default async function BrandsPage({
           );
         })}
       </div>
+
+      <Pagination
+        basePath={`/${locale}/brands`}
+        currentPage={safePage}
+        total={allBrands.length}
+        pageSize={BRANDS_PAGE_SIZE}
+        searchParams={{}}
+      />
     </main>
   );
 }
