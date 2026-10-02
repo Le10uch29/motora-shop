@@ -402,6 +402,12 @@ const az: Dictionary = {
     reset: "Sıfırla",
     noResultsLabel: "Heç nə tapılmadı",
     viewAllResultsPrefix: "Hamısını göstər",
+    inStockLabel: "Stokda var",
+    unitsShort: "ədəd",
+    addToCart: "Səbətə at",
+    addedToCart: "Əlavə edildi ✓",
+    quantityDecreaseAria: "Miqdarı azalt",
+    quantityIncreaseAria: "Miqdarı artır",
   },
   dashboard: {
     greetingMorning: "Sabahınız xeyir",
@@ -548,6 +554,7 @@ const az: Dictionary = {
     checkout: "Sifarişi rəsmiləşdir",
     orderPlaced: "Sifariş edildi ✓",
     orderError: "Sifarişi rəsmiləşdirmək mümkün olmadı. Yenidən cəhd edin.",
+    productCodeLabel: "Məhsul kodu",
   },
 };
 

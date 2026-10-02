@@ -402,6 +402,12 @@ const ka: Dictionary = {
     reset: "გასუფთავება",
     noResultsLabel: "არაფერი მოიძებნა",
     viewAllResultsPrefix: "ყველას ჩვენება",
+    inStockLabel: "მარაგშია",
+    unitsShort: "ცალი",
+    addToCart: "კალათაში",
+    addedToCart: "დამატებულია ✓",
+    quantityDecreaseAria: "რაოდენობის შემცირება",
+    quantityIncreaseAria: "რაოდენობის გაზრდა",
   },
   dashboard: {
     greetingMorning: "დილა მშვიდობისა",
@@ -548,6 +554,7 @@ const ka: Dictionary = {
     checkout: "შეკვეთის გაფორმება",
     orderPlaced: "შეკვეთილია ✓",
     orderError: "შეკვეთის გაფორმება ვერ მოხერხდა. სცადეთ თავიდან.",
+    productCodeLabel: "პროდუქტის კოდი",
   },
 };
 

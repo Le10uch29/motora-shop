@@ -2,6 +2,7 @@ import { cache } from "react";
 import type { Locale } from "@/i18n/locales";
 import type { BrandSlug } from "@/lib/brands";
 import { createPublicClient } from "@/lib/supabase/public";
+import { readAllPages } from "@/lib/supabase/paginate";
 import { fitmentsOf, type Fitment } from "@/lib/fitments";
 
 export type LocalizedText = Record<Locale, string>;
@@ -228,17 +229,41 @@ export const getProductCountsByBrandSlug = cache(async (): Promise<Record<string
   return counts;
 });
 
-export type CartProductSummary = Pick<Product, "id" | "slug" | "name" | "price" | "stock">;
+export type CartProductSummary = Pick<Product, "id" | "slug" | "name" | "price" | "stock"> & {
+  /** Код продукта — по нему покупатель сверяет, что в корзине именно та
+   * деталь: названия у запчастей почти одинаковые («Прокладка крышки» —
+   * четыре разных товара), и отличает их только код. */
+  productCode: string | null;
+};
 
-/** Just the columns the cart view renders (name, price, stock) instead of
- * every product's full row. The cart itself lives in the browser's
+/** Just the columns the cart view renders (name, code, price, stock) instead
+ * of every product's full row. The cart itself lives in the browser's
  * localStorage, so the server can't know in advance which product ids to
  * filter for — this still has to fetch every product, but a much lighter
- * row: no description, specs, images, or badge. */
+ * row: no description, specs, images, or badge.
+ *
+ * Paged, because PostgREST caps one response at 1000 rows: without this a
+ * cart holding product №1001 would quietly show as empty. */
 export const getProductsForCart = cache(async (): Promise<CartProductSummary[]> => {
   const supabase = createPublicClient();
-  const { data } = await supabase.from("products").select("id, slug, name, price, stock");
-  return (data ?? []) as CartProductSummary[];
+  const rows = await readAllPages<{
+    id: string;
+    slug: string;
+    name: LocalizedText;
+    price: number;
+    stock: number;
+    product_code: string | null;
+  }>((from, to) =>
+    supabase.from("products").select("id, slug, name, price, stock, product_code").range(from, to)
+  );
+  return rows.map((row) => ({
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    price: Number(row.price),
+    stock: row.stock,
+    productCode: row.product_code ?? null,
+  }));
 });
 
 /** Whether one of a product's vehicles matches the wanted make and/or model —

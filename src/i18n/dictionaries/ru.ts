@@ -411,6 +411,12 @@ const ru: Dictionary = {
     reset: "Сбросить",
     noResultsLabel: "Ничего не найдено",
     viewAllResultsPrefix: "Показать все",
+    inStockLabel: "В наличии",
+    unitsShort: "шт.",
+    addToCart: "В корзину",
+    addedToCart: "Добавлено ✓",
+    quantityDecreaseAria: "Уменьшить количество",
+    quantityIncreaseAria: "Увеличить количество",
   },
   dashboard: {
     greetingMorning: "Доброе утро",
@@ -557,6 +563,7 @@ const ru: Dictionary = {
     checkout: "Оформить заказ",
     orderPlaced: "Заказано ✓",
     orderError: "Не удалось оформить заказ. Попробуйте ещё раз.",
+    productCodeLabel: "Код продукта",
   },
 };
 

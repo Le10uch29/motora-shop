@@ -406,6 +406,15 @@ export type Dictionary = {
     reset: string;
     noResultsLabel: string;
     viewAllResultsPrefix: string;
+    /** Подсказки поиска умеют добавлять товар в корзину, поэтому им нужны
+     * подписи кнопок и остатка. Только строки: dict.search уходит в
+     * клиентский компонент, а функции через эту границу не проходят. */
+    inStockLabel: string;
+    unitsShort: string;
+    addToCart: string;
+    addedToCart: string;
+    quantityDecreaseAria: string;
+    quantityIncreaseAria: string;
   };
   /** Дашборд админки. Только строки: раздел рендерится на сервере, но
    * пространство целиком может уйти в клиентский компонент. */
@@ -556,5 +565,6 @@ export type Dictionary = {
     checkout: string;
     orderPlaced: string;
     orderError: string;
+    productCodeLabel: string;
   };
 };

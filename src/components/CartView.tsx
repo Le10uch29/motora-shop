@@ -104,13 +104,21 @@ export default function CartView({
             <Link href={`/${locale}/catalog/${product.slug}`} className="shrink-0">
               <ProductVisual className="h-20 w-20 rounded-lg" />
             </Link>
-            <div className="flex flex-1 flex-col gap-1">
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
               <Link
                 href={`/${locale}/catalog/${product.slug}`}
                 className="font-semibold text-zinc-900 hover:text-orange-600 dark:text-zinc-50"
               >
                 {t(product.name, locale)}
               </Link>
+              {/* Код продукта виден прямо в строке, а не только в карточке:
+                  названия деталей повторяются, и покупатель сверяет заказ
+                  именно по коду. */}
+              {product.productCode && (
+                <span className="font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                  {dict.productCodeLabel}: {product.productCode}
+                </span>
+              )}
               <span className="text-sm text-zinc-500">{formatGel(product.price, locale)}</span>
             </div>
             <div className="flex items-center gap-2">
