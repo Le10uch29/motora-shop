@@ -137,7 +137,12 @@ export default async function AdminDashboardPage({
       {/* 2. Что требует внимания + 6. Excel Import Center */}
       <div className={cardGrid}>
         <Suspense fallback={<SkeletonCard />}>
-          <AttentionBlock locale={locale} d={d} isAdmin={isAdmin} />
+          <AttentionBlock
+            locale={locale}
+            d={d}
+            isAdmin={isAdmin}
+            className={isAdmin ? undefined : "xl:col-span-2"}
+          />
         </Suspense>
         {isAdmin && (
           <Suspense fallback={<SkeletonCard />}>
@@ -167,7 +172,7 @@ export default async function AdminDashboardPage({
           </Suspense>
         )}
         <Suspense fallback={<SkeletonCard />}>
-          <AutomotiveBlock locale={locale} d={d} />
+          <AutomotiveBlock locale={locale} d={d} className={isAdmin ? undefined : "xl:col-span-2"} />
         </Suspense>
       </div>
 
@@ -186,7 +191,7 @@ export default async function AdminDashboardPage({
       {/* 8. Незаконченные товары + 9. Клиенты */}
       <div className={cardGrid}>
         <Suspense fallback={<SkeletonCard />}>
-          <IncompleteBlock locale={locale} d={d} />
+          <IncompleteBlock locale={locale} d={d} className={isAdmin ? undefined : "xl:col-span-2"} />
         </Suspense>
         {isAdmin && (
           <Suspense fallback={<SkeletonCard />}>
@@ -235,7 +240,7 @@ async function OverviewRow({
   const products = `/${locale}/admin/products`;
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8">
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-8">
       <KpiCard label={d.kpiProductsTotal} value={overview.productsTotal} href={products} icon={<PackageIcon />} noDataLabel={d.noData} />
       <KpiCard label={d.kpiInStock} value={overview.inStock} tone="good" href={products} icon={<PackageIcon />} noDataLabel={d.noData} />
       <KpiCard label={d.kpiOutOfStock} value={overview.outOfStock} tone={overview.outOfStock > 0 ? "bad" : "good"} href={products} icon={<AlertIcon />} noDataLabel={d.noData} />
@@ -262,10 +267,15 @@ async function AttentionBlock({
   locale,
   d,
   isAdmin,
+  className,
 }: {
   locale: Locale;
   d: Dash;
   isAdmin: boolean;
+  /** Ряд рассчитан на две карточки; если вторая не показывается (у продавца
+   * нет импорта), оставшаяся растягивается на всю ширину, а не висит
+   * половинкой. */
+  className?: string;
 }) {
   const counts = await getAttentionCounts();
   const products = `/${locale}/admin/products`;
@@ -311,7 +321,7 @@ async function AttentionBlock({
   };
 
   return (
-    <DashboardCard title={d.attentionTitle} icon={<AlertIcon />}>
+    <DashboardCard title={d.attentionTitle} icon={<AlertIcon />} className={className}>
       {rows.length === 0 ? (
         <EmptyState text={d.attentionAllGood} />
       ) : (
@@ -319,7 +329,11 @@ async function AttentionBlock({
           {rows.map((row) => (
             <li key={row.label} className="flex flex-wrap items-center gap-3 py-2.5 first:pt-0 last:pb-0">
               <span className={`shrink-0 ${toneText[row.tone]}`}>{row.icon}</span>
-              <span className={`shrink-0 text-lg font-bold tabular-nums ${toneText[row.tone]}`}>
+              {/* Фиксированная колонка под число: «5» и «555» иначе сдвигают
+                  подписи, и список выглядит рваным. */}
+              <span
+                className={`w-12 shrink-0 text-right text-lg font-bold tabular-nums ${toneText[row.tone]}`}
+              >
                 {row.count.toLocaleString("ru-RU")}
               </span>
               <span className="min-w-0 flex-1 text-sm text-zinc-700 dark:text-zinc-300">
@@ -459,7 +473,15 @@ async function CategorySalesBlock({
   );
 }
 
-async function AutomotiveBlock({ locale, d }: { locale: Locale; d: Dash }) {
+async function AutomotiveBlock({
+  locale,
+  d,
+  className,
+}: {
+  locale: Locale;
+  d: Dash;
+  className?: string;
+}) {
   const analytics = await getAutomotiveAnalytics(locale);
   const items: BarItem[] = analytics.makes.map((make) => ({
     label: make.label,
@@ -467,7 +489,7 @@ async function AutomotiveBlock({ locale, d }: { locale: Locale; d: Dash }) {
   }));
 
   return (
-    <DashboardCard title={d.automotiveTitle} icon={<CarIcon />}>
+    <DashboardCard title={d.automotiveTitle} icon={<CarIcon />} className={className}>
       {items.length === 0 ? (
         <EmptyState text={d.automotiveEmpty} />
       ) : (
@@ -565,7 +587,15 @@ async function TopProductsBlock({
   );
 }
 
-async function IncompleteBlock({ locale, d }: { locale: Locale; d: Dash }) {
+async function IncompleteBlock({
+  locale,
+  d,
+  className,
+}: {
+  locale: Locale;
+  d: Dash;
+  className?: string;
+}) {
   const counts = await getAttentionCounts();
   const items: BarItem[] = [
     { label: d.attentionNoCategory, value: counts.withoutCategory },
@@ -579,6 +609,7 @@ async function IncompleteBlock({ locale, d }: { locale: Locale; d: Dash }) {
       title={d.incompleteTitle}
       icon={<ClipboardIcon />}
       action={{ label: d.viewAll, href: `/${locale}/admin/products` }}
+      className={className}
     >
       {items.length === 0 ? <EmptyState text={d.incompleteEmpty} /> : <BarList items={items} />}
     </DashboardCard>
@@ -669,7 +700,7 @@ async function ResetBlock({
 
 function SkeletonRow() {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8">
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-8">
       {Array.from({ length: 8 }).map((_, index) => (
         <div
           key={index}

@@ -16,6 +16,10 @@ const az: Dictionary = {
   },
   pages: {
     comingSoon: "Bu bölmə hazırlanma mərhələsindədir. Tezliklə burada olacaq!",
+    contactsTitle: "Əlaqə",
+    contactsPhone: "Telefon",
+    contactsEmail: "E-poçt",
+    contactsOrganizationId: "Təşkilatın nömrəsi",
   },
   auth: {
     navLabel: "Daxil ol",
@@ -142,6 +146,10 @@ const az: Dictionary = {
     orderColumnUnitPrice: "Qiymət",
     orderColumnLineTotal: "Cəmi",
     orderNumberLabel: "Sifariş nömrəsi",
+    purchasePositionsLabel: "mövqe:",
+    purchaseStatusMixed: "fərqli statuslar",
+    purchasePrevPage: "Əvvəlki sifarişlər",
+    purchaseNextPage: "Sonrakı sifarişlər",
     invoiceColProductCodeShort: "Məh. kodu",
     invoiceColOriginCodeShort: "Orij. kod",
     invoiceColQuantityShort: "Say",

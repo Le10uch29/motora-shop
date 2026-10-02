@@ -8,9 +8,9 @@ import { getAuthUserById } from "@/lib/supabase/authUsers";
 import { isPhoneAliasEmail } from "@/lib/phoneLogin";
 import { actionLabel } from "../../logs/labels";
 import DetailsToggle, { type LogDetails } from "../../logs/DetailsToggle";
-import { orderStatusLabel, orderStatusClass } from "../../orders/statusStyles";
-import { getCustomerPurchaseHistory } from "../data";
+import { getCustomerPurchaseOrders } from "../data";
 import CustomerDetailActions from "./CustomerDetailActions";
+import CustomerPurchases from "./CustomerPurchases";
 
 export default async function CustomerDetailPage({
   params,
@@ -25,7 +25,7 @@ export default async function CustomerDetailPage({
   const { data: row } = await admin
     .from("customers")
     .select(
-      "id, first_name, last_name, phone, id_card_number, organization_name, organization_id_number, address, city, photo_url, created_at"
+      "id, first_name, last_name, phone, id_card_number, organization_name, organization_id_number, address, city"
     )
     .eq("id", id)
     .single();
@@ -34,7 +34,7 @@ export default async function CustomerDetailPage({
 
   const authUser = await getAuthUserById(admin, id);
 
-  const purchases = await getCustomerPurchaseHistory(id, locale);
+  const purchases = await getCustomerPurchaseOrders(id, locale);
 
   const { data: entries } = await admin
     .from("logs")
@@ -48,17 +48,14 @@ export default async function CustomerDetailPage({
   // contact the customer gave — shown as "—", the same as having none.
   const email = isPhoneAliasEmail(authUser?.email) ? "" : authUser?.email ?? "";
 
+  // Краткая карточка — только то, по чему покупателя узнают и с чем работают.
+  // Остальное (почта, удостоверение, адрес, город, идентификатор) осталось в
+  // форме редактирования, где оно и нужно.
   const fields: [string, string][] = [
-    [dict.admin.firstNameLabel, row.first_name],
-    [dict.admin.lastNameLabel, row.last_name],
-    ["Email", email || "—"],
+    [dict.admin.tableName, `${row.first_name} ${row.last_name}`.trim()],
     [dict.admin.phoneLabel, row.phone],
-    [dict.admin.idCardLabel, row.id_card_number],
     [dict.admin.organizationIdNumberLabel, row.organization_id_number],
     [dict.admin.organizationNameLabel, row.organization_name],
-    [dict.admin.cityLabel, row.city],
-    [dict.admin.addressLabel, row.address],
-    [dict.admin.tableId, row.id],
   ];
 
   return (
@@ -89,11 +86,6 @@ export default async function CustomerDetailPage({
         />
       </div>
 
-      {row.photo_url && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={row.photo_url} alt="" className="h-20 w-20 rounded-full object-cover" />
-      )}
-
       <dl className="grid grid-cols-1 gap-x-6 gap-y-4 rounded-xl border border-zinc-200 p-6 sm:grid-cols-2 dark:border-zinc-800">
         {fields.map(([label, value]) => (
           <div key={label} className="flex flex-col gap-0.5">
@@ -107,46 +99,7 @@ export default async function CustomerDetailPage({
         <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
           {dict.admin.customerPurchaseHistoryTitle}
         </h2>
-        {purchases.length > 0 ? (
-          <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
-            <table className="w-full min-w-[500px] text-left text-sm">
-              <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
-                <tr>
-                  <th className="px-4 py-3 font-medium">{dict.admin.orderColumnProduct}</th>
-                  <th className="px-4 py-3 font-medium">{dict.admin.productProductCodeLabel}</th>
-                  <th className="px-4 py-3 font-medium">{dict.admin.orderColumnQuantity}</th>
-                  <th className="px-4 py-3 font-medium">{dict.admin.orderColumnStatus}</th>
-                  <th className="px-4 py-3 font-medium">{dict.admin.orderColumnWhen}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-                {purchases.map((purchase) => (
-                  <tr key={purchase.id}>
-                    <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50">
-                      {purchase.productName}
-                    </td>
-                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                      {purchase.productCode || "—"}
-                    </td>
-                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{purchase.quantity}</td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`rounded-full px-2.5 py-1 text-xs font-medium ${orderStatusClass(purchase.status)}`}
-                      >
-                        {orderStatusLabel(purchase.status, dict.admin)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-zinc-500">
-                      {new Date(purchase.createdAt).toLocaleString(locale)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="text-sm text-zinc-500">{dict.admin.customerPurchaseHistoryEmpty}</p>
-        )}
+        <CustomerPurchases locale={locale} dict={dict.admin} orders={purchases} />
       </div>
 
       <div className="flex flex-col gap-2">

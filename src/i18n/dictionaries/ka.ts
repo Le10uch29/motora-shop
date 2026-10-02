@@ -16,6 +16,10 @@ const ka: Dictionary = {
   },
   pages: {
     comingSoon: "ეს განყოფილება მალე დაემატება. გთხოვთ, მოგვიანებით ეწვიოთ!",
+    contactsTitle: "კონტაქტები",
+    contactsPhone: "ტელეფონი",
+    contactsEmail: "ელფოსტა",
+    contactsOrganizationId: "ორგანიზაციის ნომერი",
   },
   auth: {
     navLabel: "შესვლა",
@@ -142,6 +146,10 @@ const ka: Dictionary = {
     orderColumnUnitPrice: "ფასი",
     orderColumnLineTotal: "ჯამი",
     orderNumberLabel: "შეკვეთის ნომერი",
+    purchasePositionsLabel: "პოზიცია:",
+    purchaseStatusMixed: "სხვადასხვა სტატუსი",
+    purchasePrevPage: "წინა შეკვეთები",
+    purchaseNextPage: "შემდეგი შეკვეთები",
     invoiceColProductCodeShort: "პროდ. კოდი",
     invoiceColOriginCodeShort: "ორიგ. კოდი",
     invoiceColQuantityShort: "რაოდ.",

@@ -41,12 +41,14 @@ export default function SalesChart({
   const line = coords.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
   const area = `${PADDING},${HEIGHT - PADDING} ${line} ${(PADDING + (points.length - 1) * stepX).toFixed(1)},${HEIGHT - PADDING}`;
 
-  // Подписи по оси X: не чаще, чем примерно каждые 90px, иначе на телефоне
-  // они сливаются в кашу.
+  // Подписи показываем не все, иначе на узком экране они сливаются.
   const labelEvery = Math.max(1, Math.ceil(points.length / 8));
 
   return (
     <div className="flex flex-col gap-2">
+      {/* preserveAspectRatio="none" растягивает svg по ширине контейнера.
+          Точки-кружки при этом превращались в овалы, поэтому их нет: линии и
+          заливки достаточно, а толщину линии держит non-scaling-stroke. */}
       <svg
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         preserveAspectRatio="none"
@@ -63,15 +65,19 @@ export default function SalesChart({
           strokeLinecap="round"
           vectorEffect="non-scaling-stroke"
         />
-        {coords.map(([x, y], index) => (
-          <circle key={index} cx={x} cy={y} r={2.5} className="fill-orange-500" />
-        ))}
       </svg>
 
-      <div className="flex justify-between gap-1 text-[11px] text-zinc-400">
+      {/* Сетка по числу точек, а не flex с justify-between: скрытые подписи
+          выпадали из потока (sr-only — это position:absolute), и видимые
+          растягивались по всей ширине, вообще не попадая под свои значения.
+          В сетке каждая подпись занимает слот своей точки. */}
+      <div
+        className="grid gap-1 text-[11px] text-zinc-400"
+        style={{ gridTemplateColumns: `repeat(${points.length}, minmax(0, 1fr))` }}
+      >
         {points.map((point, index) => (
-          <span key={`${point.label}-${index}`} className={index % labelEvery === 0 ? "" : "sr-only"}>
-            {point.label}
+          <span key={`${point.label}-${index}`} className="truncate text-center">
+            {index % labelEvery === 0 ? point.label : ""}
           </span>
         ))}
       </div>

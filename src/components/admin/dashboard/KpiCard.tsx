@@ -33,21 +33,26 @@ export default function KpiCard({
   icon?: ReactNode;
   noDataLabel: string;
 }) {
+  // Высоты обеих частей заданы, иначе плитки в ряду разъезжаются: подпись
+  // «Марки автомобилей» занимает две строки, а «Заказы» одну, и у карточки с
+  // «Нет данных» вместо крупного числа мелкий текст.
   const body = (
     <>
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+      <div className="flex min-h-8 items-start justify-between gap-2">
+        <span className="text-xs font-medium uppercase leading-4 tracking-wide text-zinc-500 dark:text-zinc-400">
           {label}
         </span>
         {icon && <span className="shrink-0 text-zinc-300 dark:text-zinc-600">{icon}</span>}
       </div>
-      {value === null ? (
-        <span className="text-base font-medium text-zinc-400">— {noDataLabel}</span>
-      ) : (
-        <span className={`text-2xl font-bold tabular-nums sm:text-3xl ${toneValue[tone]}`}>
-          {value.toLocaleString("ru-RU")}
-        </span>
-      )}
+      <span className="flex min-h-8 items-end sm:min-h-9">
+        {value === null ? (
+          <span className="text-sm font-medium text-zinc-400">— {noDataLabel}</span>
+        ) : (
+          <span className={`text-2xl font-bold leading-none tabular-nums sm:text-3xl ${toneValue[tone]}`}>
+            {value.toLocaleString("ru-RU")}
+          </span>
+        )}
+      </span>
     </>
   );
 

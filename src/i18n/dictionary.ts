@@ -14,6 +14,10 @@ export type Dictionary = {
   };
   pages: {
     comingSoon: string;
+    contactsTitle: string;
+    contactsPhone: string;
+    contactsEmail: string;
+    contactsOrganizationId: string;
   };
   auth: {
     navLabel: string;
@@ -141,6 +145,10 @@ export type Dictionary = {
     orderColumnUnitPrice: string;
     orderColumnLineTotal: string;
     orderNumberLabel: string;
+    purchasePositionsLabel: string;
+    purchaseStatusMixed: string;
+    purchasePrevPage: string;
+    purchaseNextPage: string;
     invoiceColProductCodeShort: string;
     invoiceColOriginCodeShort: string;
     invoiceColQuantityShort: string;

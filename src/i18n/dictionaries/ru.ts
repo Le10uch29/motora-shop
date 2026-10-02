@@ -25,6 +25,10 @@ const ru: Dictionary = {
   },
   pages: {
     comingSoon: "Этот раздел находится в разработке. Загляните позже!",
+    contactsTitle: "Контакты",
+    contactsPhone: "Телефон",
+    contactsEmail: "Электронная почта",
+    contactsOrganizationId: "Номер организации",
   },
   auth: {
     navLabel: "Войти",
@@ -151,6 +155,10 @@ const ru: Dictionary = {
     orderColumnUnitPrice: "Цена",
     orderColumnLineTotal: "Сумма",
     orderNumberLabel: "Номер заказа",
+    purchasePositionsLabel: "позиций:",
+    purchaseStatusMixed: "разные статусы",
+    purchasePrevPage: "Предыдущие заказы",
+    purchaseNextPage: "Следующие заказы",
     invoiceColProductCodeShort: "Прод. код",
     invoiceColOriginCodeShort: "Ориг. код",
     invoiceColQuantityShort: "Кол-во",

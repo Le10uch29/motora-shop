@@ -56,40 +56,88 @@ export async function getCustomersList(
   return { rows: rows.slice(start, start + ADMIN_PAGE_SIZE), total };
 }
 
-export type CustomerPurchase = {
+/** Одна позиция заказа. */
+export type PurchaseLine = {
   id: string;
-  orderNumber: number;
   productName: string;
   productCode: string | null;
   quantity: number;
+  unitPrice: number;
+  lineTotal: number;
   status: OrderStatus;
-  createdAt: string;
 };
 
-/** What a customer has actually bought — separate from the audit-log
- * "история" further down the page (who edited the customer's own profile
- * and when), which is a different kind of history entirely. */
-export async function getCustomerPurchaseHistory(
+/** Один оформленный заказ: дата, номер и его позиции. */
+export type PurchaseOrder = {
+  orderNumber: number;
+  createdAt: string;
+  lines: PurchaseLine[];
+  total: number;
+  /** Статус, если он одинаков у всех позиций; иначе null — в заказе их
+   * несколько, и один общий статус был бы неправдой. */
+  status: OrderStatus | null;
+};
+
+/**
+ * Что покупатель купил — сгруппировано по заказам, а не плоским списком
+ * позиций.
+ *
+ * Номер заказа выдаётся один на всё оформление (см. триггер
+ * orders_set_order_number в schema.sql), поэтому группировка по нему и есть
+ * «заказ». Администратор видит «в такой-то день оформлен заказ», а что
+ * именно в нём — в подробностях.
+ *
+ * Отличается от журнала «история» ниже на той же странице: тот про правки
+ * карточки покупателя, а не про покупки.
+ */
+export async function getCustomerPurchaseOrders(
   customerId: string,
   locale: Locale
-): Promise<CustomerPurchase[]> {
+): Promise<PurchaseOrder[]> {
   const admin = createAdminClient();
   const { data } = await admin
     .from("orders")
-    .select("id, order_number, product_name, quantity, status, created_at, products(product_code)")
+    .select(
+      "id, order_number, product_name, quantity, status, created_at, price_at_order, discounted_price, products(product_code)"
+    )
     .eq("customer_id", customerId)
     .order("created_at", { ascending: false });
 
-  return (data ?? []).map((row) => {
+  const byOrder = new Map<number, PurchaseOrder>();
+
+  for (const row of data ?? []) {
     const product = Array.isArray(row.products) ? row.products[0] : row.products;
-    return {
+    // Цена со скидкой перекрывает обычную — так же, как в самом разделе заказов.
+    const unitPrice = Number(row.discounted_price ?? row.price_at_order);
+    const line: PurchaseLine = {
       id: row.id,
-      orderNumber: row.order_number,
       productName: row.product_name?.[locale] ?? row.product_name?.ru ?? "",
       productCode: product?.product_code ?? null,
       quantity: row.quantity,
+      unitPrice,
+      lineTotal: unitPrice * row.quantity,
       status: row.status,
-      createdAt: row.created_at,
     };
-  });
+
+    const order =
+      byOrder.get(row.order_number) ??
+      byOrder
+        .set(row.order_number, {
+          orderNumber: row.order_number,
+          createdAt: row.created_at,
+          lines: [],
+          total: 0,
+          status: row.status,
+        })
+        .get(row.order_number)!;
+
+    order.lines.push(line);
+    order.total += line.lineTotal;
+    if (order.status !== row.status) order.status = null;
+    // Дата заказа — самая ранняя его строка: все строки одного оформления
+    // создаются вместе, но порядок внутри запроса не гарантирован.
+    if (row.created_at < order.createdAt) order.createdAt = row.created_at;
+  }
+
+  return [...byOrder.values()];
 }
