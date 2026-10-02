@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { cancelOrderAction, deleteOrderAction } from "../../actions";
+import { isOrderDeletable } from "../../statusStyles";
 import type { OrderStatus } from "../../data";
 import type { Dictionary } from "@/i18n/dictionary";
 import type { Locale } from "@/i18n/locales";
@@ -27,7 +28,7 @@ export default function OrderDetailActions({
   const [pending, startTransition] = useTransition();
 
   const isCancellable = status !== "cancelled";
-  const isDeletable = status === "cancelled" || status === "delivered";
+  const isDeletable = isOrderDeletable(status);
 
   function handleCancel() {
     if (!window.confirm(dict.confirmCancelOrder)) return;

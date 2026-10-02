@@ -3,7 +3,12 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { cancelOrderAction, deleteOrderAction, updateOrderStatusAction } from "../actions";
-import { orderStatusLabel, orderStatusClass, PROGRESSABLE_STATUSES } from "../statusStyles";
+import {
+  orderStatusLabel,
+  orderStatusClass,
+  PROGRESSABLE_STATUSES,
+  isOrderDeletable,
+} from "../statusStyles";
 import type { OrderStatus } from "../data";
 import { RowActionLink, RowActionButton, EyeIcon, XCircleIcon, TrashIcon } from "@/components/admin/RowActions";
 import type { Dictionary } from "@/i18n/dictionary";
@@ -32,7 +37,15 @@ export default function OrdererOrderRowActions({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const isDeletable = currentStatus === "cancelled" || currentStatus === "delivered";
+  const isDeletable = isOrderDeletable(currentStatus);
+
+  // Orders placed before "gathered"/"delivered" were retired still carry those
+  // values. The <select> is controlled by currentStatus, so a value missing
+  // from the options would make the control display a different status than the
+  // order actually has — it's listed (and disabled) instead of silently lying.
+  const statusOptions: OrderStatus[] = PROGRESSABLE_STATUSES.includes(currentStatus)
+    ? PROGRESSABLE_STATUSES
+    : [...PROGRESSABLE_STATUSES, currentStatus];
 
   function handleCancel() {
     if (!window.confirm(dict.confirmCancelOrder)) return;
@@ -76,12 +89,17 @@ export default function OrdererOrderRowActions({
             onChange={(event) => handleStatusChange(event.target.value as OrderStatus)}
             className={`rounded-full border-0 px-2.5 py-1.5 text-xs font-medium ${orderStatusClass(currentStatus)}`}
           >
-            {PROGRESSABLE_STATUSES.map((status) => (
+            {statusOptions.map((status) => (
               // The dropdown list itself ignores the <select>'s Tailwind
               // classes in most browsers, so each <option> needs its own
               // (plain, always-readable) colors — the colored pill look is
               // only for the closed control.
-              <option key={status} value={status} className="bg-white text-zinc-900">
+              <option
+                key={status}
+                value={status}
+                disabled={!PROGRESSABLE_STATUSES.includes(status)}
+                className="bg-white text-zinc-900"
+              >
                 {orderStatusLabel(status, dict)}
               </option>
             ))}

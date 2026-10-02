@@ -4,7 +4,12 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin, requireStaff } from "@/lib/auth";
 import { logAction } from "@/lib/logs";
-import { PROGRESSABLE_STATUSES } from "./statusStyles";
+import {
+  PROGRESSABLE_STATUSES,
+  STOCK_DEDUCTION_STATUS,
+  isOrderDeletable,
+  isStatusAtOrPast,
+} from "./statusStyles";
 import type { Locale } from "@/i18n/locales";
 
 function revalidateOrderPaths(locale: Locale, customerId: string, id: string) {
@@ -13,15 +18,18 @@ function revalidateOrderPaths(locale: Locale, customerId: string, id: string) {
   revalidatePath(`/${locale}/admin/orders/${customerId}/${id}`);
 }
 
-/** Progresses an order through fulfillment (new/gathering/gathered/shipped/
- * delivered) — open to admin and seller. Cancelling is a separate action,
- * admin-only (see cancelOrderAction and the RLS policies backing both).
+/** Progresses an order through fulfillment (new → gathering → shipped) —
+ * open to admin and seller. Cancelling is a separate action, admin-only (see
+ * cancelOrderAction and the RLS policies backing both).
  *
- * The first time an order reaches "shipped", its quantity is deducted both
- * from the product's overall stock and from the specific warehouse fulfilling
- * it (whichever warehouse this update — or an earlier one — attached to the
- * order). `stock_deducted_at` guards this so re-selecting "shipped" (or any
- * back-and-forth through the status dropdown) never double-deducts. */
+ * The first time an order reaches "shipped" *or beyond*, its quantity is
+ * deducted both from the product's overall stock and from the specific
+ * warehouse fulfilling it (whichever warehouse this update — or an earlier
+ * one — attached to the order). "Or beyond" matters: the dropdown lets staff
+ * jump straight from "new" to the last status, and an equality check on
+ * "shipped" let that jump write off nothing at all — an order was marked done
+ * while the stock stayed untouched. `stock_deducted_at` guards the other
+ * direction, so moving back and forth never double-deducts. */
 export async function updateOrderStatusAction(
   locale: Locale,
   id: string,
@@ -47,7 +55,8 @@ export async function updateOrderStatusAction(
   // warehouse — never chosen manually, and never cleared if the acting
   // staff member happens to have no warehouse assigned.
   const nextWarehouseId = actor.warehouseId ?? order.warehouse_id;
-  const shouldDeductStock = status === "shipped" && !order.stock_deducted_at && order.product_id;
+  const shouldDeductStock =
+    isStatusAtOrPast(status, STOCK_DEDUCTION_STATUS) && !order.stock_deducted_at && order.product_id;
 
   const { error } = await admin
     .from("orders")
@@ -130,7 +139,7 @@ export async function bulkUpdateOrdererStatusAction(
 }
 
 /** Deletes every one of an orderer's orders that's currently deletable
- * (cancelled or delivered — same rule as the single-order delete) — orders
+ * (cancelled or shipped out — same rule as the single-order delete) — orders
  * still in progress are left untouched. Reuses deleteOrderAction per line. */
 export async function bulkDeleteOrdererOrdersAction(
   locale: Locale,
@@ -143,7 +152,7 @@ export async function bulkDeleteOrdererOrdersAction(
     .from("orders")
     .select("id, product_name")
     .eq("customer_id", customerId)
-    .in("status", ["cancelled", "delivered"]);
+    .in("status", ["cancelled", "shipped", "delivered"]);
 
   let deleted = 0;
   const errors: string[] = [];
@@ -195,7 +204,7 @@ export async function updateOrderDiscountAction(
 }
 
 /** Permanently deletes an order record — admin-only, and only once the order
- * is in a terminal state (cancelled or delivered), enforced server-side so
+ * is in a terminal state (cancelled, or shipped out), enforced server-side so
  * this can't be reached for an order still in progress. */
 export async function deleteOrderAction(
   locale: Locale,
@@ -208,7 +217,7 @@ export async function deleteOrderAction(
   const admin = createAdminClient();
   const { data: order } = await admin.from("orders").select("status").eq("id", id).single();
   if (!order) return { error: "not_found" };
-  if (order.status !== "cancelled" && order.status !== "delivered") {
+  if (!isOrderDeletable(order.status)) {
     return { error: "not_deletable" };
   }
 
