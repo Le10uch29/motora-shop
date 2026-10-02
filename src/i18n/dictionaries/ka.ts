@@ -25,6 +25,7 @@ const ka: Dictionary = {
     emailLabel: "Email",
     passwordLabel: "პაროლი",
     submit: "შესვლა",
+    submitting: "შესვლა…",
     note: "შესვლა ჯერ არ არის დაკავშირებული სერვერთან — ეს ფუნქცია აქტიური გახდება ბექენდის დაყენების შემდეგ.",
     invalidCredentials: "არასწორი email ან პაროლი.",
   },

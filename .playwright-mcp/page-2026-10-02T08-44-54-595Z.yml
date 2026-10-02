@@ -1,0 +1,198 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - link "ARAZ MOTORS-2026" [ref=e4] [cursor=pointer]:
+        - /url: /ru
+      - generic [ref=e7]:
+        - search [ref=e8]:
+          - generic [ref=e9]:
+            - button "Найти" [ref=e10] [cursor=pointer]
+            - searchbox "Поиск" [ref=e14]
+        - button "Открыть фильтры" [ref=e15] [cursor=pointer]
+      - generic [ref=e18]:
+        - button "Выбрать язык" [ref=e21] [cursor=pointer]: RU
+        - link "Корзина" [ref=e22] [cursor=pointer]:
+          - /url: /ru/cart
+        - button "Открыть меню" [ref=e28] [cursor=pointer]
+  - button "Open Next.js Dev Tools" [ref=e46] [cursor=pointer]
+  - alert [ref=e50]: Запчасти для легковых авто, грузовиков и микроавтобусов
+  - main [ref=e51]:
+    - heading "Запчасти для легковых авто, грузовиков и микроавтобусов" [level=1] [ref=e53]
+    - generic [ref=e55]:
+      - heading "Категории" [level=2] [ref=e56]
+      - generic [ref=e57]:
+        - link "Рулевое управление Рулевое управление 0 товаров" [ref=e58] [cursor=pointer]:
+          - /url: /ru/catalog/category/steering
+          - img "Рулевое управление" [ref=e60]
+          - generic [ref=e61]:
+            - generic [ref=e62]: Рулевое управление
+            - generic [ref=e63]: 0 товаров
+        - link "Ходовая часть Ходовая часть 0 товаров" [ref=e64] [cursor=pointer]:
+          - /url: /ru/catalog/category/chassis
+          - img "Ходовая часть" [ref=e66]
+          - generic [ref=e67]:
+            - generic [ref=e68]: Ходовая часть
+            - generic [ref=e69]: 0 товаров
+        - link "Тормозная система Тормозная система 0 товаров" [ref=e70] [cursor=pointer]:
+          - /url: /ru/catalog/category/brakes
+          - img "Тормозная система" [ref=e72]
+          - generic [ref=e73]:
+            - generic [ref=e74]: Тормозная система
+            - generic [ref=e75]: 0 товаров
+        - link "Двигатель Двигатель 0 товаров" [ref=e76] [cursor=pointer]:
+          - /url: /ru/catalog/category/engine
+          - img "Двигатель" [ref=e78]
+          - generic [ref=e79]:
+            - generic [ref=e80]: Двигатель
+            - generic [ref=e81]: 0 товаров
+        - link "Трансмиссия Трансмиссия 0 товаров" [ref=e82] [cursor=pointer]:
+          - /url: /ru/catalog/category/transmission
+          - img "Трансмиссия" [ref=e84]
+          - generic [ref=e85]:
+            - generic [ref=e86]: Трансмиссия
+            - generic [ref=e87]: 0 товаров
+        - link "Фильтры Фильтры 0 товаров" [ref=e88] [cursor=pointer]:
+          - /url: /ru/catalog/category/filters
+          - img "Фильтры" [ref=e90]
+          - generic [ref=e91]:
+            - generic [ref=e92]: Фильтры
+            - generic [ref=e93]: 0 товаров
+        - link "Охлаждение Охлаждение 0 товаров" [ref=e94] [cursor=pointer]:
+          - /url: /ru/catalog/category/cooling
+          - img "Охлаждение" [ref=e96]
+          - generic [ref=e97]:
+            - generic [ref=e98]: Охлаждение
+            - generic [ref=e99]: 0 товаров
+        - link "Электрика Электрика 0 товаров" [ref=e100] [cursor=pointer]:
+          - /url: /ru/catalog/category/electrical
+          - img "Электрика" [ref=e102]
+          - generic [ref=e103]:
+            - generic [ref=e104]: Электрика
+            - generic [ref=e105]: 0 товаров
+        - link "Кузов Кузов 0 товаров" [ref=e106] [cursor=pointer]:
+          - /url: /ru/catalog/category/body
+          - img "Кузов" [ref=e108]
+          - generic [ref=e109]:
+            - generic [ref=e110]: Кузов
+            - generic [ref=e111]: 0 товаров
+        - link "Подвеска Подвеска 0 товаров" [ref=e112] [cursor=pointer]:
+          - /url: /ru/catalog/category/suspension
+          - img "Подвеска" [ref=e114]
+          - generic [ref=e115]:
+            - generic [ref=e116]: Подвеска
+            - generic [ref=e117]: 0 товаров
+        - link "Система кондиционирования Система кондиционирования 0 товаров" [ref=e118] [cursor=pointer]:
+          - /url: /ru/catalog/category/air-conditioning
+          - img "Система кондиционирования" [ref=e120]
+          - generic [ref=e121]:
+            - generic [ref=e122]: Система кондиционирования
+            - generic [ref=e123]: 0 товаров
+        - link "Топливная система Топливная система 0 товаров" [ref=e124] [cursor=pointer]:
+          - /url: /ru/catalog/category/fuel-system
+          - img "Топливная система" [ref=e126]
+          - generic [ref=e127]:
+            - generic [ref=e128]: Топливная система
+            - generic [ref=e129]: 0 товаров
+        - link "Выхлопная система Выхлопная система 0 товаров" [ref=e130] [cursor=pointer]:
+          - /url: /ru/catalog/category/exhaust
+          - img "Выхлопная система" [ref=e132]
+          - generic [ref=e133]:
+            - generic [ref=e134]: Выхлопная система
+            - generic [ref=e135]: 0 товаров
+        - link "Сцепление Сцепление 0 товаров" [ref=e136] [cursor=pointer]:
+          - /url: /ru/catalog/category/clutch
+          - img "Сцепление" [ref=e138]
+          - generic [ref=e139]:
+            - generic [ref=e140]: Сцепление
+            - generic [ref=e141]: 0 товаров
+        - link "Прочее Прочее 0 товаров" [ref=e142] [cursor=pointer]:
+          - /url: /ru/catalog/category/other
+          - img "Прочее" [ref=e144]
+          - generic [ref=e145]:
+            - generic [ref=e146]: Прочее
+            - generic [ref=e147]: 0 товаров
+    - generic [ref=e148]:
+      - generic [ref=e149]:
+        - heading "Популярное" [level=2] [ref=e150]
+        - link "Весь каталог →" [ref=e151] [cursor=pointer]:
+          - /url: /ru/catalog
+      - generic [ref=e152]:
+        - generic [ref=e154]:
+          - 'link "APLUS AUTOMOTIVE 21563AP 21563AP Марка: Универсальный Год: 2000-2026 25 GEL 50 шт. на складе" [ref=e155] [cursor=pointer]':
+            - /url: /ru/catalog/21563ap
+            - img "APLUS AUTOMOTIVE" [ref=e162]
+            - generic [ref=e163]:
+              - generic [ref=e164]: 21563AP
+              - heading "21563AP" [level=3] [ref=e166]
+              - generic [ref=e167]:
+                - term [ref=e168]: "Марка:"
+                - definition [ref=e169]:
+                  - generic [ref=e170]: Универсальный
+                - term [ref=e171]: "Год:"
+                - definition [ref=e172]:
+                  - generic [ref=e173]: 2000-2026
+              - generic [ref=e174]:
+                - generic [ref=e175]: 25 GEL
+                - generic [ref=e177]: 50 шт. на складе
+          - generic [ref=e179]:
+            - generic [ref=e180]:
+              - button "Уменьшить количество" [disabled] [ref=e181]: −
+              - generic [ref=e182]: "1"
+              - button "Увеличить количество" [ref=e183] [cursor=pointer]: +
+            - button "В корзину" [ref=e184] [cursor=pointer]
+        - generic [ref=e186]:
+          - 'link "Шаровая опора APLUS AUTOMOTIVE 20497AP Шаровая опора Марка: HONDA Модель: CIVIC Год: 2000-2026 10 GEL 28 шт. на складе" [ref=e187] [cursor=pointer]':
+            - /url: /ru/catalog/20497ap
+            - generic [ref=e188]:
+              - img "Шаровая опора" [ref=e189]
+              - img "APLUS AUTOMOTIVE" [ref=e190]
+            - generic [ref=e191]:
+              - generic [ref=e192]: 20497AP
+              - heading "Шаровая опора" [level=3] [ref=e194]
+              - generic [ref=e195]:
+                - term [ref=e196]: "Марка:"
+                - definition [ref=e197]:
+                  - generic [ref=e198]: HONDA
+                - term [ref=e199]: "Модель:"
+                - definition [ref=e200]:
+                  - generic [ref=e201]: CIVIC
+                - term [ref=e202]: "Год:"
+                - definition [ref=e203]:
+                  - generic [ref=e204]: 2000-2026
+              - generic [ref=e205]:
+                - generic [ref=e206]: 10 GEL
+                - generic [ref=e208]: 28 шт. на складе
+          - generic [ref=e210]:
+            - generic [ref=e211]:
+              - button "Уменьшить количество" [disabled] [ref=e212]: −
+              - generic [ref=e213]: "1"
+              - button "Увеличить количество" [ref=e214] [cursor=pointer]: +
+            - button "В корзину" [ref=e215] [cursor=pointer]
+        - generic [ref=e217]:
+          - 'link "Шаровая опора APLUS AUTOMOTIVE 15652AP Шаровая опора Марка: MERCEDES Модель: B CLASS W169-W245 Год: 2000-2026 18 GEL 38 шт. на складе" [ref=e218] [cursor=pointer]':
+            - /url: /ru/catalog/15652ap
+            - generic [ref=e219]:
+              - img "Шаровая опора" [ref=e220]
+              - img "APLUS AUTOMOTIVE" [ref=e221]
+            - generic [ref=e222]:
+              - generic [ref=e223]: 15652AP
+              - heading "Шаровая опора" [level=3] [ref=e225]
+              - generic [ref=e226]:
+                - term [ref=e227]: "Марка:"
+                - definition [ref=e228]:
+                  - generic [ref=e229]: MERCEDES
+                - term [ref=e230]: "Модель:"
+                - definition [ref=e231]:
+                  - generic [ref=e232]: B CLASS W169-W245
+                - term [ref=e233]: "Год:"
+                - definition [ref=e234]:
+                  - generic [ref=e235]: 2000-2026
+              - generic [ref=e236]:
+                - generic [ref=e237]: 18 GEL
+                - generic [ref=e239]: 38 шт. на складе
+          - generic [ref=e241]:
+            - generic [ref=e242]:
+              - button "Уменьшить количество" [disabled] [ref=e243]: −
+              - generic [ref=e244]: "1"
+              - button "Увеличить количество" [ref=e245] [cursor=pointer]: +
+            - button "В корзину" [ref=e246] [cursor=pointer]

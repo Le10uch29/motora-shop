@@ -17,6 +17,7 @@ export default async function AdminLoginPage({
       identifierLabel={dict.admin.identifierLabel}
       passwordLabel={dict.auth.passwordLabel}
       submitLabel={dict.auth.submit}
+      submittingLabel={dict.auth.submitting}
       invalidCredentialsMessage={dict.auth.invalidCredentials}
     />
   );

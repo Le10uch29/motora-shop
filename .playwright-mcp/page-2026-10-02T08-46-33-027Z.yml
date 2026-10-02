@@ -1,0 +1,27 @@
+- generic [active] [ref=f1e1]:
+  - banner [ref=f1e2]:
+    - generic [ref=f1e3]:
+      - link "ARAZ MOTORS-2026" [ref=f1e4] [cursor=pointer]:
+        - /url: /ru
+      - generic [ref=f1e7]:
+        - search [ref=f1e8]:
+          - generic [ref=f1e9]:
+            - button "Найти" [ref=f1e10] [cursor=pointer]
+            - searchbox "Поиск" [ref=f1e14]
+        - button "Открыть фильтры" [ref=f1e15] [cursor=pointer]
+      - generic [ref=f1e18]:
+        - button "Выбрать язык" [ref=f1e21] [cursor=pointer]: RU
+        - link "Корзина" [ref=f1e22] [cursor=pointer]:
+          - /url: /ru/cart
+        - button "Открыть меню" [ref=f1e28] [cursor=pointer]
+  - main [ref=f1e31]:
+    - heading "Вход для покупателей" [level=1] [ref=f1e32]
+    - generic [ref=f1e33]:
+      - generic [ref=f1e34]:
+        - generic [ref=f1e35]: Email или телефон
+        - textbox "Email или телефон" [ref=f1e36]
+      - generic [ref=f1e37]:
+        - generic [ref=f1e38]: Пароль
+        - textbox "Пароль" [ref=f1e39]
+      - button "Войти" [ref=f1e40] [cursor=pointer]
+  - button "Open Next.js Dev Tools" [ref=f1e46] [cursor=pointer]

@@ -23,6 +23,8 @@ export type Dictionary = {
     emailLabel: string;
     passwordLabel: string;
     submit: string;
+    /** Подпись кнопки, пока идёт вход и браузер ещё не ушёл на новую страницу. */
+    submitting: string;
     note: string;
     invalidCredentials: string;
   };

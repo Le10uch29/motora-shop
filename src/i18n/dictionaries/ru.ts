@@ -34,6 +34,7 @@ const ru: Dictionary = {
     emailLabel: "Email",
     passwordLabel: "Пароль",
     submit: "Войти",
+    submitting: "Входим…",
     note: "Вход пока не подключён к серверу — эта функция появится после настройки бэкенда.",
     invalidCredentials: "Неверный email или пароль.",
   },

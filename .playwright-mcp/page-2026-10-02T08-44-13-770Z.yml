@@ -1,0 +1,26 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - link "ARAZ MOTORS-2026" [ref=e4] [cursor=pointer]:
+        - /url: /ru
+      - generic [ref=e7]:
+        - search [ref=e8]:
+          - generic [ref=e9]:
+            - button "Найти" [ref=e10] [cursor=pointer]
+            - searchbox "Поиск" [ref=e14]
+        - button "Открыть фильтры" [ref=e15] [cursor=pointer]
+      - generic [ref=e18]:
+        - button "Выбрать язык" [ref=e21] [cursor=pointer]: RU
+        - link "Корзина" [ref=e22] [cursor=pointer]:
+          - /url: /ru/cart
+        - button "Открыть меню" [ref=e28] [cursor=pointer]
+  - main [ref=e31]:
+    - heading "Вход для покупателей" [level=1] [ref=e32]
+    - generic [ref=e33]:
+      - generic [ref=e34]:
+        - generic [ref=e35]: Email или телефон
+        - textbox "Email или телефон" [ref=e36]
+      - generic [ref=e37]:
+        - generic [ref=e38]: Пароль
+        - textbox "Пароль" [ref=e39]
+      - button "Войти" [ref=e40] [cursor=pointer]

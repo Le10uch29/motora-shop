@@ -25,6 +25,7 @@ const az: Dictionary = {
     emailLabel: "Email",
     passwordLabel: "Şifrə",
     submit: "Daxil ol",
+    submitting: "Giriş edilir…",
     note: "Giriş hələ serverə qoşulmayıb — bu funksiya backend qurulandan sonra aktiv olacaq.",
     invalidCredentials: "Yanlış email və ya şifrə.",
   },
