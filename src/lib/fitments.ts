@@ -25,6 +25,38 @@ const IMPORT_GROUP_SEPARATOR = /\/{2,}|\r?\n|[;\r]/;
  * unlike models, a make never carries a group of its own. */
 const IMPORT_MAKE_SEPARATOR = /\/+|\r?\n|[;\r]/;
 
+/** Three slashes close the vehicles and open the product's description:
+ * "ASTRA H///1,6" is an Astra H described as "1,6". Three and not two because
+ * "//" already means "next make's models"; a cell is read left to right, so
+ * everything past the first "///" is prose, never a vehicle. */
+const IMPORT_DESCRIPTION_SEPARATOR = /\/{3,}/;
+
+/**
+ * The vehicle part of a model cell and the description written after it.
+ *
+ * Price lists carry the engine or a fitting note in the same cell as the
+ * model — "ASTRA H///1,6" — and that tail is not a model: left in, it would
+ * become a vehicle nobody can filter by and would show up in search as one.
+ *
+ * Further "///" separate fragments of that description rather than starting
+ * another one; they're joined with "; " so no stray slashes survive into the
+ * product card.
+ */
+export function splitModelAndDescription(raw: string | undefined): {
+  model: string;
+  description: string;
+} {
+  const parts = (raw ?? "").split(IMPORT_DESCRIPTION_SEPARATOR);
+  return {
+    model: (parts[0] ?? "").trim(),
+    description: parts
+      .slice(1)
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .join("; "),
+  };
+}
+
 /** The entries of one field, in order. Empty entries in the middle are kept so
  * the positions still line up across fields ("6;;G30"); trailing ones are
  * dropped so a stray final ";" doesn't add a vehicle. */
@@ -100,6 +132,11 @@ function assemble(
  * the row above is a Toyota Prius V, a Toyota Prius C, a BMW G30 and a BMW X5 —
  * all of them 2000-2002, because one year range covers every make.
  *
+ * "///" ends the vehicles entirely and starts the product's description:
+ * "ASTRA H///1,6" is one Astra H with "1,6" as its description. The tail is
+ * dropped here — {@link splitModelAndDescription} is what hands it to the
+ * importer, which stores it as the product's description.
+ *
  * Years come either from that one column ("Год": "2000:2002//2010:2015", a
  * range per make group) or from two columns of their own ("Год от" 2010;2016
  * and "Год до" 2015;2020), whichever the file was mapped with. A bare "2000"
@@ -117,9 +154,12 @@ export function fitmentsFromImport(
   const ranges = raw.years?.trim()
     ? splitList(raw.years, IMPORT_GROUP_SEPARATOR).map(parseYearRange)
     : [];
+  // Описание отрезается и здесь, а не только у вызывающего: иначе любой, кто
+  // передаст сюда исходную ячейку, получит "1,6" отдельной моделью.
+  const { model } = splitModelAndDescription(raw.model);
   return assemble(
     splitList(raw.make, IMPORT_MAKE_SEPARATOR),
-    splitList(raw.model, IMPORT_GROUP_SEPARATOR).map((group) =>
+    splitList(model, IMPORT_GROUP_SEPARATOR).map((group) =>
       group.split("/").map((model) => model.trim())
     ),
     ranges.length > 0

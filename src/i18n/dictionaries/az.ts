@@ -509,6 +509,8 @@ const az: Dictionary = {
     popular: "Populyar",
     popularCategories: "Kateqoriyalar",
     viewAll: "Bütün kataloq →",
+    carouselPrev: "Əvvəlki məhsullar",
+    carouselNext: "Növbəti məhsullar",
   },
   catalog: {
     title: "Kataloq",

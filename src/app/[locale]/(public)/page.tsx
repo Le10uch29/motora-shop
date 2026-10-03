@@ -10,6 +10,7 @@ import {
 import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
 import ProductCard from "@/components/ProductCard";
+import FeaturedCarousel from "@/components/FeaturedCarousel";
 import Hero from "@/components/Hero";
 
 export default async function Home({ params }: PageProps<"/[locale]">) {
@@ -18,7 +19,9 @@ export default async function Home({ params }: PageProps<"/[locale]">) {
   const dict = await getDictionary(locale);
   const [brands, featured, tree, counts] = await Promise.all([
     getBrands(),
-    getFeaturedProducts(4),
+    // 15 — потолок ленты «Популярное»: больше одной прокрутки до конца никто
+    // не досматривает, а каждая карточка тянет своё фото.
+    getFeaturedProducts(15),
     getPublicCategoryTree(),
     getCategoryProductCounts(),
   ]);
@@ -93,22 +96,26 @@ export default async function Home({ params }: PageProps<"/[locale]">) {
 
       {featured.length > 0 && (
         <section className="mx-auto flex w-full max-w-[120rem] flex-col gap-6 px-2 pb-12">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-              {dict.home.popular}
-            </h2>
-            <Link
-              href={`/${locale}/catalog`}
-              className="text-sm font-medium text-orange-600 hover:underline"
-            >
-              {dict.home.viewAll}
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 min-[85rem]:grid-cols-5 min-[100rem]:grid-cols-6 min-[115rem]:grid-cols-7">
+          {/* Карточки собираются здесь, на сервере, и уходят в ленту готовыми
+              элементами: ProductCard принимает весь словарь, а в нём есть
+              функции, которые нельзя передать в клиентский компонент. */}
+          <FeaturedCarousel
+            title={dict.home.popular}
+            labels={{ prev: dict.home.carouselPrev, next: dict.home.carouselNext }}
+            viewAllSlot={
+              <Link
+                key="viewAll"
+                href={`/${locale}/catalog`}
+                className="text-sm font-medium text-orange-600 hover:underline"
+              >
+                {dict.home.viewAll}
+              </Link>
+            }
+          >
             {featured.map((product) => (
               <ProductCard key={product.id} product={product} locale={locale} dict={dict} brands={brands} />
             ))}
-          </div>
+          </FeaturedCarousel>
         </section>
       )}
     </main>

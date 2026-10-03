@@ -518,6 +518,8 @@ const ru: Dictionary = {
     popular: "Популярное",
     popularCategories: "Категории",
     viewAll: "Весь каталог →",
+    carouselPrev: "Предыдущие товары",
+    carouselNext: "Следующие товары",
   },
   catalog: {
     title: "Каталог",

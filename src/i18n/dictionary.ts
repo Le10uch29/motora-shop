@@ -517,6 +517,8 @@ export type Dictionary = {
     popular: string;
     popularCategories: string;
     viewAll: string;
+    carouselPrev: string;
+    carouselNext: string;
   };
   catalog: {
     title: string;

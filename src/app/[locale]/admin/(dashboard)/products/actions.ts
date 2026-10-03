@@ -13,6 +13,7 @@ import {
   fitmentColumns,
   fitmentsFromForm,
   fitmentsFromImport,
+  splitModelAndDescription,
   fitmentsOf,
   fitmentsToFields,
   type Fitment,
@@ -434,7 +435,8 @@ export type ImportRow = {
   description?: string;
   /** Make, model and years as written in their cells. A part that fits several
    * vehicles writes them with slashes — "TOYOTA/BMW" with "PRIUS V/PRIUS
-   * C//G30/X5" — where "//" closes one make's group of models; see
+   * C//G30/X5" — where "//" closes one make's group of models, and "///" ends
+   * the vehicles and starts the description ("ASTRA H///1,6"); see
    * {@link fitmentsFromImport} for the whole notation. */
   make?: string;
   model?: string;
@@ -651,10 +653,13 @@ export async function importProductsAction(
     const nameValue = anyName
       ? { ru: nameRu || anyName, az: nameAz || anyName, ka: nameKa || anyName }
       : { ru: code, az: code, ka: code };
-    const descriptionText = row.description?.trim();
     const originCode = row.originCode?.trim();
     const make = row.make?.trim();
-    const model = row.model?.trim();
+    // "ASTRA H///1,6" — всё после трёх слешей это описание, а не модель.
+    // Отдельная колонка описания, если она в файле есть и заполнена, важнее:
+    // там осознанный текст, а здесь приписка к модели.
+    const { model, description: modelDescription } = splitModelAndDescription(row.model);
+    const descriptionText = row.description?.trim() || modelDescription || undefined;
     const years = row.years?.trim();
     const yearFrom = row.yearFrom?.trim();
     const yearTo = row.yearTo?.trim();

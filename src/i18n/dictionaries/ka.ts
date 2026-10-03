@@ -509,6 +509,8 @@ const ka: Dictionary = {
     popular: "პოპულარული",
     popularCategories: "კატეგორიები",
     viewAll: "მთელი კატალოგი →",
+    carouselPrev: "წინა პროდუქტები",
+    carouselNext: "შემდეგი პროდუქტები",
   },
   catalog: {
     title: "კატალოგი",
