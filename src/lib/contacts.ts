@@ -14,3 +14,10 @@ export const SHOP_CONTACTS = {
 /** Телефон без пробелов и скобок — для href="tel:". */
 export const phoneHref = `tel:${SHOP_CONTACTS.phone}`;
 export const emailHref = `mailto:${SHOP_CONTACTS.email}`;
+
+/** Подпись автора сайта в самом низу подвала. Имя и адрес одинаковы во всех
+ * языках, поэтому живут здесь, а не в словарях. */
+export const SITE_AUTHOR = {
+  label: "Create By Shadow-Monarch",
+  url: "https://elnur-portfolio.vercel.app/",
+} as const;

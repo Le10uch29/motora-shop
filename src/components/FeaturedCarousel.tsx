@@ -1,8 +1,20 @@
 "use client";
 
-import { Children, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  Children,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+  type PointerEvent,
+  type ReactNode,
+} from "react";
 
 const AUTO_ADVANCE_MS = 4500;
+/** На столько курсор должен уехать, чтобы это считалось перетаскиванием, а не
+ * кликом по карточке. */
+const DRAG_THRESHOLD_PX = 6;
 /** Пауза после ручного перелистывания или свайпа: иначе автопрокрутка
  * дёргает ленту из-под руки у того, кто только что сам её пролистал. */
 const RESUME_AFTER_MS = 9000;
@@ -48,6 +60,16 @@ export default function FeaturedCarousel({
 }) {
   const items = Children.toArray(children);
   const trackRef = useRef<HTMLDivElement>(null);
+  // Текущее перетаскивание мышью и флаг «последний клик был концом
+  // перетаскивания» — в ref, а не в состоянии: они меняются на каждое
+  // движение мыши, и перерисовывать из-за них ленту незачем.
+  const dragRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startScroll: number;
+    moved: boolean;
+  } | null>(null);
+  const draggedRef = useRef(false);
   // Пауза на время наведения или фокуса — пока курсор на ленте, она стоит.
   const [paused, setPaused] = useState(false);
   // До какого момента лента молчит после ручного действия. Свайп пальцем не
@@ -100,6 +122,69 @@ export default function FeaturedCarousel({
     step(delta);
   }
 
+  // Перетаскивание мышью. Пальцем ленту крутит сам браузер (родная прокрутка
+  // с инерцией), поэтому касания сюда не попадают — перехватив их, мы бы эту
+  // инерцию сломали и заменили на рывки.
+  function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
+    pauseTemporarily();
+    const track = trackRef.current;
+    if (!track || event.pointerType !== "mouse" || event.button !== 0) return;
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startScroll: track.scrollLeft,
+      moved: false,
+    };
+  }
+
+  function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current;
+    const track = trackRef.current;
+    if (!drag || !track || event.pointerId !== drag.pointerId) return;
+
+    const shift = event.clientX - drag.startX;
+    // Пока палец/курсор не ушёл дальше порога, это ещё клик по карточке, а не
+    // перетаскивание: без порога не нажать ни «в корзину», ни саму карточку.
+    if (!drag.moved && Math.abs(shift) < DRAG_THRESHOLD_PX) return;
+    if (!drag.moved) {
+      drag.moved = true;
+      track.setPointerCapture(drag.pointerId);
+      // Притяжение к слайдам на время перетаскивания выключаем: оно спорит с
+      // ручной установкой scrollLeft и лента дёргается под курсором.
+      track.style.scrollSnapType = "none";
+    }
+    track.scrollLeft = drag.startScroll - shift;
+  }
+
+  function endDrag(event: PointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current;
+    const track = trackRef.current;
+    if (!drag || !track || event.pointerId !== drag.pointerId) return;
+    if (drag.moved) {
+      if (track.hasPointerCapture(drag.pointerId)) track.releasePointerCapture(drag.pointerId);
+      track.style.scrollSnapType = "";
+      // Довод до ближайшего слайда: snap сам этого уже не сделает — прокрутка
+      // закончилась, пока он был выключен.
+      const index = currentIndex(track);
+      const maxScroll = track.scrollWidth - track.clientWidth;
+      track.scrollTo({
+        left: Math.min((track.children[index] as HTMLElement).offsetLeft, maxScroll),
+        behavior: "smooth",
+      });
+    }
+    draggedRef.current = drag.moved;
+    dragRef.current = null;
+  }
+
+  // Клик, завершивший перетаскивание, гасим в фазе перехвата: иначе отпускание
+  // мыши над карточкой уводило бы на товар после каждого листания.
+  function handleClickCapture(event: MouseEvent<HTMLDivElement>) {
+    if (!draggedRef.current) return;
+    draggedRef.current = false;
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
   const arrowClass =
     "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-zinc-200 text-zinc-600 transition-colors hover:border-orange-500 hover:text-orange-600 dark:border-zinc-700 dark:text-zinc-300";
 
@@ -110,7 +195,6 @@ export default function FeaturedCarousel({
       onMouseLeave={() => setPaused(false)}
       onFocusCapture={() => setPaused(true)}
       onBlurCapture={() => setPaused(false)}
-      onPointerDown={pauseTemporarily}
     >
       <div className="flex items-center justify-between gap-4">
         <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">{title}</h2>
@@ -140,7 +224,17 @@ export default function FeaturedCarousel({
         // py-2 — это место для подъёма карточки при наведении и для её тени:
         // горизонтальная прокрутка делает overflow-y тоже auto, и без запаса
         // браузер срезал верхние 5px поднятой карточки вместе со скруглением.
-        className="relative flex snap-x snap-mandatory gap-5 overflow-x-auto py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onClickCapture={handleClickCapture}
+        // Карточка — ссылка, а потянутую ссылку браузер начинает перетаскивать
+        // сам: после dragstart он шлёт pointercancel и поток событий обрывается,
+        // так что листать мышью было нельзя вовсе. Своё перетаскивание ленты
+        // нам нужнее, чем перенос ссылки в закладки.
+        onDragStart={(event) => event.preventDefault()}
+        className="relative flex cursor-grab snap-x snap-mandatory gap-5 overflow-x-auto py-2 select-none active:cursor-grabbing [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {items.map((item, index) => (
           <div

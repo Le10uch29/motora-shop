@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
 
@@ -24,6 +25,7 @@ export default async function PublicLayout({
     <>
       <Header locale={locale} dict={dict} />
       {children}
+      <Footer locale={locale} dict={dict} />
     </>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Locale } from "@/i18n/locales";
@@ -77,15 +78,21 @@ export default function MobileMenu({
         </svg>
       </button>
 
-      {/* Тап по странице под меню закрывает его. Подложка ниже панели (z-30) и
-          ниже самой шапки, поэтому по шапке тапать по-прежнему можно. */}
-      {open && (
-        <div
-          className="fixed inset-0 z-20"
-          onClick={() => setOpen(false)}
-          aria-hidden="true"
-        />
-      )}
+      {/* Тап по странице под меню закрывает его.
+
+          Подложка уходит порталом в body, и это не украшение: у шапки есть
+          backdrop-blur, а backdrop-filter делает элемент блоком-контейнером для
+          потомков с position: fixed. Оставленная внутри шапки подложка
+          растягивалась не на экран, а на саму шапку — клик по странице проходил
+          мимо неё насквозь и открывал товар вместо закрытия меню.
+
+          z-20 ниже шапки (z-30), поэтому сама шапка и панель меню остаются
+          кликабельными, а всё под ними перехватывается. */}
+      {open &&
+        createPortal(
+          <div className="fixed inset-0 z-20" onClick={() => setOpen(false)} aria-hidden="true" />,
+          document.body
+        )}
 
       {open && (
         <div className="flame-sidebar absolute inset-x-0 top-full z-30 flex max-h-[80vh] flex-col overflow-y-auto border-t border-zinc-200 px-3 py-6 shadow-lg dark:border-zinc-800">
