@@ -66,6 +66,8 @@ export default async function BrandsPage({
                     src={brand.logoUrl}
                     alt={brand.name}
                     className="h-full w-full object-contain p-8"
+                    loading="lazy"
+                    decoding="async"
                   />
                 ) : (
                   <span className="text-4xl font-bold text-zinc-400 dark:text-zinc-600">

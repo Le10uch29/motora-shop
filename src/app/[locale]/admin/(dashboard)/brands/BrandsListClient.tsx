@@ -77,7 +77,7 @@ export default function BrandsListClient({
                 <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
                   {brand.logoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={brand.logoUrl} alt={brand.name} className="h-full w-full object-contain" />
+                    <img src={brand.logoUrl} alt={brand.name} className="h-full w-full object-contain" loading="lazy" decoding="async" />
                   ) : (
                     <span className="text-xs text-zinc-400">—</span>
                   )}

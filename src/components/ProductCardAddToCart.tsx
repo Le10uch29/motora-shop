@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useCart } from "@/context/CartContext";
+import QuantityField from "@/components/QuantityField";
 
 // Only the plain strings the buttons need — never the whole Dictionary["product"]
 // object, which also carries a stockCount() function that can't cross the
@@ -9,6 +10,7 @@ import { useCart } from "@/context/CartContext";
 type Labels = {
   addToCart: string;
   added: string;
+  quantityLabel: string;
   quantityDecreaseAria: string;
   quantityIncreaseAria: string;
 };
@@ -29,29 +31,17 @@ export default function ProductCardAddToCart({
 
   return (
     <div className="flex items-center gap-2">
-      <div className="flex items-center gap-1 rounded-full border border-zinc-200 dark:border-zinc-700">
-        <button
-          type="button"
-          aria-label={labels.quantityDecreaseAria}
-          onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-          disabled={quantity <= 1}
-          className="flex h-7 w-7 items-center justify-center rounded-full text-zinc-600 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-300"
-        >
-          −
-        </button>
-        <span className="w-5 text-center text-sm font-medium text-zinc-900 dark:text-zinc-50">
-          {quantity}
-        </span>
-        <button
-          type="button"
-          aria-label={labels.quantityIncreaseAria}
-          onClick={() => setQuantity((q) => Math.min(maxQuantity, q + 1))}
-          disabled={quantity >= maxQuantity}
-          className="flex h-7 w-7 items-center justify-center rounded-full text-zinc-600 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-300"
-        >
-          +
-        </button>
-      </div>
+      <QuantityField
+        value={quantity}
+        onChange={setQuantity}
+        max={maxQuantity}
+        variant="pill"
+        labels={{
+          decreaseAria: labels.quantityDecreaseAria,
+          increaseAria: labels.quantityIncreaseAria,
+          inputAria: labels.quantityLabel,
+        }}
+      />
       <button
         type="button"
         onClick={() => {

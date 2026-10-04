@@ -103,7 +103,7 @@ export default function CustomerListClient({
                   <td className="px-4 py-3">
                     {row.photoUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={row.photoUrl} alt="" className="h-9 w-9 rounded-full object-cover" />
+                      <img src={row.photoUrl} alt="" className="h-9 w-9 rounded-full object-cover" loading="lazy" decoding="async" />
                     ) : (
                       <div className="h-9 w-9 rounded-full bg-zinc-100 dark:bg-zinc-800" />
                     )}

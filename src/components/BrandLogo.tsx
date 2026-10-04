@@ -14,6 +14,8 @@ export default function BrandLogo({
         src={logoUrl}
         alt={name}
         className={`h-14 w-auto max-w-[55%] object-contain drop-shadow-sm ${className}`}
+        loading="lazy"
+        decoding="async"
       />
     );
   }

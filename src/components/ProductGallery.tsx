@@ -30,11 +30,14 @@ export default function ProductGallery({
   return (
     <div className="flex flex-col gap-3">
       <div className="relative overflow-hidden rounded-2xl">
+        {/* Главное фото грузится сразу: оно и есть то, ради чего открыли
+            страницу, и откладывать его значит показывать пустую рамку. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={productImageUrl(photos[selected] ?? photos[0], "square")}
           alt={alt}
           className="aspect-square w-full object-fill"
+          decoding="async"
         />
         {overlay}
       </div>
@@ -52,7 +55,13 @@ export default function ProductGallery({
               }`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={productImageUrl(photo, "thumb")} alt="" className="h-full w-full object-fill" />
+              <img
+                src={productImageUrl(photo, "thumb")}
+                alt=""
+                className="h-full w-full object-fill"
+                loading="lazy"
+                decoding="async"
+              />
             </button>
           ))}
         </div>

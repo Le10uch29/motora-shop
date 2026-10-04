@@ -416,6 +416,7 @@ export type Dictionary = {
     unitsShort: string;
     addToCart: string;
     addedToCart: string;
+    quantityLabel: string;
     quantityDecreaseAria: string;
     quantityIncreaseAria: string;
   };
@@ -571,5 +572,6 @@ export type Dictionary = {
     orderPlaced: string;
     orderError: string;
     productCodeLabel: string;
+    quantityLabel: string;
   };
 };

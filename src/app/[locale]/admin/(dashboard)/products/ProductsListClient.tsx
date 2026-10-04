@@ -349,7 +349,7 @@ export default function ProductsListClient({
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
                       {row.images[0] ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={productImageUrl(row.images[0], "thumb")} alt="" className="h-full w-full object-fill" />
+                        <img src={productImageUrl(row.images[0], "thumb")} alt="" className="h-full w-full object-fill" loading="lazy" decoding="async" />
                       ) : (
                         <span className="text-xs text-zinc-400">—</span>
                       )}

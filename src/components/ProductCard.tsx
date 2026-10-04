@@ -38,6 +38,8 @@ export default function ProductCard({
                 src={product.images[0]}
                 alt={t(product.name, locale)}
                 className="aspect-[4/3] w-full object-fill"
+                loading="lazy"
+                decoding="async"
               />
             ) : (
               <ProductVisual className="aspect-[4/3] w-full" />
@@ -111,6 +113,7 @@ export default function ProductCard({
               labels={{
                 addToCart: dict.product.addToCart,
                 added: dict.product.added,
+                quantityLabel: dict.product.quantityLabel,
                 quantityDecreaseAria: dict.product.quantityDecreaseAria,
                 quantityIncreaseAria: dict.product.quantityIncreaseAria,
               }}

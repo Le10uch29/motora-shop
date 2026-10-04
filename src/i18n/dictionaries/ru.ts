@@ -418,6 +418,7 @@ const ru: Dictionary = {
     unitsShort: "шт.",
     addToCart: "В корзину",
     addedToCart: "Добавлено ✓",
+    quantityLabel: "Количество",
     quantityDecreaseAria: "Уменьшить количество",
     quantityIncreaseAria: "Увеличить количество",
   },
@@ -569,6 +570,7 @@ const ru: Dictionary = {
     orderPlaced: "Заказано ✓",
     orderError: "Не удалось оформить заказ. Попробуйте ещё раз.",
     productCodeLabel: "Код продукта",
+    quantityLabel: "Количество",
   },
 };
 

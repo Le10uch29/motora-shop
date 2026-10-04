@@ -140,6 +140,8 @@ export default function UncategorizedClient({
                       src={productImageUrl(product.image, "thumb")}
                       alt=""
                       className="h-10 w-10 rounded-lg object-fill"
+                      loading="lazy"
+                      decoding="async"
                     />
                   ) : (
                     <div className="h-10 w-10 rounded-lg bg-zinc-100 dark:bg-zinc-800" />

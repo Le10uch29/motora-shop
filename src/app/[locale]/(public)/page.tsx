@@ -77,6 +77,8 @@ export default async function Home({ params }: PageProps<"/[locale]">) {
                       src={category.imageUrl}
                       alt={category.name}
                       className="max-h-full max-w-full object-contain"
+                      loading="lazy"
+                      decoding="async"
                     />
                   ) : (
                     <span className="px-3 text-center text-sm font-semibold text-zinc-400 dark:text-zinc-600">

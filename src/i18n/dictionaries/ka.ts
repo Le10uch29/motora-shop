@@ -409,6 +409,7 @@ const ka: Dictionary = {
     unitsShort: "ცალი",
     addToCart: "კალათაში",
     addedToCart: "დამატებულია ✓",
+    quantityLabel: "რაოდენობა",
     quantityDecreaseAria: "რაოდენობის შემცირება",
     quantityIncreaseAria: "რაოდენობის გაზრდა",
   },
@@ -560,6 +561,7 @@ const ka: Dictionary = {
     orderPlaced: "შეკვეთილია ✓",
     orderError: "შეკვეთის გაფორმება ვერ მოხერხდა. სცადეთ თავიდან.",
     productCodeLabel: "პროდუქტის კოდი",
+    quantityLabel: "რაოდენობა",
   },
 };
 

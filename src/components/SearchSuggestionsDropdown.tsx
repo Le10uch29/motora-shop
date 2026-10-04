@@ -70,7 +70,7 @@ export default function SearchSuggestionsDropdown({
                 <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-800">
                   {result.image ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={productImageUrl(result.image, "thumb")} alt="" className="h-full w-full object-fill" />
+                    <img src={productImageUrl(result.image, "thumb")} alt="" className="h-full w-full object-fill" loading="lazy" decoding="async" />
                   ) : (
                     <ProductVisual className="h-full w-full" />
                   )}
@@ -115,6 +115,7 @@ export default function SearchSuggestionsDropdown({
                   labels={{
                     addToCart: dict.addToCart,
                     added: dict.addedToCart,
+                    quantityLabel: dict.quantityLabel,
                     quantityDecreaseAria: dict.quantityDecreaseAria,
                     quantityIncreaseAria: dict.quantityIncreaseAria,
                   }}

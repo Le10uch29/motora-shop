@@ -409,6 +409,7 @@ const az: Dictionary = {
     unitsShort: "ədəd",
     addToCart: "Səbətə at",
     addedToCart: "Əlavə edildi ✓",
+    quantityLabel: "Miqdar",
     quantityDecreaseAria: "Miqdarı azalt",
     quantityIncreaseAria: "Miqdarı artır",
   },
@@ -560,6 +561,7 @@ const az: Dictionary = {
     orderPlaced: "Sifariş edildi ✓",
     orderError: "Sifarişi rəsmiləşdirmək mümkün olmadı. Yenidən cəhd edin.",
     productCodeLabel: "Məhsul kodu",
+    quantityLabel: "Miqdar",
   },
 };
 

@@ -9,6 +9,7 @@ import { formatGel } from "@/lib/currency";
 import type { Locale } from "@/i18n/locales";
 import type { Dictionary } from "@/i18n/dictionary";
 import ProductVisual from "@/components/ProductVisual";
+import QuantityField from "@/components/QuantityField";
 
 const ORDER_ERROR_CODES = new Set(["empty_cart", "not_authenticated", "products_not_found"]);
 
@@ -121,27 +122,19 @@ export default function CartView({
               )}
               <span className="text-sm text-zinc-500">{formatGel(product.price, locale)}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                aria-label={dict.decreaseAria}
-                onClick={() => setQuantity(item.productId, item.quantity - 1)}
-                className="flex h-8 w-8 items-center justify-center rounded-full border border-zinc-200 text-zinc-600 hover:border-orange-500 hover:text-orange-600 dark:border-zinc-700 dark:text-zinc-300"
-              >
-                −
-              </button>
-              <span className="w-6 text-center font-medium text-zinc-900 dark:text-zinc-50">
-                {item.quantity}
-              </span>
-              <button
-                type="button"
-                aria-label={dict.increaseAria}
-                onClick={() => setQuantity(item.productId, item.quantity + 1)}
-                className="flex h-8 w-8 items-center justify-center rounded-full border border-zinc-200 text-zinc-600 hover:border-orange-500 hover:text-orange-600 dark:border-zinc-700 dark:text-zinc-300"
-              >
-                +
-              </button>
-            </div>
+            {/* Потолка здесь нет намеренно: корзина и раньше позволяла заказать
+                больше, чем лежит на складе — это оптовый магазин, недостающее
+                довозят. Ограничение появилось бы только из-за поля ввода, а
+                менять правила заказа ради него незачем. */}
+            <QuantityField
+              value={item.quantity}
+              onChange={(next) => setQuantity(item.productId, next)}
+              labels={{
+                decreaseAria: dict.decreaseAria,
+                increaseAria: dict.increaseAria,
+                inputAria: dict.quantityLabel,
+              }}
+            />
             <span className="w-28 text-right font-semibold text-zinc-900 dark:text-zinc-50">
               {formatGel(product.price * item.quantity, locale)}
             </span>

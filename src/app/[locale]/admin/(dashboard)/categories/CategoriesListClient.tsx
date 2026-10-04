@@ -106,6 +106,8 @@ export default function CategoriesListClient({
                     src={category.imageUrl}
                     alt=""
                     className="h-12 w-12 shrink-0 rounded-lg bg-zinc-100 object-contain p-0.5 dark:bg-zinc-800"
+                    loading="lazy"
+                    decoding="async"
                   />
                 ) : (
                   <div className="h-12 w-12 shrink-0 rounded-lg bg-zinc-100 dark:bg-zinc-800" />

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useCart } from "@/context/CartContext";
+import QuantityField from "@/components/QuantityField";
 
 export default function AddToCartButton({
   productId,
@@ -30,29 +31,16 @@ export default function AddToCartButton({
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="text-sm text-zinc-600 dark:text-zinc-400">{labels.quantityLabel}</span>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            aria-label={labels.quantityDecreaseAria}
-            onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-            disabled={quantity <= 1}
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-zinc-200 text-zinc-600 hover:border-orange-500 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-300"
-          >
-            −
-          </button>
-          <span className="w-6 text-center font-medium text-zinc-900 dark:text-zinc-50">
-            {quantity}
-          </span>
-          <button
-            type="button"
-            aria-label={labels.quantityIncreaseAria}
-            onClick={() => setQuantity((q) => Math.min(maxQuantity, q + 1))}
-            disabled={quantity >= maxQuantity}
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-zinc-200 text-zinc-600 hover:border-orange-500 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-300"
-          >
-            +
-          </button>
-        </div>
+        <QuantityField
+          value={quantity}
+          onChange={setQuantity}
+          max={maxQuantity}
+          labels={{
+            decreaseAria: labels.quantityDecreaseAria,
+            increaseAria: labels.quantityIncreaseAria,
+            inputAria: labels.quantityLabel,
+          }}
+        />
       </div>
 
       <button
