@@ -31,7 +31,8 @@
       "Bash(grep -o '\"timestamp\":\"[^\"]*\",\"source\":\"[^\"]*\",\"level\":\"[^\"]*\",\"message\":\"[^\"]\\\\{0,120\\\\}')",
       "Bash(grep -o 'Encountered a script tag[^\"]\\\\{0,400\\\\}' \".next/dev/logs/next-development.log\")",
       "Bash(grep -o 'removeChild[^\"]\\\\{0,300\\\\}' \".next/dev/logs/next-development.log\")",
-      "mcp__claude_ai_Claude_Docs__guide"
+      "mcp__claude_ai_Claude_Docs__guide",
+      "mcp__plugin_playwright_playwright__browser_evaluate"
     ]
   }
 }

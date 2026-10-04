@@ -37,7 +37,11 @@ export default async function Home({ params }: PageProps<"/[locale]">) {
   }));
 
   return (
-    <main className="flex flex-1 flex-col">
+    // Расстояние между блоками задаётся здесь одним gap, а не отступами
+    // каждой секции: категорий может не быть (ни одной активной), и тогда
+    // «Популярное» прилипало к баннеру вплотную, а при их появлении отступы
+    // соседних секций складывались в двойной.
+    <main className="flex flex-1 flex-col gap-8 pb-12 sm:gap-12">
       <section className="mx-auto w-full max-w-[120rem] px-4 pt-6 sm:px-2">
         {/* The banner carries no text of its own; the heading stays for screen
             readers and search engines only. */}
@@ -50,7 +54,7 @@ export default async function Home({ params }: PageProps<"/[locale]">) {
           Clicking one opens everything filed under it, subcategories
           included. */}
       {categories.length > 0 && (
-        <section className="mx-auto flex w-full max-w-[120rem] flex-col gap-4 px-2 py-8 sm:gap-6 sm:py-12">
+        <section className="mx-auto flex w-full max-w-[120rem] flex-col gap-4 px-2 sm:gap-6">
           <h2 className="text-xl font-bold tracking-tight text-zinc-900 sm:text-2xl dark:text-zinc-50">
             {dict.home.popularCategories}
           </h2>
@@ -95,7 +99,7 @@ export default async function Home({ params }: PageProps<"/[locale]">) {
       )}
 
       {featured.length > 0 && (
-        <section className="mx-auto flex w-full max-w-[120rem] flex-col gap-6 px-2 pb-12">
+        <section className="mx-auto flex w-full max-w-[120rem] flex-col gap-6 px-2">
           {/* Карточки собираются здесь, на сервере, и уходят в ленту готовыми
               элементами: ProductCard принимает весь словарь, а в нём есть
               функции, которые нельзя передать в клиентский компонент. */}

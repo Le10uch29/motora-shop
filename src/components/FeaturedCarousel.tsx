@@ -137,7 +137,10 @@ export default function FeaturedCarousel({
         ref={trackRef}
         // relative — чтобы offsetLeft карточек считался от самой ленты:
         // именно это число и есть нужный scrollLeft.
-        className="relative flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        // py-2 — это место для подъёма карточки при наведении и для её тени:
+        // горизонтальная прокрутка делает overflow-y тоже auto, и без запаса
+        // браузер срезал верхние 5px поднятой карточки вместе со скруглением.
+        className="relative flex snap-x snap-mandatory gap-5 overflow-x-auto py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {items.map((item, index) => (
           <div
@@ -146,9 +149,14 @@ export default function FeaturedCarousel({
             // блока: 1 на телефоне, 2, 4, 5 и 6 на широких экранах. Из 100%
             // вычитаются промежутки (gap-5 = 1.25rem), иначе последняя
             // карточка ряда не помещается и ряд «едет».
-            className="flex shrink-0 grow-0 snap-start basis-full sm:basis-[calc((100%-1.25rem)/2)] lg:basis-[calc((100%-3.75rem)/4)] min-[85rem]:basis-[calc((100%-5rem)/5)] min-[100rem]:basis-[calc((100%-6.25rem)/6)]"
+            // grid, а не flex: карточка — единственный потомок и должна занять
+            // слайд целиком. Её корень это flex-элемент с `flex: 0 1 auto`, и
+            // во flex-обёртке он сжимался до ширины своего текста — карточки
+            // выходили разной ширины, а вместе с ними (из-за aspect-[4/3])
+            // разной высоты фото. В гриде потомок растягивается сам.
+            className="grid shrink-0 grow-0 snap-start basis-full sm:basis-[calc((100%-1.25rem)/2)] lg:basis-[calc((100%-3.75rem)/4)] min-[85rem]:basis-[calc((100%-5rem)/5)] min-[100rem]:basis-[calc((100%-6.25rem)/6)]"
           >
-            <div className="flex w-full">{item}</div>
+            {item}
           </div>
         ))}
       </div>
