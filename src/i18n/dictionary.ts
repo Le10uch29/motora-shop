@@ -298,6 +298,9 @@ export type Dictionary = {
     importResultUnchangedLabel: string;
     importResultSkippedLabel: string;
     importGenericError: string;
+    importPhotosTooLargeError: string;
+    importPhotosSkippedLabel: string;
+    importPhotosSkippedHint: string;
     importConflictsFoundLabel: string;
     importConflictsHint: string;
     importConflictsButton: string;

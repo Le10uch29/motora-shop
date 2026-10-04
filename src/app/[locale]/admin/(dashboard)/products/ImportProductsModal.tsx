@@ -40,9 +40,15 @@ const NAME_FIELDS = ["nameRu", "nameAz", "nameKa"] as const satisfies readonly F
 /** Embedded photos go up a batch per request rather than all at once — a price
  * list can carry hundreds, and one request holding all of them would run past
  * the server's request size limit. Whichever cap a batch reaches first ends it,
- * so a few large photos travel as safely as many small ones. */
+ * so a few large photos travel as safely as many small ones.
+ *
+ * 3 МБ — это не настройка Next, а потолок хостинга: Vercel отклоняет запрос
+ * больше 4,5 МБ сам, до того как тот дойдёт до приложения, и поднять его через
+ * serverActions.bodySizeLimit нельзя. Прежние 6 МБ мимо этого потолка не
+ * проходили — импорт с двумя десятками фотографий падал с 413. Остаток до 4,5
+ * оставлен на служебные части multipart-запроса. */
 const PHOTO_BATCH_MAX_FILES = 20;
-const PHOTO_BATCH_MAX_BYTES = 6 * 1024 * 1024;
+const PHOTO_BATCH_MAX_BYTES = 3 * 1024 * 1024;
 
 /** A photo column holds links. Excel leaves "#VALUE!" in a cell whose picture
  * lives inside it, and that must not be mistaken for one — it would be saved
@@ -165,6 +171,8 @@ export default function ImportProductsModal({
   // How many photos this run actually has to send: rows whose picture is in
   // the file and that weren't given a link of their own.
   const [photosToUpload, setPhotosToUpload] = useState(0);
+  /** Имена снимков, которые не влезли в предел запроса и остались незагруженными. */
+  const [skippedPhotos, setSkippedPhotos] = useState<string[]>([]);
   const [brandId, setBrandId] = useState<string>(brands[0]?.id ?? "");
   const [warehouseId, setWarehouseId] = useState<string>("");
   const [parseError, setParseError] = useState<string | null>(null);
@@ -201,6 +209,7 @@ export default function ImportProductsModal({
     setDataRows([]);
     setMapping({});
     setResult(null);
+    setSkippedPhotos([]);
   }
 
   async function handleFile(input: HTMLInputElement) {
@@ -287,6 +296,7 @@ export default function ImportProductsModal({
 
     startTransition(async () => {
       setUploadedPhotos(0);
+      setSkippedPhotos([]);
 
       // Pictures that live inside the spreadsheet are uploaded first and turn
       // into URLs, so the import itself sees them exactly as it sees a photo
@@ -320,7 +330,16 @@ export default function ImportProductsModal({
         else byPicture.set(image.fileName, { image, rows: [row] });
       }
 
-      const uploads = Array.from(byPicture.values());
+      // Снимок крупнее потолка не пройдёт ни в какой пачке: хостинг отклонит
+      // запрос целиком, каким бы одиноким этот файл ни был. Такие пропускаем и
+      // называем поимённо — товар просто останется без фото, а остальной
+      // импорт доходит до конца.
+      const all = Array.from(byPicture.values());
+      const oversized = all.filter((entry) => entry.image.bytes.length > PHOTO_BATCH_MAX_BYTES);
+      setSkippedPhotos(oversized.map((entry) => entry.image.fileName));
+      const uploads = all.filter((entry) => entry.image.bytes.length <= PHOTO_BATCH_MAX_BYTES);
+      setPhotosToUpload(uploads.reduce((total, entry) => total + entry.rows.length, 0));
+
       for (let i = 0; i < uploads.length; ) {
         const batch: typeof uploads = [];
         let batchBytes = 0;
@@ -341,7 +360,19 @@ export default function ImportProductsModal({
           );
         }
 
-        const uploaded = await uploadImportPhotosAction(locale, formData);
+        // Отказ по размеру приходит не ответом действия, а оборванным
+        // запросом (413 от хостинга), и дальше это всплывало необработанным
+        // «An unexpected response was received from the server».
+        let uploaded: Awaited<ReturnType<typeof uploadImportPhotosAction>>;
+        try {
+          uploaded = await uploadImportPhotosAction(locale, formData);
+        } catch {
+          setResult({
+            created: 0, updated: 0, skipped: 0, conflicts: 0,
+            warehouseStockSet: 0, unchanged: 0, error: dict.importPhotosTooLargeError,
+          });
+          return;
+        }
         if (uploaded.error) {
           setResult({
             created: 0, updated: 0, skipped: 0, conflicts: 0,
@@ -442,6 +473,12 @@ export default function ImportProductsModal({
             {result.conflicts > 0 && (
               <p className="text-sm text-amber-600 dark:text-amber-500">
                 {dict.importConflictsFoundLabel} {result.conflicts}. {dict.importConflictsHint}
+              </p>
+            )}
+            {skippedPhotos.length > 0 && (
+              <p className="text-sm text-amber-600 dark:text-amber-500">
+                {dict.importPhotosSkippedLabel} {skippedPhotos.length}. {dict.importPhotosSkippedHint}{" "}
+                <span className="break-all">{skippedPhotos.join(", ")}</span>
               </p>
             )}
             {result.error && <p className="text-sm text-red-600">{result.error}</p>}

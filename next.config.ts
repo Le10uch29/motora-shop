@@ -6,6 +6,11 @@ const nextConfig: NextConfig = {
       // Photos embedded in an imported Excel file are sent to the server a
       // few at a time; the 1 MB default is smaller than a single decent
       // product photo, let alone a batch of them.
+      //
+      // Это не весь предел. На Vercel (где стоит сайт) запрос больше 4,5 МБ
+      // отклоняется самой платформой с 413 ещё до приложения, и поднять это
+      // отсюда нельзя. Поэтому настоящий потолок задаёт размер пачки в
+      // ImportProductsModal — его и надо менять, а не это число.
       bodySizeLimit: "12mb",
     },
   },
