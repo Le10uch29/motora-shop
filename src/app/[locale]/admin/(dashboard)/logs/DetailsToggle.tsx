@@ -4,7 +4,10 @@ import { useState } from "react";
 import type { Dictionary } from "@/i18n/dictionary";
 
 type FieldDiff = { before: string; after: string };
-export type LogDetails = Record<string, FieldDiff | true>;
+/** Значение подробности: изменение «было → стало», просто факт (true) или
+ * одиночное значение — у записи вроде «заказ оформлен вместо покупателя»
+ * менять нечего, там важно само значение. */
+export type LogDetails = Record<string, FieldDiff | string | true>;
 
 const FIELD_LABEL_KEYS = {
   firstName: "firstNameLabel",
@@ -18,6 +21,8 @@ const FIELD_LABEL_KEYS = {
   password: "resetPasswordLabel",
   deliveryMethod: "passwordDeliveryLabel",
   discountedPrice: "discountedPriceLabel",
+  placedByEmail: "logPlacedByEmailLabel",
+  customerPhone: "phoneLabel",
 } as const satisfies Record<string, keyof Dictionary["admin"]>;
 
 function fieldLabel(key: string, dict: Dictionary["admin"]): string {
@@ -60,7 +65,9 @@ export default function DetailsToggle({
             <li key={key}>
               {value === true
                 ? fieldLabel(key, dict)
-                : `${fieldLabel(key, dict)}: ${formatValue(key, value.before, dict)} → ${formatValue(key, value.after, dict)}`}
+                : typeof value === "string"
+                  ? `${fieldLabel(key, dict)}: ${formatValue(key, value, dict)}`
+                  : `${fieldLabel(key, dict)}: ${formatValue(key, value.before, dict)} → ${formatValue(key, value.after, dict)}`}
             </li>
           ))}
         </ul>

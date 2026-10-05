@@ -29,7 +29,12 @@ function sanitizeForFilter(value: string): string {
 export async function searchProductSuggestionsAction(
   locale: Locale,
   query: string,
-  brandSlug?: string
+  brandSlug?: string,
+  /** Сколько позиций вернуть. В шапке сайта список короткий — он лишь ведёт в
+   * каталог; в админке заказ собирается прямо в нём, и выбирать приходится из
+   * большего. Данные те же самые и публичные, так что ограничение здесь —
+   * вопрос удобства, а не доступа. */
+  limit = RESULT_LIMIT
 ): Promise<{ results: SearchSuggestion[]; total: number }> {
   const trimmed = query.trim();
   if (trimmed.length < 2) return { results: [], total: 0 };
@@ -52,7 +57,7 @@ export async function searchProductSuggestionsAction(
           .or(orFilter)
           .eq("brands.slug", brandSlug)
           .gt("stock", 0)
-          .limit(RESULT_LIMIT),
+          .limit(limit),
         supabase
           .from("products")
           .select("id, brands!inner(slug)", { count: "exact", head: true })
@@ -66,7 +71,7 @@ export async function searchProductSuggestionsAction(
           .select("id, slug, name, price, old_price, images, product_code, stock")
           .or(orFilter)
           .gt("stock", 0)
-          .limit(RESULT_LIMIT),
+          .limit(limit),
         supabase
           .from("products")
           .select("id", { count: "exact", head: true })

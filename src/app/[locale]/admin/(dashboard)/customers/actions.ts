@@ -11,6 +11,17 @@ import { isPhoneAliasEmail, phoneAliasEmail } from "@/lib/phoneLogin";
 import type { Locale } from "@/i18n/locales";
 import { isLocale } from "@/i18n/locales";
 
+/** Подпись для журнала: «вместо покупателя». Запись в журнал делается один
+ * раз и хранится строкой, поэтому язык берётся тот, на котором работал
+ * оформивший админ — переводить задним числом уже нечего. Константа не
+ * экспортируется: модуль с "use server" может отдавать наружу только
+ * асинхронные функции. */
+const ORDER_FOR_CUSTOMER_LABEL: Record<Locale, string> = {
+  ru: "вместо покупателя",
+  az: "müştəri əvəzinə",
+  ka: "მყიდველის ნაცვლად",
+};
+
 export type DeliveryMethod = "email" | "phone" | "screen";
 
 export type CustomerActionState = {
@@ -274,4 +285,85 @@ export async function deleteCustomerAction(
   await logAction(actor, "delete", "customer", label, { entityId: id });
   revalidateCustomerPaths(locale);
   return { error: null };
+}
+
+/** Товары, которые админ собрал в корзину вместо покупателя. */
+export type OrderForCustomerItem = { productId: string; quantity: number };
+
+/**
+ * Оформляет заказ от имени покупателя.
+ *
+ * Зачем: это склад, и часть покупателей на сайт не заходит вовсе — заказ
+ * принимают по телефону. Чтобы такие заказы не жили в тетрадке, админ
+ * оформляет их здесь, и дальше они идут обычным путём: в списке заказов,
+ * в статистике и в карточке покупателя они выглядят как его собственные.
+ *
+ * Строки вставляются одним INSERT — триггер orders_set_order_number выдаёт
+ * всем строкам одного оформления общий номер, а orders_set_price_from_product
+ * сам проставляет цену и название на момент заказа. Поэтому отсюда уходят
+ * только customer_id, product_id и количество: цену подделать нельзя даже
+ * отсюда.
+ *
+ * След в журнале обязателен: в заказе будет стоять покупатель, и без записи
+ * о том, кто его оформил, подменить заказ было бы невозможно отследить.
+ */
+export async function placeOrderForCustomerAction(
+  locale: Locale,
+  customerId: string,
+  items: OrderForCustomerItem[]
+): Promise<{ error: string | null; orderNumber: number | null }> {
+  const actor = await requireAdmin(locale);
+  if (items.length === 0) return { error: "empty_cart", orderNumber: null };
+
+  const admin = createAdminClient();
+
+  const { data: customer } = await admin
+    .from("customers")
+    .select("id, first_name, last_name, phone")
+    .eq("id", customerId)
+    .maybeSingle();
+  if (!customer) return { error: "customer_not_found", orderNumber: null };
+
+  // Товар, который закончился, пока админ собирал корзину, в заказ не идёт —
+  // то же правило, что и в корзине покупателя.
+  const { data: products } = await admin
+    .from("products")
+    .select("id")
+    .in("id", items.map((item) => item.productId))
+    .gt("stock", 0);
+  const orderable = new Set((products ?? []).map((product) => product.id));
+
+  const rows = items
+    .filter((item) => orderable.has(item.productId))
+    .map((item) => ({
+      customer_id: customerId,
+      product_id: item.productId,
+      quantity: Math.max(1, Math.floor(item.quantity)),
+    }));
+  if (rows.length === 0) return { error: "products_not_found", orderNumber: null };
+
+  const { data: inserted, error } = await admin.from("orders").insert(rows).select("order_number");
+  if (error) return { error: error.message, orderNumber: null };
+
+  const orderNumber = inserted?.[0]?.order_number ?? null;
+  const customerName = `${customer.first_name} ${customer.last_name}`.trim();
+
+  await logAction(
+    actor,
+    "create",
+    "order",
+    `№${orderNumber} ${ORDER_FOR_CUSTOMER_LABEL[locale]} ${customerName}`,
+    {
+      details: {
+        placedByEmail: actor.email,
+        customerPhone: customer.phone ?? "",
+      },
+    }
+  );
+
+  revalidatePath(`/${locale}/admin/orders`);
+  revalidatePath(`/${locale}/admin/orders/${customerId}`);
+  revalidatePath(`/${locale}/admin/customers/${customerId}`);
+  revalidatePath(`/${locale}/admin`);
+  return { error: null, orderNumber };
 }

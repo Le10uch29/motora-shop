@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useTransition, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { deleteCustomerAction } from "./actions";
 import CustomerFormModal, { type CustomerFormValues } from "./CustomerFormModal";
+import OrderForCustomerModal from "./OrderForCustomerModal";
 import { RowActionLink, RowActionButton, EyeIcon, PencilIcon, TrashIcon } from "@/components/admin/RowActions";
 import type { Dictionary } from "@/i18n/dictionary";
 import type { Locale } from "@/i18n/locales";
@@ -35,8 +37,11 @@ export default function CustomerListClient({
   searchSlot?: ReactNode;
 }) {
   const [modal, setModal] = useState<{ mode: "create" | "edit"; values?: CustomerFormValues } | null>(null);
+  // Покупатель, за которого сейчас собирают заказ.
+  const [orderFor, setOrderFor] = useState<CustomerRow | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
 
   function handleDelete(row: CustomerRow) {
     if (!window.confirm(dict.confirmDeleteCustomer)) return;
@@ -100,13 +105,32 @@ export default function CustomerListClient({
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
               {customers.map((row) => (
                 <tr key={row.id}>
+                  {/* На месте бывшего аватара — кнопка «заказать вместо
+                      покупателя». Фотографии покупателей из проекта убраны, и
+                      столбец стоял пустыми кружками; сюда же она и просится,
+                      рядом с именем того, за кого оформляют. */}
                   <td className="px-4 py-3">
-                    {row.photoUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={row.photoUrl} alt="" className="h-9 w-9 rounded-full object-cover" loading="lazy" decoding="async" />
-                    ) : (
-                      <div className="h-9 w-9 rounded-full bg-zinc-100 dark:bg-zinc-800" />
-                    )}
+                    <button
+                      type="button"
+                      title={dict.orderForCustomerButton}
+                      aria-label={`${dict.orderForCustomerButton}: ${row.firstName} ${row.lastName}`}
+                      onClick={() => setOrderFor(row)}
+                      className="flex h-9 w-9 items-center justify-center rounded-full border border-zinc-200 text-zinc-500 transition-colors hover:border-orange-500 hover:text-orange-600 dark:border-zinc-700 dark:text-zinc-400"
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={1.6}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="h-4 w-4"
+                      >
+                        <circle cx="9" cy="20" r="1.3" />
+                        <circle cx="17" cy="20" r="1.3" />
+                        <path d="M3 4h2l2.2 10.4a1.5 1.5 0 0 0 1.5 1.2h7.9a1.5 1.5 0 0 0 1.5-1.2L20 8H6" />
+                      </svg>
+                    </button>
                   </td>
                   <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50">
                     {row.firstName} {row.lastName}
@@ -138,6 +162,21 @@ export default function CustomerListClient({
             </tbody>
           </table>
         </div>
+      )}
+
+      {orderFor && (
+        <OrderForCustomerModal
+          locale={locale}
+          dict={dict}
+          customer={{
+            id: orderFor.id,
+            name: `${orderFor.firstName} ${orderFor.lastName}`.trim(),
+            phone: orderFor.phone,
+            organizationName: orderFor.organizationName,
+          }}
+          onClose={() => setOrderFor(null)}
+          onPlaced={() => router.refresh()}
+        />
       )}
 
       {modal && (
