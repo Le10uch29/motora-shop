@@ -24,12 +24,23 @@ export async function signInAction(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
     const isInvalidCredentials = error.message.toLowerCase().includes("invalid login credentials");
     return { error: isInvalidCredentials ? invalidCredentialsMessage || error.message : error.message };
   }
 
-  redirect(`/${locale}/admin`);
+  // Эта форма пускает любого, у кого верный пароль, но админка — только для
+  // сотрудников. Покупателя, набравшего здесь свои данные, раньше отправляло
+  // на /admin, откуда requireStaff возвращал его на эту же форму: вход-то
+  // прошёл, а со стороны выглядело, будто логин не работает. Теперь он
+  // попадает в магазин, где ему и место.
+  const { data: staff } = await supabase
+    .from("staff")
+    .select("id")
+    .eq("id", data.user?.id ?? "")
+    .maybeSingle();
+
+  redirect(staff ? `/${locale}/admin` : `/${locale}`);
 }
