@@ -10,9 +10,10 @@ import { formatGel } from "@/lib/currency";
 import type { Dictionary } from "@/i18n/dictionary";
 import type { Locale } from "@/i18n/locales";
 
-/** Сколько позиций показывать в поиске модалки. Больше, чем в шапке сайта:
- * там список лишь ведёт в каталог, а здесь из него собирают заказ. */
-const SEARCH_LIMIT = 12;
+/** Сколько позиций показывать на одной странице выдачи. Больше, чем в шапке
+ * сайта: там список лишь ведёт в каталог, а здесь из него собирают заказ, и до
+ * нужной позиции нужно уметь дойти — остальное доступно листанием. */
+const SEARCH_PAGE_SIZE = 15;
 const SEARCH_DEBOUNCE_MS = 280;
 const MIN_QUERY_LENGTH = 2;
 
@@ -56,6 +57,9 @@ export default function OrderForCustomerModal({
 }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchSuggestion[]>([]);
+  /** Сколько всего совпадений нашлось — по нему считается листание. */
+  const [found, setFound] = useState(0);
+  const [page, setPage] = useState(0);
   /** Строка, которой отвечает текущая выдача. Пока она отстаёт от набранного,
    * показываем «ищем» — отдельный флаг для этого не нужен и только разъезжался
    * бы с результатами. */
@@ -81,19 +85,27 @@ export default function OrderForCustomerModal({
         if (requestIdRef.current !== requestId) return;
         if (trimmed.length < MIN_QUERY_LENGTH) {
           setResults([]);
+          setFound(0);
           setResultsFor(trimmed);
           return;
         }
-        searchProductSuggestionsAction(locale, trimmed, undefined, SEARCH_LIMIT).then((res) => {
+        searchProductSuggestionsAction(
+          locale,
+          trimmed,
+          undefined,
+          SEARCH_PAGE_SIZE,
+          page * SEARCH_PAGE_SIZE
+        ).then((res) => {
           if (requestIdRef.current !== requestId) return;
           setResults(res.results);
+          setFound(res.total);
           setResultsFor(trimmed);
         });
       },
       trimmed.length < MIN_QUERY_LENGTH ? 0 : SEARCH_DEBOUNCE_MS
     );
     return () => clearTimeout(timer);
-  }, [query, locale]);
+  }, [query, locale, page]);
 
   const addLine = useCallback((result: SearchSuggestion, quantity: number) => {
     setLines((prev) => {
@@ -162,10 +174,14 @@ export default function OrderForCustomerModal({
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-10">
+    <div className="fixed inset-0 z-40 flex items-start justify-center bg-black/40 px-4 py-6">
       <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
-      <div className="relative flex max-h-[90vh] w-full max-w-3xl flex-col gap-4 overflow-y-auto rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900">
-        <div className="flex items-start justify-between gap-4">
+      {/* Высота задана, а не ограничена: внутри три самостоятельные области —
+          поиск, выдача и корзина. Раньше прокручивалась модалка целиком, и
+          растущая корзина выдавливала поиск за верхний край: добавив несколько
+          позиций, искать следующую было уже негде. */}
+      <div className="relative flex h-[calc(100vh-3rem)] w-full max-w-3xl flex-col gap-3 overflow-hidden rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900">
+        <div className="flex shrink-0 items-start justify-between gap-4">
           <div className="flex flex-col gap-0.5">
             <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
               {dict.orderForCustomerTitle}
@@ -195,16 +211,20 @@ export default function OrderForCustomerModal({
           type="search"
           value={query}
           autoFocus
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            // Новый запрос — снова с первой страницы.
+            setPage(0);
+          }}
           onKeyDown={(event) => {
             if (event.key === "Enter") event.preventDefault();
           }}
           placeholder={dict.orderForCustomerSearchPlaceholder}
           aria-label={dict.orderForCustomerSearchPlaceholder}
-          className="w-full rounded-full border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-900 outline-none focus:border-orange-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+          className="w-full shrink-0 rounded-full border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-900 outline-none focus:border-orange-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
         />
 
-        <div className="flex max-h-72 flex-col divide-y divide-zinc-100 overflow-y-auto rounded-xl border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+        <div className="flex min-h-32 flex-1 flex-col divide-y divide-zinc-100 overflow-y-auto rounded-xl border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
           {query.trim().length < MIN_QUERY_LENGTH ? (
             <p className="px-4 py-6 text-center text-sm text-zinc-500">
               {dict.orderForCustomerSearchHint}
@@ -215,21 +235,56 @@ export default function OrderForCustomerModal({
             <p className="px-4 py-6 text-center text-sm text-zinc-500">{dict.noResults}</p>
           ) : (
             results.map((result) => (
-              <SearchResultRow key={result.id} dict={dict} locale={locale} result={result} onAdd={addLine} />
+              <SearchResultRow
+                key={result.id}
+                dict={dict}
+                locale={locale}
+                result={result}
+                onAdd={addLine}
+                inCart={lines.find((line) => line.productId === result.id)?.quantity ?? 0}
+              />
             ))
           )}
         </div>
 
-        <div className="flex flex-col gap-2">
-          <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-            {dict.orderForCustomerCartTitle}
+        {found > SEARCH_PAGE_SIZE && (
+          <div className="flex shrink-0 items-center justify-between gap-3 text-sm text-zinc-500">
+            <span>
+              {page * SEARCH_PAGE_SIZE + 1}–{Math.min((page + 1) * SEARCH_PAGE_SIZE, found)} / {found}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                aria-label={dict.paginationPrevious}
+                disabled={page === 0}
+                onClick={() => setPage((value) => Math.max(0, value - 1))}
+                className="rounded-full border border-zinc-200 px-3 py-1 transition-colors hover:border-orange-500 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700"
+              >
+                ‹
+              </button>
+              <button
+                type="button"
+                aria-label={dict.paginationNext}
+                disabled={(page + 1) * SEARCH_PAGE_SIZE >= found}
+                onClick={() => setPage((value) => value + 1)}
+                className="rounded-full border border-zinc-200 px-3 py-1 transition-colors hover:border-orange-500 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700"
+              >
+                ›
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="flex max-h-[32vh] min-h-0 shrink-0 flex-col gap-2">
+          <h3 className="shrink-0 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+            {dict.orderForCustomerCartTitle} {lines.length > 0 && `· ${lines.length}`}
           </h3>
           {lines.length === 0 ? (
             <p className="rounded-xl border border-dashed border-zinc-300 px-4 py-6 text-center text-sm text-zinc-500 dark:border-zinc-700">
               {dict.orderForCustomerEmptyCart}
             </p>
           ) : (
-            <ul className="flex flex-col divide-y divide-zinc-100 rounded-xl border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+            <ul className="flex min-h-0 flex-col divide-y divide-zinc-100 overflow-y-auto rounded-xl border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
               {lines.map((line) => (
                 <li key={line.productId} className="flex flex-wrap items-center gap-3 px-3 py-2.5">
                   <div className="flex min-w-0 flex-1 basis-40 flex-col">
@@ -277,7 +332,7 @@ export default function OrderForCustomerModal({
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 
-        <div className="flex items-center justify-between gap-4 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+        <div className="flex shrink-0 items-center justify-between gap-4 border-t border-zinc-200 pt-4 dark:border-zinc-800">
           <span className="text-sm text-zinc-600 dark:text-zinc-400">
             {dict.orderForCustomerTotal}{" "}
             <strong className="text-zinc-900 dark:text-zinc-50">{formatGel(total, locale)}</strong>
@@ -304,14 +359,16 @@ function SearchResultRow({
   locale,
   result,
   onAdd,
+  inCart,
 }: {
   dict: Dictionary["admin"];
   locale: Locale;
   result: SearchSuggestion;
   onAdd: (result: SearchSuggestion, quantity: number) => void;
+  /** Сколько этого товара уже в корзине заказа, 0 — если нет. */
+  inCart: number;
 }) {
   const [quantity, setQuantity] = useState(1);
-  const [added, setAdded] = useState(false);
 
   return (
     <div className="flex flex-wrap items-center gap-3 px-3 py-2.5">
@@ -340,16 +397,19 @@ function SearchResultRow({
           inputAria: dict.quantityLabel,
         }}
       />
+      {/* Надпись показывает состояние корзины, а не факт нажатия: прежняя
+          метка гасла через секунду, и по списку было не понять, что уже
+          добавлено. Нажать ещё раз по-прежнему можно — количество прибавится. */}
       <button
         type="button"
-        onClick={() => {
-          onAdd(result, quantity);
-          setAdded(true);
-          setTimeout(() => setAdded(false), 1200);
-        }}
-        className="rounded-full bg-orange-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-orange-500"
+        onClick={() => onAdd(result, quantity)}
+        className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+          inCart > 0
+            ? "bg-emerald-600 text-white hover:bg-emerald-500"
+            : "bg-orange-600 text-white hover:bg-orange-500"
+        }`}
       >
-        {added ? dict.orderForCustomerAdded : dict.orderForCustomerAdd}
+        {inCart > 0 ? `${dict.orderForCustomerAdded} · ${inCart}` : dict.orderForCustomerAdd}
       </button>
     </div>
   );

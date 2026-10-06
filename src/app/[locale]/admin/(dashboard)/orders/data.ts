@@ -4,6 +4,10 @@ import type { Locale } from "@/i18n/locales";
 
 export const ORDERS_PAGE_SIZE = 20;
 
+/** Сколько позиций заказа показывать на странице: при сотне с лишним строк
+ * таблица заметно тормозит и в ней легко потеряться. */
+export const ORDER_LINES_PAGE_SIZE = 20;
+
 export type OrderStatus = "new" | "gathering" | "gathered" | "shipped" | "delivered" | "cancelled";
 
 function effectivePrice(priceAtOrder: number, discountedPrice: number | null): number {
@@ -282,13 +286,22 @@ export async function getOrderByNumber(
 } | null> {
   const admin = createAdminClient();
 
-  const { data } = await admin
+  // Позиции идут в том порядке, в каком их выбрали: created_at у всех строк
+  // одного оформления одинаковый, и без line_number порядок был произвольным.
+  // У заказов, созданных до появления столбца, он пустой — такие уходят в
+  // конец, но между собой остаются в стабильном порядке по id.
+  const COLUMNS =
+    "id, order_number, product_id, product_name, quantity, price_at_order, discounted_price, status, created_at, updated_at, warehouse_id, customer_id";
+  const ordered = await admin
     .from("orders")
-    .select(
-      "id, order_number, product_id, product_name, quantity, price_at_order, discounted_price, status, created_at, updated_at, warehouse_id, customer_id"
-    )
+    .select(`${COLUMNS}, line_number`)
     .eq("order_number", orderNumber)
-    .order("created_at", { ascending: true });
+    .order("line_number", { ascending: true, nullsFirst: false })
+    .order("id", { ascending: true });
+  // Столбца может ещё не быть, если схема не обновлена.
+  const { data } = ordered.error
+    ? await admin.from("orders").select(COLUMNS).eq("order_number", orderNumber).order("id")
+    : ordered;
 
   const baseRows = (data ?? []) as (OrderBaseRow & { product_id: string | null })[];
   if (baseRows.length === 0) return null;

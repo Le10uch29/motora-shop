@@ -178,6 +178,8 @@ const ka: Dictionary = {
     orderColumnLines: "პოზიცია",
     orderMixedStatuses: "სხვადასხვა სტატუსი",
     orderQuantityInvalid: "რაოდენობა უნდა იყოს მთელი რიცხვი, არანაკლებ 1.",
+    paginationPrevious: "წინა გვერდი",
+    paginationNext: "შემდეგი გვერდი",
     orderGrandTotalLabel: "სულ:",
     printInvoiceButton: "ინვოისის ბეჭდვა",
     invoiceTitle: "ინვოისი",

@@ -24,10 +24,12 @@ export default function ProductCardAddToCart({
   stock: number;
   labels: Labels;
 }) {
-  const { addItem } = useCart();
+  const { addItem, items } = useCart();
   const [quantity, setQuantity] = useState(1);
-  const [added, setAdded] = useState(false);
   const maxQuantity = Math.max(stock, 1);
+  // Надпись отражает корзину, а не факт нажатия: прежняя метка «Добавлено»
+  // гасла через секунду, и по списку товаров было не видно, что уже взято.
+  const inCart = items.find((item) => item.productId === productId)?.quantity ?? 0;
 
   return (
     <div className="flex items-center gap-2">
@@ -44,14 +46,12 @@ export default function ProductCardAddToCart({
       />
       <button
         type="button"
-        onClick={() => {
-          addItem(productId, quantity);
-          setAdded(true);
-          setTimeout(() => setAdded(false), 1200);
-        }}
-        className="flex-1 rounded-full bg-orange-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-orange-500"
+        onClick={() => addItem(productId, quantity)}
+        className={`flex-1 rounded-full px-3 py-1.5 text-xs font-semibold text-white transition-colors ${
+          inCart > 0 ? "bg-emerald-600 hover:bg-emerald-500" : "bg-orange-600 hover:bg-orange-500"
+        }`}
       >
-        {added ? labels.added : labels.addToCart}
+        {inCart > 0 ? `${labels.added} · ${inCart}` : labels.addToCart}
       </button>
     </div>
   );

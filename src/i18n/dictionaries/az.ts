@@ -178,6 +178,8 @@ const az: Dictionary = {
     orderColumnLines: "Mövqe",
     orderMixedStatuses: "müxtəlif statuslar",
     orderQuantityInvalid: "Miqdar 1-dən kiçik olmayan tam ədəd olmalıdır.",
+    paginationPrevious: "Əvvəlki səhifə",
+    paginationNext: "Növbəti səhifə",
     orderGrandTotalLabel: "Cəmi:",
     printInvoiceButton: "İnvoysu çap et",
     invoiceTitle: "İnvoys",

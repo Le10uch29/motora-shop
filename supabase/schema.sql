@@ -603,6 +603,14 @@ alter table orders add column if not exists discounted_price numeric;
 -- не вычитал остаток дважды.
 alter table orders add column if not exists stock_deducted_at timestamptz;
 
+-- Порядок позиций внутри заказа. Все строки одного оформления создаются одним
+-- INSERT и получают одинаковый created_at, поэтому без явного номера порядок
+-- выдачи произволен: первый выбранный товар оказывался в середине списка, и
+-- корзина покупателя не совпадала с тем, что видно в заказе. Номер проставляет
+-- приложение по порядку корзины; у заказов, созданных до этого столбца, он
+-- пустой — такие строки показываются после пронумерованных.
+alter table orders add column if not exists line_number int;
+
 -- Цена и название заказа всегда берутся из живого товара на момент вставки,
 -- а не из того, что прислал клиент — иначе оформление заказа своей же
 -- сессией (orderer_insert_own_orders) позволило бы указать любую цену
@@ -663,7 +671,9 @@ create policy "admin_manage_app_settings" on app_settings for all
   to authenticated using (is_admin()) with check (is_admin());
 
 revoke insert on orders from authenticated;
-grant insert (customer_id, product_id, quantity) on orders to authenticated;
+-- line_number входит в грант: его шлёт сама корзина покупателя, и это просто
+-- порядок строк — подделать им цену или статус нельзя.
+grant insert (customer_id, product_id, quantity, line_number) on orders to authenticated;
 
 revoke update on orders from authenticated;
 grant update (status, warehouse_id, stock_deducted_at, discounted_price) on orders to authenticated;

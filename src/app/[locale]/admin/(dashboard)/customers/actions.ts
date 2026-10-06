@@ -335,14 +335,31 @@ export async function placeOrderForCustomerAction(
 
   const rows = items
     .filter((item) => orderable.has(item.productId))
-    .map((item) => ({
+    .map((item, index) => ({
       customer_id: customerId,
       product_id: item.productId,
       quantity: Math.max(1, Math.floor(item.quantity)),
+      // Порядок, в котором админ набирал корзину, — он же порядок позиций
+      // в заказе.
+      line_number: index + 1,
     }));
   if (rows.length === 0) return { error: "products_not_found", orderNumber: null };
 
-  const { data: inserted, error } = await admin.from("orders").insert(rows).select("order_number");
+  let { data: inserted, error } = await admin.from("orders").insert(rows).select("order_number");
+  if (error && error.message.includes("line_number")) {
+    // Схему обновляют вручную, столбца может ещё не быть — заказ важнее
+    // порядка строк.
+    ({ data: inserted, error } = await admin
+      .from("orders")
+      .insert(
+        rows.map((row) => ({
+          customer_id: row.customer_id,
+          product_id: row.product_id,
+          quantity: row.quantity,
+        }))
+      )
+      .select("order_number"));
+  }
   if (error) return { error: error.message, orderNumber: null };
 
   const orderNumber = inserted?.[0]?.order_number ?? null;

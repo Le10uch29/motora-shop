@@ -34,7 +34,11 @@ export async function searchProductSuggestionsAction(
    * каталог; в админке заказ собирается прямо в нём, и выбирать приходится из
    * большего. Данные те же самые и публичные, так что ограничение здесь —
    * вопрос удобства, а не доступа. */
-  limit = RESULT_LIMIT
+  limit = RESULT_LIMIT,
+  /** Сколько совпадений пропустить — для листания выдачи. В шапке сайта
+   * листать нечего (список ведёт в каталог), а в админке заказ собирают
+   * прямо из него, и до нужной позиции нужно уметь дойти. */
+  offset = 0
 ): Promise<{ results: SearchSuggestion[]; total: number }> {
   const trimmed = query.trim();
   if (trimmed.length < 2) return { results: [], total: 0 };
@@ -42,6 +46,10 @@ export async function searchProductSuggestionsAction(
   const supabase = createPublicClient();
   const safe = sanitizeForFilter(trimmed);
   const orFilter = `name->>${locale}.ilike.%${safe}%,product_code.ilike.%${safe}%,origin_code.ilike.%${safe}%,make.ilike.%${safe}%,model.ilike.%${safe}%`;
+
+  // Устойчивый порядок: без него страницы листания пересекаются и одни и те же
+  // товары попадают на разные страницы, а другие не попадают никуда.
+  const ORDER = { column: "product_code", options: { ascending: true, nullsFirst: false } } as const;
 
   // Built as two fully separate branches (not one query object mutated by a
   // ternary select string) — supabase-js parses the select string at the
@@ -57,7 +65,8 @@ export async function searchProductSuggestionsAction(
           .or(orFilter)
           .eq("brands.slug", brandSlug)
           .gt("stock", 0)
-          .limit(limit),
+          .order(ORDER.column, ORDER.options)
+          .range(offset, offset + limit - 1),
         supabase
           .from("products")
           .select("id, brands!inner(slug)", { count: "exact", head: true })
@@ -71,7 +80,8 @@ export async function searchProductSuggestionsAction(
           .select("id, slug, name, price, old_price, images, product_code, stock")
           .or(orFilter)
           .gt("stock", 0)
-          .limit(limit),
+          .order(ORDER.column, ORDER.options)
+          .range(offset, offset + limit - 1),
         supabase
           .from("products")
           .select("id", { count: "exact", head: true })

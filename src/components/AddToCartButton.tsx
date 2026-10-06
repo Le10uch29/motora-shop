@@ -22,9 +22,9 @@ export default function AddToCartButton({
     quantityIncreaseAria: string;
   };
 }) {
-  const { addItem } = useCart();
-  const [added, setAdded] = useState(false);
+  const { addItem, items } = useCart();
   const maxQuantity = inStock ? Math.max(stock, 1) : 99;
+  const inCart = items.find((item) => item.productId === productId)?.quantity ?? 0;
   const [quantity, setQuantity] = useState(1);
 
   return (
@@ -46,14 +46,12 @@ export default function AddToCartButton({
       <button
         type="button"
         disabled={!inStock}
-        onClick={() => {
-          addItem(productId, quantity);
-          setAdded(true);
-          setTimeout(() => setAdded(false), 1500);
-        }}
-        className="w-fit rounded-full bg-orange-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-orange-500 disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-500 dark:disabled:bg-zinc-800 dark:disabled:text-zinc-500"
+        onClick={() => addItem(productId, quantity)}
+        className={`w-fit rounded-full px-6 py-3 text-sm font-semibold text-white transition-colors disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-500 dark:disabled:bg-zinc-800 dark:disabled:text-zinc-500 ${
+          inCart > 0 ? "bg-emerald-600 hover:bg-emerald-500" : "bg-orange-600 hover:bg-orange-500"
+        }`}
       >
-        {!inStock ? labels.onOrder : added ? labels.added : labels.addToCart}
+        {!inStock ? labels.onOrder : inCart > 0 ? `${labels.added} · ${inCart}` : labels.addToCart}
       </button>
     </div>
   );

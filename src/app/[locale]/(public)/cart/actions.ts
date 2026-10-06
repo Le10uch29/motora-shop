@@ -5,6 +5,12 @@ import { getAuthUser } from "@/lib/supabase/authUsers";
 
 export type PlaceOrderState = { error: string | null };
 
+/** Схему обновляют вручную, и столбец line_number может появиться позже
+ * кода — это распознаёт тот случай. */
+function isMissingLineNumber(message: string): boolean {
+  return message.includes("line_number");
+}
+
 /** Turns the current cart into order rows — one per product line, all sharing
  * a single order number. The whole cart is sent as one insert on purpose: the
  * orders_set_order_number trigger gives every row of one insert the same
@@ -45,15 +51,34 @@ export async function placeOrderAction(
 
   const rows = items
     .filter((item) => validProductIds.has(item.productId))
-    .map((item) => ({
+    .map((item, index) => ({
       customer_id: user.id,
       product_id: item.productId,
       quantity: Math.max(1, Math.floor(item.quantity)),
+      // Порядок позиций в корзине. Все строки одного оформления создаются
+      // одним INSERT и получают одинаковый created_at, так что без явного
+      // номера заказ показывался в произвольном порядке и не совпадал с тем,
+      // что покупатель видел в корзине.
+      line_number: index + 1,
     }));
 
   if (rows.length === 0) return { error: "products_not_found" };
 
   const { error } = await supabase.from("orders").insert(rows);
+  // Столбца может ещё не быть, если схема не обновлена — заказ важнее порядка
+  // строк, поэтому повторяем вставку без него.
+  if (error && isMissingLineNumber(error.message)) {
+    const { error: retry } = await supabase
+      .from("orders")
+      .insert(
+        rows.map((row) => ({
+          customer_id: row.customer_id,
+          product_id: row.product_id,
+          quantity: row.quantity,
+        }))
+      );
+    return { error: retry ? retry.message : null };
+  }
   if (error) return { error: error.message };
 
   return { error: null };

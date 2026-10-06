@@ -187,6 +187,8 @@ const ru: Dictionary = {
     orderColumnLines: "Позиций",
     orderMixedStatuses: "разные статусы",
     orderQuantityInvalid: "Количество должно быть целым числом не меньше 1.",
+    paginationPrevious: "Предыдущая страница",
+    paginationNext: "Следующая страница",
     orderGrandTotalLabel: "Итого:",
     printInvoiceButton: "Печать инвойса",
     invoiceTitle: "Инвойс",

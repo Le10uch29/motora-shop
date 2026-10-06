@@ -8,10 +8,14 @@ import { formatGel } from "@/lib/currency";
 import OrderLineRowActions from "./OrderLineRowActions";
 import OrderDiscountInput from "./OrderDiscountInput";
 import OrderQuantityInput from "./OrderQuantityInput";
+import Pagination from "@/components/admin/Pagination";
+import { single } from "@/lib/searchParams";
+import { ORDER_LINES_PAGE_SIZE } from "../data";
 import { productImageUrl } from "@/lib/productImageUrl";
 
 export default async function OrderPage({
   params,
+  searchParams,
 }: PageProps<"/[locale]/admin/orders/[orderNumber]">) {
   const { locale, orderNumber: orderNumberParam } = await params;
   if (!isLocale(locale)) notFound();
@@ -25,6 +29,13 @@ export default async function OrderPage({
   const result = await getOrderByNumber(orderNumber, locale);
   if (!result) notFound();
   const { orderer, lines, total, createdAt, customerId } = result;
+
+  // Позиций в заказе бывает за сотню — страница с ними всеми и грузится
+  // дольше, и читается хуже. Общая сумма считается по всему заказу, а не по
+  // показанной странице.
+  const sp = await searchParams;
+  const page = Math.max(1, Number(single(sp.page)) || 1);
+  const pageLines = lines.slice((page - 1) * ORDER_LINES_PAGE_SIZE, page * ORDER_LINES_PAGE_SIZE);
 
   const ordererName = `${orderer.firstName} ${orderer.lastName}`;
 
@@ -78,7 +89,9 @@ export default async function OrderPage({
       )}
 
       <div className="flex flex-col gap-3">
-        <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">{dict.admin.orderLinesTitle}</h2>
+        <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
+            {dict.admin.orderLinesTitle} · {lines.length}
+          </h2>
         <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
           <table className="w-full min-w-[880px] text-left text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
@@ -94,7 +107,7 @@ export default async function OrderPage({
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-              {lines.map((line) => {
+              {pageLines.map((line) => {
                 const effectivePrice = line.discountedPrice ?? line.priceAtOrder;
                 return (
                   <tr key={line.id}>
@@ -162,6 +175,14 @@ export default async function OrderPage({
           </table>
         </div>
       </div>
+
+      <Pagination
+        basePath={`/${locale}/admin/orders/${orderNumber}`}
+        currentPage={page}
+        total={lines.length}
+        pageSize={ORDER_LINES_PAGE_SIZE}
+        searchParams={{}}
+      />
 
       <div className="flex items-center justify-between border-t border-zinc-200 pt-6 dark:border-zinc-800">
         <div className="flex items-baseline gap-3 text-lg">

@@ -3,7 +3,10 @@ import { intlLocaleTags } from "@/i18n/locales";
 
 function formatNumber(value: number, locale: Locale): string {
   return new Intl.NumberFormat(intlLocaleTags[locale], {
-    maximumFractionDigits: 0,
+    // Дробная часть показывается, когда она есть: цена 1,2 лари округлялась
+    // до «1 GEL» — и в каталоге, и в корзине, и в инвойсе. Целые цены при
+    // этом остаются целыми («7 900 GEL»), нулей после запятой не появится.
+    maximumFractionDigits: 2,
   }).format(value);
 }
 

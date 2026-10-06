@@ -177,6 +177,8 @@ export type Dictionary = {
     orderColumnLines: string;
     orderMixedStatuses: string;
     orderQuantityInvalid: string;
+    paginationPrevious: string;
+    paginationNext: string;
     orderGrandTotalLabel: string;
     printInvoiceButton: string;
     invoiceTitle: string;

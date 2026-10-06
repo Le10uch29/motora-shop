@@ -95,13 +95,24 @@ export async function getCustomerPurchaseOrders(
   locale: Locale
 ): Promise<PurchaseOrder[]> {
   const admin = createAdminClient();
-  const { data } = await admin
+  const COLUMNS =
+    "id, order_number, product_name, quantity, status, created_at, price_at_order, discounted_price, products(product_code)";
+  // Заказы — свежие сверху, позиции внутри заказа — в порядке корзины.
+  const ordered = await admin
     .from("orders")
-    .select(
-      "id, order_number, product_name, quantity, status, created_at, price_at_order, discounted_price, products(product_code)"
-    )
+    .select(`${COLUMNS}, line_number`)
     .eq("customer_id", customerId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .order("line_number", { ascending: true, nullsFirst: false });
+  // Столбца может ещё не быть, если схема не обновлена — тогда история важнее
+  // порядка строк внутри заказа.
+  const { data } = ordered.error
+    ? await admin
+        .from("orders")
+        .select(COLUMNS)
+        .eq("customer_id", customerId)
+        .order("created_at", { ascending: false })
+    : ordered;
 
   const byOrder = new Map<number, PurchaseOrder>();
 
