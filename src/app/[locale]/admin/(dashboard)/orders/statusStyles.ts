@@ -64,9 +64,3 @@ export function isStatusAtOrPast(status: OrderStatus, milestone: OrderStatus): b
   const index = FULFILLMENT_ORDER.indexOf(status);
   return index >= 0 && index >= FULFILLMENT_ORDER.indexOf(milestone);
 }
-
-/** An order may be deleted only once it's out of the flow: cancelled, or
- * already shipped out (which includes the legacy "delivered"). */
-export function isOrderDeletable(status: OrderStatus): boolean {
-  return status === "cancelled" || isStatusAtOrPast(status, STOCK_DEDUCTION_STATUS);
-}

@@ -173,6 +173,10 @@ export type Dictionary = {
     invoiceColOriginCodeShort: string;
     invoiceColQuantityShort: string;
     ordererOrdersTitle: string;
+    orderLinesTitle: string;
+    orderColumnLines: string;
+    orderMixedStatuses: string;
+    orderQuantityInvalid: string;
     orderGrandTotalLabel: string;
     printInvoiceButton: string;
     invoiceTitle: string;

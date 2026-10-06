@@ -33,7 +33,8 @@
       "Bash(grep -o 'removeChild[^\"]\\\\{0,300\\\\}' \".next/dev/logs/next-development.log\")",
       "mcp__claude_ai_Claude_Docs__guide",
       "mcp__plugin_playwright_playwright__browser_evaluate",
-      "mcp__plugin_playwright_playwright__browser_file_upload"
+      "mcp__plugin_playwright_playwright__browser_file_upload",
+      "Bash(NODE_PATH=\"c:/Users/Shadow Monarch/Desktop/frilans/NewLife/motora-shop/node_modules\" npx tsx --env-file=.env.local \"C:/Users/SHADOW~1/AppData/Local/Temp/claude/c--Users-Shadow-Monarch-Desktop-frilans-NewLife-motora-shop/b1062a79-0990-4342-8188-9ff2b33f824a/scratchpad/check-order-number.ts\")"
     ]
   }
 }

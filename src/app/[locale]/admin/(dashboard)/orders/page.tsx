@@ -3,8 +3,8 @@ import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
 import { requireStaff } from "@/lib/auth";
 import { single } from "@/lib/searchParams";
-import { getOrderersList, ORDERS_PAGE_SIZE } from "./data";
-import OrderersListClient from "./OrderersListClient";
+import { getOrdersList, ORDERS_PAGE_SIZE } from "./data";
+import OrdersListClient from "./OrdersListClient";
 import AdminSearchBox from "@/components/admin/AdminSearchBox";
 import Pagination from "@/components/admin/Pagination";
 
@@ -21,15 +21,15 @@ export default async function OrdersPage({
   const query = single(sp.q) ?? "";
   const page = Number(single(sp.page)) || 1;
 
-  const { rows, total } = await getOrderersList(locale, { query, page });
+  const { rows, total } = await getOrdersList(locale, { query, page });
 
   return (
     <main className="flex w-full flex-1 flex-col gap-6 px-2 py-10">
-      <OrderersListClient
+      <OrdersListClient
         locale={locale}
         dict={dict.admin}
         isAdmin={staff.role === "admin"}
-        orderers={rows}
+        orders={rows}
         emptyMessage={query ? dict.admin.noResults : dict.admin.emptyOrders}
         searchSlot={
           <form key="search" className="flex items-center gap-2">

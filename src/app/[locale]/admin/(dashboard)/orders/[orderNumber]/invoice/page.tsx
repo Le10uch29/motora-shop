@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
 import { requireStaff } from "@/lib/auth";
-import { getOrdererOrders } from "../../data";
+import { getOrderByNumber } from "../../data";
 import { formatGel } from "@/lib/currency";
 import { productImageUrl } from "@/lib/productImageUrl";
 import PrintButton from "./PrintButton";
@@ -11,21 +11,21 @@ const COMPANY_PHONE = "+995 577 46 66 11";
 
 export default async function InvoicePage({
   params,
-}: PageProps<"/[locale]/admin/orders/[customerId]/invoice">) {
-  const { locale, customerId } = await params;
+}: PageProps<"/[locale]/admin/orders/[orderNumber]/invoice">) {
+  const { locale, orderNumber: orderNumberParam } = await params;
   if (!isLocale(locale)) notFound();
   await requireStaff(locale);
   const dict = await getDictionary(locale);
 
-  const result = await getOrdererOrders(customerId, locale);
+  const orderNumber = Number(orderNumberParam);
+  if (!Number.isInteger(orderNumber)) notFound();
+
+  const result = await getOrderByNumber(orderNumber, locale);
   if (!result) notFound();
-  const { orderer, lines, total, warehouseName, warehouseAddress } = result;
+  const { orderer, lines, total, warehouseName, warehouseAddress, createdAt } = result;
 
   const ordererName = `${orderer.firstName} ${orderer.lastName}`;
   const activeLines = lines.filter((line) => line.status !== "cancelled");
-  const orderNumbers = Array.from(new Set(activeLines.map((line) => line.orderNumber))).sort(
-    (a, b) => a - b
-  );
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-2 py-10 print:max-w-none print:gap-6 print:px-0 print:py-0">
@@ -38,7 +38,7 @@ export default async function InvoicePage({
         <div className="text-right">
           <p>{dict.admin.invoiceDateLabel}</p>
           <p className="font-medium text-zinc-900 dark:text-zinc-50 print:text-black">
-            {new Date().toLocaleDateString(locale)}
+            {new Date(createdAt).toLocaleDateString(locale)}
           </p>
         </div>
       </div>
@@ -59,17 +59,14 @@ export default async function InvoicePage({
             {dict.admin.companyPhoneLabel}: {COMPANY_PHONE}
           </p>
 
-          {/* Order numbers moved off the table and under the company block:
-              an invoice covers every active order one person placed, so the
-              numbers belong to the document as a whole, not to its rows. */}
-          {orderNumbers.length > 0 && (
-            <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400 print:text-black">
-              {dict.admin.orderNumberLabel}:{" "}
-              <span className="font-semibold text-zinc-900 dark:text-zinc-50 print:text-black">
-                {orderNumbers.map((number) => `№${number}`).join(", ")}
-              </span>
-            </p>
-          )}
+          {/* Инвойс выписывается на один заказ, поэтому номер у документа
+              один — он стоит здесь, а не в строках таблицы. */}
+          <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400 print:text-black">
+            {dict.admin.orderNumberLabel}:{" "}
+            <span className="font-semibold text-zinc-900 dark:text-zinc-50 print:text-black">
+              №{orderNumber}
+            </span>
+          </p>
         </div>
 
         {/* Customer info — right side. */}

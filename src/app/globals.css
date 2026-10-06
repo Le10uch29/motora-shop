@@ -115,12 +115,21 @@ input[type="radio"]:disabled {
 @media print {
   @page {
     size: A4 portrait;
-    margin: 12mm;
+    /* Ноль, а не 12mm — иначе браузер печатает поверх полей свои колонтитулы:
+       сверху заголовок вкладки («Araz Motors — Запчасти…»), снизу адрес
+       страницы и дату. При нулевых полях он их не ставит, а отступы самого
+       документа задаёт padding у body ниже. */
+    margin: 0;
   }
 
   html,
   body {
     background: #fff;
+  }
+
+  /* Поля листа, которые раньше задавались через @page. */
+  body {
+    padding: 12mm;
   }
 
   /* Photos are part of the document here, not decoration. */

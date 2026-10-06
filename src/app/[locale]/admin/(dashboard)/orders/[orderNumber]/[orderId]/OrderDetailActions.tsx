@@ -3,7 +3,6 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { cancelOrderAction, deleteOrderAction } from "../../actions";
-import { isOrderDeletable } from "../../statusStyles";
 import type { OrderStatus } from "../../data";
 import type { Dictionary } from "@/i18n/dictionary";
 import type { Locale } from "@/i18n/locales";
@@ -12,14 +11,14 @@ export default function OrderDetailActions({
   locale,
   dict,
   id,
-  customerId,
+  orderNumber,
   label,
   status,
 }: {
   locale: Locale;
   dict: Dictionary["admin"];
   id: string;
-  customerId: string;
+  orderNumber: number;
   label: string;
   status: OrderStatus;
 }) {
@@ -28,12 +27,11 @@ export default function OrderDetailActions({
   const [pending, startTransition] = useTransition();
 
   const isCancellable = status !== "cancelled";
-  const isDeletable = isOrderDeletable(status);
 
   function handleCancel() {
     if (!window.confirm(dict.confirmCancelOrder)) return;
     startTransition(async () => {
-      const result = await cancelOrderAction(locale, id, customerId, label);
+      const result = await cancelOrderAction(locale, id, orderNumber, label);
       if (result.error) setError(result.error);
       else router.refresh();
     });
@@ -42,7 +40,7 @@ export default function OrderDetailActions({
   function handleDelete() {
     if (!window.confirm(dict.confirmDeleteOrder)) return;
     startTransition(async () => {
-      const result = await deleteOrderAction(locale, id, customerId, label);
+      const result = await deleteOrderAction(locale, id, orderNumber, label);
       if (result.error) setError(result.error);
       else router.refresh();
     });
@@ -61,7 +59,7 @@ export default function OrderDetailActions({
             {dict.actionCancelOrder}
           </button>
         )}
-        {isDeletable && (
+        {(
           <button
             type="button"
             disabled={pending}

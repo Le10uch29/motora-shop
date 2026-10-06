@@ -2,23 +2,23 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { bulkUpdateOrdererStatusAction, bulkDeleteOrdererOrdersAction } from "./actions";
+import { updateOrderStatusByNumberAction, deleteOrderByNumberAction } from "./actions";
 import { orderStatusLabel, PROGRESSABLE_STATUSES } from "./statusStyles";
 import type { OrderStatus } from "./data";
 import { RowActionLink, RowActionButton, EyeIcon, TrashIcon } from "@/components/admin/RowActions";
 import type { Dictionary } from "@/i18n/dictionary";
 import type { Locale } from "@/i18n/locales";
 
-export default function OrdererRowActions({
+export default function OrderRowActions({
   locale,
   dict,
-  customerId,
+  orderNumber,
   label,
   isAdmin,
 }: {
   locale: Locale;
   dict: Dictionary["admin"];
-  customerId: string;
+  orderNumber: number;
   label: string;
   isAdmin: boolean;
 }) {
@@ -30,7 +30,7 @@ export default function OrdererRowActions({
     if (!PROGRESSABLE_STATUSES.includes(status)) return;
     if (!window.confirm(`${dict.confirmBulkStatusChange} ${label}?`)) return;
     startTransition(async () => {
-      const result = await bulkUpdateOrdererStatusAction(locale, customerId, status);
+      const result = await updateOrderStatusByNumberAction(locale, orderNumber, status);
       if (result.error) setError(result.error);
       else router.refresh();
     });
@@ -39,7 +39,7 @@ export default function OrdererRowActions({
   function handleBulkDelete() {
     if (!window.confirm(`${dict.confirmBulkDeleteOrders} ${label}?`)) return;
     startTransition(async () => {
-      const result = await bulkDeleteOrdererOrdersAction(locale, customerId);
+      const result = await deleteOrderByNumberAction(locale, orderNumber);
       if (result.error) setError(result.error);
       else router.refresh();
     });
@@ -67,7 +67,7 @@ export default function OrdererRowActions({
             </option>
           ))}
         </select>
-        <RowActionLink href={`/${locale}/admin/orders/${customerId}`} label={dict.actionDetails}>
+        <RowActionLink href={`/${locale}/admin/orders/${orderNumber}`} label={dict.actionDetails}>
           <EyeIcon />
         </RowActionLink>
         {isAdmin && (

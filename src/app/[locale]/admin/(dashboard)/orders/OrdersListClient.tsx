@@ -1,23 +1,31 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
-import type { OrdererRow } from "./data";
+import type { OrderSummaryRow } from "./data";
 import { orderStatusLabel, orderStatusClass } from "./statusStyles";
-import OrdererRowActions from "./OrdererRowActions";
+import OrderRowActions from "./OrderRowActions";
 import { formatGel } from "@/lib/currency";
 import type { Dictionary } from "@/i18n/dictionary";
 import type { Locale } from "@/i18n/locales";
 
-export default function OrderersListClient({
+/**
+ * Список заказов — по одной строке на оформление.
+ *
+ * Раньше строка была на заказчика, и все его заказы сливались в одну: четыре
+ * разных оформления выглядели как один заказ с четырьмя номерами. Теперь
+ * единица списка — сам заказ, тот же, что видит покупатель в истории покупок.
+ */
+export default function OrdersListClient({
   locale,
   dict,
   isAdmin,
-  orderers,
+  orders,
   emptyMessage,
   searchSlot,
 }: {
   locale: Locale;
   dict: Dictionary["admin"];
   isAdmin: boolean;
-  orderers: OrdererRow[];
+  orders: OrderSummaryRow[];
   emptyMessage: string;
   searchSlot?: ReactNode;
 }) {
@@ -29,38 +37,51 @@ export default function OrderersListClient({
 
       {searchSlot}
 
-      {orderers.length === 0 ? (
+      {orders.length === 0 ? (
         <p className="py-16 text-center text-zinc-500">{emptyMessage}</p>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
-          <table className="w-full min-w-[760px] text-left text-sm">
+          <table className="w-full min-w-[920px] text-left text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
               <tr>
                 <th className="px-4 py-3 font-medium">{dict.orderNumberLabel}</th>
+                <th className="px-4 py-3 font-medium">{dict.orderColumnWhen}</th>
                 <th className="px-4 py-3 font-medium">{dict.orderColumnCustomer}</th>
+                <th className="px-4 py-3 font-medium">{dict.tablePhone}</th>
+                <th className="px-4 py-3 font-medium">{dict.orderColumnLines}</th>
                 <th className="px-4 py-3 font-medium">{dict.orderColumnStatus}</th>
                 <th className="px-4 py-3 font-medium">{dict.warehouseAssignedLabel}</th>
-                <th className="px-4 py-3 font-medium">{dict.tablePhone}</th>
                 <th className="px-4 py-3 font-medium">{dict.orderColumnTotalAmount}</th>
                 <th className="px-4 py-3 font-medium" />
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-              {orderers.map((row) => (
-                <tr key={row.id}>
-                  <td className="px-4 py-3 text-zinc-500">
-                    {row.orderNumber != null ? `№${row.orderNumber}` : "—"}
+              {orders.map((row) => (
+                <tr key={row.orderNumber}>
+                  <td className="px-4 py-3">
+                    <Link
+                      href={`/${locale}/admin/orders/${row.orderNumber}`}
+                      className="font-medium text-zinc-900 hover:text-orange-600 dark:text-zinc-50"
+                    >
+                      №{row.orderNumber}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3 text-xs text-zinc-400">
+                    {new Date(row.createdAt).toLocaleString(locale)}
                   </td>
                   <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50">{row.name}</td>
+                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{row.phone || "—"}</td>
+                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{row.lineCount}</td>
                   <td className="px-4 py-3">
                     {row.status ? (
                       <span
                         className={`rounded-full px-2.5 py-1 text-xs font-medium ${orderStatusClass(row.status)}`}
                       >
-                        {row.statusTotal}/{row.statusCount} {orderStatusLabel(row.status, dict)}
+                        {orderStatusLabel(row.status, dict)}
                       </span>
                     ) : (
-                      "—"
+                      // Статусы строк разошлись — обычно отменили часть позиций.
+                      <span className="text-xs text-zinc-500">{dict.orderMixedStatuses}</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
@@ -75,16 +96,15 @@ export default function OrderersListClient({
                       "—"
                     )}
                   </td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{row.phone || "—"}</td>
                   <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50">
                     {formatGel(row.totalAmount, locale)}
                   </td>
                   <td className="px-4 py-3">
-                    <OrdererRowActions
+                    <OrderRowActions
                       locale={locale}
                       dict={dict}
-                      customerId={row.id}
-                      label={row.name}
+                      orderNumber={row.orderNumber}
+                      label={`№${row.orderNumber} — ${row.name}`}
                       isAdmin={isAdmin}
                     />
                   </td>

@@ -7,17 +7,16 @@ import {
   orderStatusLabel,
   orderStatusClass,
   PROGRESSABLE_STATUSES,
-  isOrderDeletable,
 } from "../statusStyles";
 import type { OrderStatus } from "../data";
 import { RowActionLink, RowActionButton, EyeIcon, XCircleIcon, TrashIcon } from "@/components/admin/RowActions";
 import type { Dictionary } from "@/i18n/dictionary";
 import type { Locale } from "@/i18n/locales";
 
-export default function OrdererOrderRowActions({
+export default function OrderLineRowActions({
   locale,
   dict,
-  customerId,
+  orderNumber,
   orderId,
   label,
   isAdmin,
@@ -26,7 +25,7 @@ export default function OrdererOrderRowActions({
 }: {
   locale: Locale;
   dict: Dictionary["admin"];
-  customerId: string;
+  orderNumber: number;
   orderId: string;
   label: string;
   isAdmin: boolean;
@@ -37,7 +36,6 @@ export default function OrdererOrderRowActions({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const isDeletable = isOrderDeletable(currentStatus);
 
   // Orders placed before "gathered"/"delivered" were retired still carry those
   // values. The <select> is controlled by currentStatus, so a value missing
@@ -50,7 +48,7 @@ export default function OrdererOrderRowActions({
   function handleCancel() {
     if (!window.confirm(dict.confirmCancelOrder)) return;
     startTransition(async () => {
-      const result = await cancelOrderAction(locale, orderId, customerId, label);
+      const result = await cancelOrderAction(locale, orderId, orderNumber, label);
       if (result.error) setError(result.error);
       else router.refresh();
     });
@@ -59,7 +57,7 @@ export default function OrdererOrderRowActions({
   function handleDelete() {
     if (!window.confirm(dict.confirmDeleteOrder)) return;
     startTransition(async () => {
-      const result = await deleteOrderAction(locale, orderId, customerId, label);
+      const result = await deleteOrderAction(locale, orderId, orderNumber, label);
       if (result.error) setError(result.error);
       else router.refresh();
     });
@@ -68,7 +66,7 @@ export default function OrdererOrderRowActions({
   function handleStatusChange(status: OrderStatus) {
     if (status === "cancelled" || !PROGRESSABLE_STATUSES.includes(status)) return;
     startTransition(async () => {
-      const result = await updateOrderStatusAction(locale, orderId, customerId, status, label);
+      const result = await updateOrderStatusAction(locale, orderId, orderNumber, status, label);
       if (result.error) setError(result.error);
       else router.refresh();
     });
@@ -105,7 +103,7 @@ export default function OrdererOrderRowActions({
             ))}
           </select>
         )}
-        <RowActionLink href={`/${locale}/admin/orders/${customerId}/${orderId}`} label={dict.actionDetails}>
+        <RowActionLink href={`/${locale}/admin/orders/${orderNumber}/${orderId}`} label={dict.actionDetails}>
           <EyeIcon />
         </RowActionLink>
         {isAdmin && isCancellable && (
@@ -113,7 +111,7 @@ export default function OrdererOrderRowActions({
             <XCircleIcon />
           </RowActionButton>
         )}
-        {isAdmin && isDeletable && (
+        {isAdmin && (
           <RowActionButton label={dict.actionDelete} disabled={pending} danger onClick={handleDelete}>
             <TrashIcon />
           </RowActionButton>

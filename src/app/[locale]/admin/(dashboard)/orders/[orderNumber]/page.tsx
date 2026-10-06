@@ -3,22 +3,28 @@ import { notFound } from "next/navigation";
 import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
 import { requireStaff } from "@/lib/auth";
-import { getOrdererOrders } from "../data";
+import { getOrderByNumber } from "../data";
 import { formatGel } from "@/lib/currency";
-import OrdererOrderRowActions from "./OrdererOrderRowActions";
+import OrderLineRowActions from "./OrderLineRowActions";
 import OrderDiscountInput from "./OrderDiscountInput";
+import OrderQuantityInput from "./OrderQuantityInput";
+import { productImageUrl } from "@/lib/productImageUrl";
 
-export default async function OrdererOrdersPage({
+export default async function OrderPage({
   params,
-}: PageProps<"/[locale]/admin/orders/[customerId]">) {
-  const { locale, customerId } = await params;
+}: PageProps<"/[locale]/admin/orders/[orderNumber]">) {
+  const { locale, orderNumber: orderNumberParam } = await params;
   if (!isLocale(locale)) notFound();
   const staff = await requireStaff(locale);
   const dict = await getDictionary(locale);
 
-  const result = await getOrdererOrders(customerId, locale);
+  // В адресе может оказаться что угодно — в базу уходит только число.
+  const orderNumber = Number(orderNumberParam);
+  if (!Number.isInteger(orderNumber)) notFound();
+
+  const result = await getOrderByNumber(orderNumber, locale);
   if (!result) notFound();
-  const { orderer, lines, total } = result;
+  const { orderer, lines, total, createdAt, customerId } = result;
 
   const ordererName = `${orderer.firstName} ${orderer.lastName}`;
 
@@ -34,13 +40,28 @@ export default async function OrdererOrdersPage({
 
   return (
     <main className="flex w-full flex-1 flex-col gap-6 px-2 py-10">
-      <Link href={`/${locale}/admin/orders`} className="text-sm text-zinc-500 hover:text-orange-600">
-        ← {dict.admin.ordersTitle}
-      </Link>
+      <div className="flex flex-wrap items-center gap-4">
+        <Link href={`/${locale}/admin/orders`} className="text-sm text-zinc-500 hover:text-orange-600">
+          ← {dict.admin.ordersTitle}
+        </Link>
+        {orderer.kind === "customer" && (
+          <Link
+            href={`/${locale}/admin/customers/${customerId}`}
+            className="text-sm text-zinc-500 hover:text-orange-600"
+          >
+            {dict.admin.navCustomers} →
+          </Link>
+        )}
+      </div>
 
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">{ordererName}</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+          {dict.admin.orderNumberLabel} №{orderNumber}
+        </h1>
         <p className="mt-1 text-sm text-zinc-500">
+          {new Date(createdAt).toLocaleString(locale)} · {ordererName}
+        </p>
+        <p className="text-sm text-zinc-500">
           {orderer.phone || "—"} · {orderer.email || "—"}
         </p>
       </div>
@@ -57,11 +78,12 @@ export default async function OrdererOrdersPage({
       )}
 
       <div className="flex flex-col gap-3">
-        <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">{dict.admin.ordererOrdersTitle}</h2>
+        <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">{dict.admin.orderLinesTitle}</h2>
         <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
-          <table className="w-full min-w-[760px] text-left text-sm">
+          <table className="w-full min-w-[880px] text-left text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
               <tr>
+                <th className="px-4 py-3 font-medium" />
                 <th className="px-4 py-3 font-medium">{dict.admin.productsColProductCode}</th>
                 <th className="px-4 py-3 font-medium">{dict.admin.orderColumnProduct}</th>
                 <th className="px-4 py-3 font-medium">{dict.admin.orderColumnQuantity}</th>
@@ -76,17 +98,40 @@ export default async function OrdererOrdersPage({
                 const effectivePrice = line.discountedPrice ?? line.priceAtOrder;
                 return (
                   <tr key={line.id}>
+                    <td className="px-4 py-3">
+                      {line.productImage ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={productImageUrl(line.productImage, "thumb")}
+                          alt=""
+                          className="h-11 w-11 rounded-lg object-fill"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      ) : (
+                        <div className="h-11 w-11 rounded-lg bg-zinc-100 dark:bg-zinc-800" />
+                      )}
+                    </td>
                     <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50">
                       {line.productCode || "—"}
                     </td>
                     <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50">{line.productName}</td>
-                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{line.quantity}</td>
+                    <td className="px-4 py-3">
+                      <OrderQuantityInput
+                        locale={locale}
+                        dict={dict.admin}
+                        orderId={line.id}
+                        orderNumber={orderNumber}
+                        label={`${line.productName} — ${ordererName}`}
+                        quantity={line.quantity}
+                      />
+                    </td>
                     <td className="px-4 py-3">
                       <OrderDiscountInput
                         locale={locale}
                         dict={dict.admin}
                         orderId={line.id}
-                        customerId={customerId}
+                        orderNumber={orderNumber}
                         label={`${line.productName} — ${ordererName}`}
                         originalPrice={line.priceAtOrder}
                         discountedPrice={line.discountedPrice}
@@ -99,10 +144,10 @@ export default async function OrdererOrdersPage({
                       {new Date(line.createdAt).toLocaleString(locale)}
                     </td>
                     <td className="px-4 py-3">
-                      <OrdererOrderRowActions
+                      <OrderLineRowActions
                         locale={locale}
                         dict={dict.admin}
-                        customerId={customerId}
+                        orderNumber={orderNumber}
                         orderId={line.id}
                         label={`${line.productName} — ${ordererName}`}
                         isAdmin={staff.role === "admin"}
@@ -124,7 +169,7 @@ export default async function OrdererOrdersPage({
           <span className="font-bold text-zinc-900 dark:text-zinc-50">{formatGel(total, locale)}</span>
         </div>
         <Link
-          href={`/${locale}/admin/orders/${customerId}/invoice`}
+          href={`/${locale}/admin/orders/${orderNumber}/invoice`}
           target="_blank"
           className="rounded-full bg-orange-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-orange-500"
         >

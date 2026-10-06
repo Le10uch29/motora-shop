@@ -6,11 +6,6 @@ export const ORDERS_PAGE_SIZE = 20;
 
 export type OrderStatus = "new" | "gathering" | "gathered" | "shipped" | "delivered" | "cancelled";
 
-// Used only to break ties when picking the "predominant" status for the
-// top orderer list's fraction — further-along wins. Independent of
-// statusStyles.ts's UI-facing PROGRESSABLE_STATUSES (which drops "gathered").
-const STATUS_PROGRESSION: OrderStatus[] = ["new", "gathering", "gathered", "shipped", "delivered"];
-
 function effectivePrice(priceAtOrder: number, discountedPrice: number | null): number {
   return discountedPrice ?? priceAtOrder;
 }
@@ -101,124 +96,136 @@ type OrderBaseRow = {
   customer_id: string;
 };
 
-export type OrdererRow = {
-  id: string;
-  /** Number of this orderer's most recent order. A row groups every order one
-   * person placed, so there's no single number for the group — the newest one
-   * identifies it, matching the newest-first ordering of the list itself. */
-  orderNumber: number | null;
+/** Одна строка списка заказов — одно оформление.
+ *
+ * Раньше список строился по заказчику: одна строка на человека, а все его
+ * оформления сливались в неё. Из-за этого четыре разных заказа выглядели как
+ * один с четырьмя номерами, и в инвойс попадало всё сразу. Теперь единицей
+ * списка стал сам заказ — ровно то, что покупатель оформил за один раз, и что
+ * обозначено одним order_number. */
+export type OrderSummaryRow = {
+  orderNumber: number;
+  /** Нужен для ссылок на карточку заказчика и для пересчёта его страниц. */
+  customerId: string;
   name: string;
   phone: string;
   email: string;
+  createdAt: string;
+  /** Сколько строк (товаров) в заказе. */
+  lineCount: number;
   totalAmount: number;
-  statusTotal: number;
-  statusCount: number;
+  /** null, когда строки заказа разошлись по статусам — такое бывает, если
+   * отменили часть позиций. */
   status: OrderStatus | null;
   warehouseName: string | null;
   warehouseAddress: string | null;
 };
 
-export async function getOrderersList(
+export async function getOrdersList(
   locale: Locale,
   options: { query?: string; page?: number } = {}
-): Promise<{ rows: OrdererRow[]; total: number }> {
+): Promise<{ rows: OrderSummaryRow[]; total: number }> {
   const admin = createAdminClient();
   const { data } = await admin
     .from("orders")
     .select(
-      "customer_id, order_number, quantity, price_at_order, discounted_price, status, updated_at, warehouse_id"
+      "customer_id, order_number, quantity, price_at_order, discounted_price, status, created_at, updated_at, warehouse_id"
     )
     .order("created_at", { ascending: false });
 
-  const baseRows = (data ?? []) as Omit<OrderBaseRow, "id" | "product_name" | "created_at">[];
-  const ordererIds = Array.from(new Set(baseRows.map((row) => row.customer_id)));
-  const orderers = await resolveOrderers(admin, ordererIds);
+  const baseRows = (data ?? []) as (Omit<OrderBaseRow, "id" | "product_name"> & { created_at: string })[];
 
-  const totalByOrderer = new Map<string, number>();
-  const statusCountsByOrderer = new Map<string, Map<OrderStatus, number>>();
-  const latestWarehouseByOrderer = new Map<string, { warehouseId: string; updatedAt: string }>();
-  // Highest number wins rather than "first row seen": order_number counts up,
-  // so this stays the newest order even for an orderer whose only orders are
-  // cancelled ones (skipped by the loop below).
-  const latestOrderNumberByOrderer = new Map<string, number>();
+  type Group = {
+    orderNumber: number;
+    customerId: string;
+    createdAt: string;
+    lineCount: number;
+    total: number;
+    statuses: Set<OrderStatus>;
+    warehouseId: string | null;
+    warehouseUpdatedAt: string;
+  };
+  const byNumber = new Map<number, Group>();
 
   for (const row of baseRows) {
-    const previousNumber = latestOrderNumberByOrderer.get(row.customer_id);
-    if (previousNumber == null || row.order_number > previousNumber) {
-      latestOrderNumberByOrderer.set(row.customer_id, row.order_number);
+    const group = byNumber.get(row.order_number) ?? {
+      orderNumber: row.order_number,
+      customerId: row.customer_id,
+      createdAt: row.created_at,
+      lineCount: 0,
+      total: 0,
+      statuses: new Set<OrderStatus>(),
+      warehouseId: null,
+      warehouseUpdatedAt: "",
+    };
+
+    group.lineCount += 1;
+    group.statuses.add(row.status);
+    // Дата заказа — самая ранняя из его строк: все они созданы одной вставкой,
+    // но порядок возврата строк это не гарантирует.
+    if (row.created_at < group.createdAt) group.createdAt = row.created_at;
+    // Отменённые позиции в сумму не идут — заказ на них уже не выставляется.
+    if (row.status !== "cancelled") {
+      group.total += effectivePrice(Number(row.price_at_order), row.discounted_price) * row.quantity;
+    }
+    if (row.warehouse_id && row.updated_at > group.warehouseUpdatedAt) {
+      group.warehouseId = row.warehouse_id;
+      group.warehouseUpdatedAt = row.updated_at;
     }
 
-    if (row.status === "cancelled") continue;
-
-    const currentTotal = totalByOrderer.get(row.customer_id) ?? 0;
-    totalByOrderer.set(
-      row.customer_id,
-      currentTotal + effectivePrice(Number(row.price_at_order), row.discounted_price) * row.quantity
-    );
-
-    const statusCounts = statusCountsByOrderer.get(row.customer_id) ?? new Map<OrderStatus, number>();
-    statusCounts.set(row.status, (statusCounts.get(row.status) ?? 0) + 1);
-    statusCountsByOrderer.set(row.customer_id, statusCounts);
-
-    if (row.warehouse_id) {
-      const current = latestWarehouseByOrderer.get(row.customer_id);
-      if (!current || row.updated_at > current.updatedAt) {
-        latestWarehouseByOrderer.set(row.customer_id, { warehouseId: row.warehouse_id, updatedAt: row.updated_at });
-      }
-    }
+    byNumber.set(row.order_number, group);
   }
 
-  const warehouseIds = Array.from(new Set(Array.from(latestWarehouseByOrderer.values()).map((w) => w.warehouseId)));
+  const groups = Array.from(byNumber.values()).sort((a, b) => b.orderNumber - a.orderNumber);
+  const orderers = await resolveOrderers(
+    admin,
+    Array.from(new Set(groups.map((group) => group.customerId)))
+  );
+
+  const warehouseIds = Array.from(
+    new Set(groups.map((group) => group.warehouseId).filter((id): id is string => Boolean(id)))
+  );
   const { data: warehouseRows } =
     warehouseIds.length > 0
       ? await admin.from("warehouses").select("id, name, address").in("id", warehouseIds)
       : { data: [] as { id: string; name: string; address: string | null }[] };
   const warehouseById = new Map((warehouseRows ?? []).map((w) => [w.id, w]));
 
-  let rows: OrdererRow[] = ordererIds
-    .map((id) => {
-      const info = orderers.get(id);
+  let rows: OrderSummaryRow[] = groups
+    .map((group) => {
+      const info = orderers.get(group.customerId);
       if (!info) return null;
-
-      const statusCounts = statusCountsByOrderer.get(id);
-      let predominant: { status: OrderStatus; count: number } | null = null;
-      let statusTotal = 0;
-      if (statusCounts) {
-        for (const [status, count] of statusCounts) {
-          statusTotal += count;
-          if (
-            !predominant ||
-            count > predominant.count ||
-            (count === predominant.count &&
-              STATUS_PROGRESSION.indexOf(status) > STATUS_PROGRESSION.indexOf(predominant.status))
-          ) {
-            predominant = { status, count };
-          }
-        }
-      }
-
-      const latestWarehouse = latestWarehouseByOrderer.get(id);
-      const warehouse = latestWarehouse ? warehouseById.get(latestWarehouse.warehouseId) : undefined;
-
+      const warehouse = group.warehouseId ? warehouseById.get(group.warehouseId) : undefined;
+      // Статус заказа один на все его строки, пока их не развели вручную
+      // (например, отменили часть позиций) — тогда честнее показать, что
+      // единого статуса нет, чем выбрать один из них наугад.
+      const statuses = Array.from(group.statuses);
       return {
-        id,
-        orderNumber: latestOrderNumberByOrderer.get(id) ?? null,
+        orderNumber: group.orderNumber,
+        customerId: group.customerId,
         name: `${info.firstName} ${info.lastName}`,
         phone: info.phone,
         email: info.email,
-        totalAmount: totalByOrderer.get(id) ?? 0,
-        statusTotal,
-        statusCount: predominant?.count ?? 0,
-        status: predominant?.status ?? null,
+        createdAt: group.createdAt,
+        lineCount: group.lineCount,
+        totalAmount: group.total,
+        status: statuses.length === 1 ? statuses[0] : null,
         warehouseName: warehouse?.name ?? null,
         warehouseAddress: warehouse?.address ?? null,
       };
     })
-    .filter((row): row is OrdererRow => row !== null);
+    .filter((row): row is OrderSummaryRow => row !== null);
 
   const query = options.query?.trim().toLowerCase();
   if (query) {
-    rows = rows.filter((row) => `${row.name} ${row.phone} ${row.email}`.toLowerCase().includes(query));
+    // Номер заказа ищется и с решёткой, и без неё: в переписке его пишут
+    // то так, то так.
+    const asNumber = query.replace(/^№/, "");
+    rows = rows.filter(
+      (row) =>
+        `${row.name} ${row.phone} ${row.email}`.toLowerCase().includes(query) ||
+        String(row.orderNumber).includes(asNumber)
+    );
   }
 
   const total = rows.length;
@@ -260,10 +267,13 @@ export type OrdererProfile =
     }
   | { kind: "staff"; firstName: string; lastName: string; phone: string; email: string };
 
-export async function getOrdererOrders(
-  customerId: string,
+export async function getOrderByNumber(
+  orderNumber: number,
   locale: Locale
 ): Promise<{
+  orderNumber: number;
+  customerId: string;
+  createdAt: string;
   orderer: OrdererProfile;
   lines: OrdererOrderLine[];
   total: number;
@@ -277,12 +287,13 @@ export async function getOrdererOrders(
     .select(
       "id, order_number, product_id, product_name, quantity, price_at_order, discounted_price, status, created_at, updated_at, warehouse_id, customer_id"
     )
-    .eq("customer_id", customerId)
-    .order("created_at", { ascending: false });
+    .eq("order_number", orderNumber)
+    .order("created_at", { ascending: true });
 
   const baseRows = (data ?? []) as (OrderBaseRow & { product_id: string | null })[];
   if (baseRows.length === 0) return null;
 
+  const customerId = baseRows[0].customer_id;
   const orderers = await resolveOrderers(admin, [customerId]);
   const orderer = orderers.get(customerId);
   if (!orderer) return null;
@@ -307,9 +318,9 @@ export async function getOrdererOrders(
     (productRows ?? []).map((p) => [p.id, p.origin_code ?? null])
   );
 
-  // Representative warehouse for the whole invoice — the one attached to
-  // whichever active order was touched most recently (mirrors the top
-  // orderer list's logic in getOrderersList).
+  // Склад заказа — тот, что привязан к позиции, которую трогали последней:
+  // проставляется он автоматически при смене статуса, и у строк одного
+  // заказа почти всегда совпадает.
   let latestWarehouse: { warehouseId: string; updatedAt: string } | null = null;
   for (const row of baseRows) {
     if (row.status === "cancelled" || !row.warehouse_id) continue;
@@ -347,7 +358,19 @@ export async function getOrdererOrders(
     .filter((line) => line.status !== "cancelled")
     .reduce((sum, line) => sum + effectivePrice(line.priceAtOrder, line.discountedPrice) * line.quantity, 0);
 
-  return { orderer, lines, total, warehouseName, warehouseAddress };
+  return {
+    orderNumber,
+    customerId,
+    createdAt: baseRows.reduce(
+      (earliest, row) => (row.created_at < earliest ? row.created_at : earliest),
+      baseRows[0].created_at
+    ),
+    orderer,
+    lines,
+    total,
+    warehouseName,
+    warehouseAddress,
+  };
 }
 
 export type OrderDetail = {

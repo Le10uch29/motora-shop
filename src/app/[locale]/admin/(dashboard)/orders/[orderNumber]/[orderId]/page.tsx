@@ -10,8 +10,9 @@ import OrderDetailActions from "./OrderDetailActions";
 
 export default async function OrderDetailPage({
   params,
-}: PageProps<"/[locale]/admin/orders/[customerId]/[orderId]">) {
-  const { locale, customerId, orderId } = await params;
+}: PageProps<"/[locale]/admin/orders/[orderNumber]/[orderId]">) {
+  const { locale, orderNumber: orderNumberParam, orderId } = await params;
+  const orderNumber = Number(orderNumberParam);
   if (!isLocale(locale)) notFound();
   const staff = await requireStaff(locale);
   const dict = await getDictionary(locale);
@@ -29,7 +30,7 @@ export default async function OrderDetailPage({
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-2 py-10">
       <Link
-        href={`/${locale}/admin/orders/${customerId}`}
+        href={`/${locale}/admin/orders/${orderNumber}`}
         className="text-sm text-zinc-500 hover:text-orange-600"
       >
         ← {dict.admin.ordererOrdersTitle}
@@ -49,7 +50,7 @@ export default async function OrderDetailPage({
             locale={locale}
             dict={dict.admin}
             id={order.id}
-            customerId={customerId}
+            orderNumber={orderNumber}
             label={`${productName} — ${ordererName}`}
             status={order.status}
           />

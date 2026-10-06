@@ -11,7 +11,7 @@ export default function OrderDiscountInput({
   locale,
   dict,
   orderId,
-  customerId,
+  orderNumber,
   label,
   originalPrice,
   discountedPrice,
@@ -19,7 +19,7 @@ export default function OrderDiscountInput({
   locale: Locale;
   dict: Dictionary["admin"];
   orderId: string;
-  customerId: string;
+  orderNumber: number;
   label: string;
   originalPrice: number;
   discountedPrice: number | null;
@@ -41,7 +41,7 @@ export default function OrderDiscountInput({
     if (nextDiscounted === discountedPrice) return;
 
     startTransition(async () => {
-      const result = await updateOrderDiscountAction(locale, orderId, customerId, nextDiscounted, label);
+      const result = await updateOrderDiscountAction(locale, orderId, orderNumber, nextDiscounted, label);
       if (result.error) setError(result.error);
       else router.refresh();
     });

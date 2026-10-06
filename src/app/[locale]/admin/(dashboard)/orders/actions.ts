@@ -7,15 +7,17 @@ import { logAction } from "@/lib/logs";
 import {
   PROGRESSABLE_STATUSES,
   STOCK_DEDUCTION_STATUS,
-  isOrderDeletable,
   isStatusAtOrPast,
 } from "./statusStyles";
 import type { Locale } from "@/i18n/locales";
 
-function revalidateOrderPaths(locale: Locale, customerId: string, id: string) {
+/** Страницы заказа адресуются его номером, а не заказчиком: один заказ —
+ * одна страница и один инвойс. */
+function revalidateOrderPaths(locale: Locale, orderNumber: number | string, id?: string) {
   revalidatePath(`/${locale}/admin/orders`);
-  revalidatePath(`/${locale}/admin/orders/${customerId}`);
-  revalidatePath(`/${locale}/admin/orders/${customerId}/${id}`);
+  revalidatePath(`/${locale}/admin/orders/${orderNumber}`);
+  revalidatePath(`/${locale}/admin/orders/${orderNumber}/invoice`);
+  if (id) revalidatePath(`/${locale}/admin/orders/${orderNumber}/${id}`);
 }
 
 /** Progresses an order through fulfillment (new → gathering → shipped) —
@@ -33,7 +35,7 @@ function revalidateOrderPaths(locale: Locale, customerId: string, id: string) {
 export async function updateOrderStatusAction(
   locale: Locale,
   id: string,
-  customerId: string,
+  orderNumber: number,
   status: (typeof PROGRESSABLE_STATUSES)[number],
   label: string
 ): Promise<{ error: string | null }> {
@@ -104,7 +106,7 @@ export async function updateOrderStatusAction(
   }
 
   await logAction(actor, "update", "order", `${label} → ${status}`, { entityId: id });
-  revalidateOrderPaths(locale, customerId, id);
+  revalidateOrderPaths(locale, orderNumber, id);
   return { error: null };
 }
 
@@ -114,56 +116,171 @@ export async function updateOrderStatusAction(
  * would otherwise need each line changed individually from their detail
  * page. Reuses updateOrderStatusAction per line so the stock-deduction
  * safety on "shipped" (and every other rule) stays in exactly one place. */
-export async function bulkUpdateOrdererStatusAction(
+/** Переводит весь заказ в следующий статус разом.
+ *
+ * Заказ — это набор строк с общим номером, и двигают его целиком: собрали и
+ * отправили всё оформление, а не отдельную позицию в нём.
+ *
+ * Запросов здесь ровно столько, сколько нужно, а не по пачке на строку: при
+ * заказе из сотни позиций прежний цикл по строкам занимал минуты и не
+ * доживал до конца на хостинге. Статус меняется одним UPDATE, отметка о
+ * списании — вторым, а остатки товаров правятся параллельно.
+ *
+ * Правило списания то же, что и у отдельной строки: товар уходит со склада
+ * один раз, при первом попадании в «отправлен» или дальше. */
+export async function updateOrderStatusByNumberAction(
   locale: Locale,
-  customerId: string,
+  orderNumber: number,
   status: (typeof PROGRESSABLE_STATUSES)[number]
 ): Promise<{ error: string | null }> {
-  await requireStaff(locale);
+  const actor = await requireStaff(locale);
+  if (!PROGRESSABLE_STATUSES.includes(status)) return { error: "invalid_status" };
+
   const admin = createAdminClient();
-
-  const { data: activeOrders } = await admin
+  const { data: lines } = await admin
     .from("orders")
-    .select("id, product_name")
-    .eq("customer_id", customerId)
+    .select("id, quantity, product_id, warehouse_id, stock_deducted_at")
+    .eq("order_number", orderNumber)
     .neq("status", "cancelled");
+  if (!lines || lines.length === 0) return { error: "not_found" };
 
-  const errors: string[] = [];
-  for (const order of activeOrders ?? []) {
-    const label = order.product_name?.[locale] ?? order.product_name?.ru ?? "";
-    const result = await updateOrderStatusAction(locale, order.id, customerId, status, label);
-    if (result.error) errors.push(result.error);
+  // Склад проставляется автоматически — тот, что у двигающего заказ
+  // сотрудника; если его нет, остаётся уже привязанный к заказу.
+  const nextWarehouseId =
+    actor.warehouseId ?? lines.find((line) => line.warehouse_id)?.warehouse_id ?? null;
+
+  const { error } = await admin
+    .from("orders")
+    .update({ status, ...(nextWarehouseId ? { warehouse_id: nextWarehouseId } : {}) })
+    .eq("order_number", orderNumber)
+    .neq("status", "cancelled");
+  if (error) return { error: error.message };
+
+  const toDeduct = isStatusAtOrPast(status, STOCK_DEDUCTION_STATUS)
+    ? lines.filter((line) => !line.stock_deducted_at && line.product_id)
+    : [];
+
+  if (toDeduct.length > 0) {
+    // Отметка ставится только тем строкам, что ещё не списаны: у остальных
+    // она уже есть, и перезаписывать её значит потерять время списания.
+    await admin
+      .from("orders")
+      .update({ stock_deducted_at: new Date().toISOString() })
+      .in("id", toDeduct.map((line) => line.id));
+
+    // Один товар может встретиться в заказе дважды — списываем сумму.
+    const neededByProduct = new Map<string, number>();
+    for (const line of toDeduct) {
+      neededByProduct.set(line.product_id!, (neededByProduct.get(line.product_id!) ?? 0) + line.quantity);
+    }
+    const productIds = [...neededByProduct.keys()];
+
+    const { data: products } = await admin.from("products").select("id, stock").in("id", productIds);
+    await Promise.all(
+      (products ?? []).map((product) =>
+        admin
+          .from("products")
+          .update({ stock: Math.max(0, product.stock - (neededByProduct.get(product.id) ?? 0)) })
+          .eq("id", product.id)
+      )
+    );
+
+    if (nextWarehouseId) {
+      const { data: stockRows } = await admin
+        .from("warehouse_stock")
+        .select("id, product_id, quantity")
+        .eq("warehouse_id", nextWarehouseId)
+        .in("product_id", productIds);
+      await Promise.all(
+        (stockRows ?? []).map((row) =>
+          admin
+            .from("warehouse_stock")
+            .update({ quantity: Math.max(0, row.quantity - (neededByProduct.get(row.product_id) ?? 0)) })
+            .eq("id", row.id)
+        )
+      );
+    }
+
+    revalidatePath(`/${locale}/admin/products`);
+    revalidatePath(`/${locale}/admin/warehouses`);
   }
 
-  return { error: errors.length > 0 ? errors.join("; ") : null };
+  await logAction(actor, "update", "order", `№${orderNumber} → ${status}`, {
+    details: { changedLines: String(lines.length) },
+  });
+  revalidateOrderPaths(locale, orderNumber);
+  return { error: null };
 }
 
-/** Deletes every one of an orderer's orders that's currently deletable
- * (cancelled or shipped out — same rule as the single-order delete) — orders
- * still in progress are left untouched. Reuses deleteOrderAction per line. */
-export async function bulkDeleteOrdererOrdersAction(
+/** Удаляет заказ целиком — одним запросом.
+ *
+ * Раньше здесь был цикл по позициям, и каждая удалялась отдельным действием:
+ * выборка, удаление, запись в журнал и четыре пересчёта путей на строку. Для
+ * заказа из сотни позиций это больше трёхсот обращений к базе подряд —
+ * функция на хостинге успевала удалить несколько строк и умирала по
+ * таймауту, а заказ оставался на месте, только похудевшим. Теперь это один
+ * DELETE и одна запись в журнал на весь заказ.
+ *
+ * Ограничения по статусу нет: заказ заводят и ошибочно, и дважды, и тестом.
+ * Право только у админа. Остаток на складе не возвращается — если заказ уже
+ * уехал, товар действительно уехал. */
+export async function deleteOrderByNumberAction(
   locale: Locale,
-  customerId: string
+  orderNumber: number
 ): Promise<{ error: string | null; deleted: number }> {
-  await requireAdmin(locale);
+  const actor = await requireAdmin(locale);
   const admin = createAdminClient();
 
-  const { data: deletableOrders } = await admin
+  const { data: lines } = await admin
     .from("orders")
-    .select("id, product_name")
-    .eq("customer_id", customerId)
-    .in("status", ["cancelled", "shipped", "delivered"]);
+    .select("id")
+    .eq("order_number", orderNumber);
+  const deleted = lines?.length ?? 0;
+  if (deleted === 0) return { error: "not_found", deleted: 0 };
 
-  let deleted = 0;
-  const errors: string[] = [];
-  for (const order of deletableOrders ?? []) {
-    const label = order.product_name?.[locale] ?? order.product_name?.ru ?? "";
-    const result = await deleteOrderAction(locale, order.id, customerId, label);
-    if (result.error) errors.push(result.error);
-    else deleted++;
-  }
+  const { error } = await admin.from("orders").delete().eq("order_number", orderNumber);
+  if (error) return { error: error.message, deleted: 0 };
 
-  return { error: errors.length > 0 ? errors.join("; ") : null, deleted };
+  await logAction(actor, "delete", "order", `№${orderNumber}`, {
+    details: { deletedLines: String(deleted) },
+  });
+  revalidateOrderPaths(locale, orderNumber);
+  return { error: null, deleted };
+}
+
+/** Меняет количество в строке заказа — доступно админу и продавцу, как и
+ * правка цены: заказ часто уточняют по телефону уже после оформления.
+ *
+ * Остаток на складе здесь не трогается намеренно. Он списывается один раз,
+ * при переходе заказа в «отправлен», и если правка пришла до этого момента —
+ * спишется уже новое количество. Если заказ уже уехал, расхождение
+ * исправляется в карточке товара, а не задним числом здесь: иначе одна и та
+ * же правка то меняла бы склад, то нет, в зависимости от статуса. */
+export async function updateOrderQuantityAction(
+  locale: Locale,
+  id: string,
+  orderNumber: number,
+  quantity: number,
+  label: string
+): Promise<{ error: string | null }> {
+  const actor = await requireStaff(locale);
+  const next = Math.floor(quantity);
+  if (!Number.isFinite(next) || next < 1) return { error: "invalid_quantity" };
+
+  const admin = createAdminClient();
+  const { data: before } = await admin.from("orders").select("quantity").eq("id", id).single();
+  if (!before) return { error: "not_found" };
+  if (before.quantity === next) return { error: null };
+
+  const { error } = await admin.from("orders").update({ quantity: next }).eq("id", id);
+  if (error) return { error: error.message };
+
+  await logAction(actor, "update", "order", label, {
+    entityId: id,
+    details: { quantity: { before: String(before.quantity), after: String(next) } },
+  });
+  revalidateOrderPaths(locale, orderNumber, id);
+  return { error: null };
 }
 
 /** Price override for one order line — open to admin and seller (matches the
@@ -173,7 +290,7 @@ export async function bulkDeleteOrdererOrdersAction(
 export async function updateOrderDiscountAction(
   locale: Locale,
   id: string,
-  customerId: string,
+  orderNumber: number,
   discountedPrice: number | null,
   label: string
 ): Promise<{ error: string | null }> {
@@ -199,17 +316,21 @@ export async function updateOrderDiscountAction(
       },
     },
   });
-  revalidateOrderPaths(locale, customerId, id);
+  revalidateOrderPaths(locale, orderNumber, id);
   return { error: null };
 }
 
-/** Permanently deletes an order record — admin-only, and only once the order
- * is in a terminal state (cancelled, or shipped out), enforced server-side so
- * this can't be reached for an order still in progress. */
+/** Безвозвратно удаляет одну строку заказа — только админ.
+ *
+ * Раньше удалять разрешалось лишь отменённые и отправленные: по замыслу —
+ * чтобы не потерять заказ в работе, на деле — ошибочный «новый» заказ
+ * оставался навсегда. Решение, что удалять, оставлено админу; след остаётся
+ * в журнале. Остаток на складе при удалении не возвращается: если заказ уже
+ * был отправлен, товар действительно уехал. */
 export async function deleteOrderAction(
   locale: Locale,
   id: string,
-  customerId: string,
+  orderNumber: number,
   label: string
 ): Promise<{ error: string | null }> {
   const actor = await requireAdmin(locale);
@@ -217,22 +338,19 @@ export async function deleteOrderAction(
   const admin = createAdminClient();
   const { data: order } = await admin.from("orders").select("status").eq("id", id).single();
   if (!order) return { error: "not_found" };
-  if (!isOrderDeletable(order.status)) {
-    return { error: "not_deletable" };
-  }
 
   const { error } = await admin.from("orders").delete().eq("id", id);
   if (error) return { error: error.message };
 
   await logAction(actor, "delete", "order", label, { entityId: id });
-  revalidateOrderPaths(locale, customerId, id);
+  revalidateOrderPaths(locale, orderNumber, id);
   return { error: null };
 }
 
 export async function cancelOrderAction(
   locale: Locale,
   id: string,
-  customerId: string,
+  orderNumber: number,
   label: string
 ): Promise<{ error: string | null }> {
   const actor = await requireAdmin(locale);
@@ -247,6 +365,6 @@ export async function cancelOrderAction(
   if (error) return { error: error.message };
 
   await logAction(actor, "delete", "order", label, { entityId: id });
-  revalidateOrderPaths(locale, customerId, id);
+  revalidateOrderPaths(locale, orderNumber, id);
   return { error: null };
 }
