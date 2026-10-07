@@ -9,6 +9,8 @@ import OrderLineRowActions from "./OrderLineRowActions";
 import OrderDiscountInput from "./OrderDiscountInput";
 import OrderQuantityInput from "./OrderQuantityInput";
 import OrderStatusControl from "./OrderStatusControl";
+import AddItemsToOrderButton from "./AddItemsToOrderButton";
+import { isStatusAtOrPast, STOCK_DEDUCTION_STATUS } from "../statusStyles";
 import Pagination from "@/components/admin/Pagination";
 import { single } from "@/lib/searchParams";
 import { ORDER_LINES_PAGE_SIZE } from "../data";
@@ -44,6 +46,11 @@ export default async function OrderPage({
   const pageLines = lines.slice((page - 1) * ORDER_LINES_PAGE_SIZE, page * ORDER_LINES_PAGE_SIZE);
 
   const ordererName = `${orderer.firstName} ${orderer.lastName}`;
+
+  const activeLines = lines.filter((line) => line.status !== "cancelled");
+  const canAddItems =
+    activeLines.length > 0 &&
+    !activeLines.some((line) => isStatusAtOrPast(line.status, STOCK_DEDUCTION_STATUS));
 
   const profileFields: [string, string][] =
     orderer.kind === "customer"
@@ -103,9 +110,26 @@ export default async function OrderPage({
       )}
 
       <div className="flex flex-col gap-3">
-        <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
             {dict.admin.orderLinesTitle} · {lines.length}
           </h2>
+          {/* Дописать забытый товар можно, пока заказ не отправлен: после этого
+              склад уже списан. */}
+          {canAddItems && (
+            <AddItemsToOrderButton
+              locale={locale}
+              dict={dict.admin}
+              orderNumber={orderNumber}
+              orderer={{
+                id: customerId,
+                name: ordererName,
+                phone: orderer.phone,
+                organizationName: orderer.kind === "customer" ? orderer.organizationName : "",
+              }}
+            />
+          )}
+        </div>
         <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
           <table className="w-full min-w-[880px] text-left text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">

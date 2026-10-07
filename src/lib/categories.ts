@@ -129,12 +129,12 @@ export async function getDefaultSubcategory(categoryId: string): Promise<Categor
   return categories.find((c) => c.parentId === categoryId && c.isDefault);
 }
 
-/** How many in-stock products are filed directly under each category id.
+/** How many products are filed directly under each category id.
  *
  * Direct links only — a parent category's own total is its children's counts
- * plus its own, which {@link categoryProductTotal} works out. Out-of-stock
- * products are left out for the same reason they're invisible everywhere else
- * on the site.
+ * plus its own, which {@link categoryProductTotal} works out. Закончившиеся
+ * товары считаются тоже: каталог их показывает (серыми, в конце списка), и
+ * число в боковой панели должно совпадать со списком.
  *
  * Tagged with the products tag as well as the categories one, so editing a
  * product's stock or category refreshes the numbers in the sidebar. */
@@ -142,11 +142,7 @@ const fetchCategoryProductCounts = unstable_cache(
   async (): Promise<Record<string, number>> => {
     const supabase = createPublicClient();
     const rows = await readAllPages<{ category_id: string }>((from, to) =>
-      supabase
-        .from("product_categories")
-        .select("category_id, products!inner(stock)")
-        .gt("products.stock", 0)
-        .range(from, to)
+      supabase.from("product_categories").select("category_id").range(from, to)
     );
 
     const counts: Record<string, number> = {};

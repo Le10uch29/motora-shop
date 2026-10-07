@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Locale } from "@/i18n/locales";
 import type { LocalizedText, ProductSpec } from "@/lib/products";
 import { fitmentsOf, type Fitment } from "@/lib/fitments";
+import { LOW_STOCK_THRESHOLD } from "@/lib/adminConfig";
 
 export const PRODUCTS_PAGE_SIZE = 30;
 
@@ -102,15 +103,77 @@ function adminSearchClause(word: string, locale: Locale, brandIds: string[]): st
   return parts.join(",");
 }
 
-/** One page of the admin product list, searched, counted and sliced by
- * Postgres itself.
+/** Колонки, по которым можно сортировать таблицу товаров. */
+export const PRODUCT_SORT_KEYS = [
+  "productCode",
+  "originCode",
+  "displayName",
+  "brandName",
+  "price",
+  "stock",
+] as const;
+export type ProductSortKey = (typeof PRODUCT_SORT_KEYS)[number];
+export type ProductSort = { key: ProductSortKey; dir: "asc" | "desc" };
+
+export function parseProductSort(key: string | undefined, dir: string | undefined): ProductSort | null {
+  if (!key || !(PRODUCT_SORT_KEYS as readonly string[]).includes(key)) return null;
+  return { key: key as ProductSortKey, dir: dir === "asc" ? "asc" : "desc" };
+}
+
+/** Фильтры списка товаров — на них ведут карточки главной админки («Нет в
+ * наличии», «Заканчиваются», «Без фото» …), чтобы по клику открывались ровно
+ * эти товары, по всем страницам, а не весь каталог. */
+export const PRODUCT_FILTERS = [
+  "in_stock",
+  "out_of_stock",
+  "low_stock",
+  "no_photo",
+  "no_price",
+  "no_vehicle",
+] as const;
+export type ProductFilter = (typeof PRODUCT_FILTERS)[number];
+
+export function parseProductFilter(value: string | undefined): ProductFilter | null {
+  return value && (PRODUCT_FILTERS as readonly string[]).includes(value) ? (value as ProductFilter) : null;
+}
+
+/** Колонка БД для ключа сортировки. Название — из JSON по языку, бренд — из
+ * связанной таблицы (PostgREST умеет сортировать по to-one связи). */
+function sortColumn(key: ProductSortKey, locale: Locale): string {
+  switch (key) {
+    case "productCode":
+      return "product_code";
+    case "originCode":
+      return "origin_code";
+    case "displayName":
+      return `name->>${locale}`;
+    case "brandName":
+      return "brands(name)";
+    case "price":
+      return "price";
+    case "stock":
+      return "stock";
+  }
+}
+
+/** One page of the admin product list, searched, sorted, counted and sliced
+ * by Postgres itself.
  *
  * It used to fetch every product with every column and do all three in JS.
  * That was the slowest page on the site — around a second of pure waiting with
- * a few hundred products, and getting worse with each import. */
+ * a few hundred products, and getting worse with each import.
+ *
+ * Сортировка тоже здесь, а не в браузере: в браузере сортировались только 30
+ * строк текущей страницы, и «по возрастанию цены» на каждой странице
+ * начиналось заново с нуля. */
 export async function getAdminProducts(
   locale: Locale,
-  options: { query?: string; page?: number } = {}
+  options: {
+    query?: string;
+    page?: number;
+    sort?: ProductSort | null;
+    filter?: ProductFilter | null;
+  } = {}
 ): Promise<{ rows: AdminProductRow[]; total: number }> {
   const supabase = await createClient();
 
@@ -131,12 +194,43 @@ export async function getAdminProducts(
     if (clause) query = query.or(clause);
   }
 
+  // Те же условия, по которым считает главная админки (dashboardData.ts), —
+  // число на карточке и длина списка по клику должны совпадать.
+  switch (options.filter) {
+    case "in_stock":
+      query = query.gt("stock", 0);
+      break;
+    case "out_of_stock":
+      query = query.lte("stock", 0);
+      break;
+    case "low_stock":
+      query = query.gt("stock", 0).lte("stock", LOW_STOCK_THRESHOLD);
+      break;
+    case "no_photo":
+      query = query.eq("images", "{}");
+      break;
+    case "no_price":
+      query = query.lte("price", 0);
+      break;
+    case "no_vehicle":
+      query = query.or("make.eq.universal,model.is.null,model.eq.");
+      break;
+  }
+
   const page = options.page && options.page > 0 ? options.page : 1;
   const from = (page - 1) * PRODUCTS_PAGE_SIZE;
   // `id` breaks ties for the same reason it does in the catalog: a bulk import
   // gives hundreds of products the identical created_at, and without a
   // tiebreaker Postgres may order equal rows differently per query, so pages
   // would overlap and skip rows.
+  if (options.sort) {
+    // Пустые значения всегда внизу, в обе стороны: сортируют, чтобы найти
+    // заполненные строки, а не пустые.
+    query = query.order(sortColumn(options.sort.key, locale), {
+      ascending: options.sort.dir === "asc",
+      nullsFirst: false,
+    });
+  }
   const { data, count } = await query
     .order("created_at", { ascending: false })
     .order("id", { ascending: true })

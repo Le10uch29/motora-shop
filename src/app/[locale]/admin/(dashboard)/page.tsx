@@ -242,9 +242,9 @@ async function OverviewRow({
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-8">
       <KpiCard label={d.kpiProductsTotal} value={overview.productsTotal} href={products} icon={<PackageIcon />} noDataLabel={d.noData} />
-      <KpiCard label={d.kpiInStock} value={overview.inStock} tone="good" href={products} icon={<PackageIcon />} noDataLabel={d.noData} />
-      <KpiCard label={d.kpiOutOfStock} value={overview.outOfStock} tone={overview.outOfStock > 0 ? "bad" : "good"} href={products} icon={<AlertIcon />} noDataLabel={d.noData} />
-      <KpiCard label={d.kpiLowStock} value={overview.lowStock} tone={overview.lowStock > 0 ? "warn" : "good"} href={products} icon={<AlertIcon />} noDataLabel={d.noData} />
+      <KpiCard label={d.kpiInStock} value={overview.inStock} tone="good" href={`${products}?filter=in_stock`} icon={<PackageIcon />} noDataLabel={d.noData} />
+      <KpiCard label={d.kpiOutOfStock} value={overview.outOfStock} tone={overview.outOfStock > 0 ? "bad" : "good"} href={`${products}?filter=out_of_stock`} icon={<AlertIcon />} noDataLabel={d.noData} />
+      <KpiCard label={d.kpiLowStock} value={overview.lowStock} tone={overview.lowStock > 0 ? "warn" : "good"} href={`${products}?filter=low_stock`} icon={<AlertIcon />} noDataLabel={d.noData} />
       <KpiCard label={d.kpiCategories} value={overview.categories} href={`/${locale}/admin/categories`} icon={<FolderIcon />} noDataLabel={d.noData} />
       <KpiCard label={d.kpiCarMakes} value={overview.carMakes} icon={<CarIcon />} noDataLabel={d.noData} />
       {/* Просмотров в проекте никто не собирает — честное «нет данных». */}
@@ -283,10 +283,10 @@ async function AttentionBlock({
   // Код продукта в этот список намеренно не входит: APLUS KOD обязателен на
   // валидации импорта, поэтому товара без него в каталоге быть не может.
   const rows: AttentionRow[] = [
-    { label: d.attentionOutOfStock, count: counts.outOfStock, tone: "bad" as const, href: products, action: d.actionOpen, icon: <AlertIcon /> },
-    { label: d.attentionLowStock, count: counts.lowStock, tone: "warn" as const, href: products, action: d.actionCheck, icon: <AlertIcon /> },
-    { label: d.attentionNoPhoto, count: counts.withoutPhoto, tone: "warn" as const, href: products, action: d.actionOpen, icon: <ImageIcon /> },
-    { label: d.attentionNoPrice, count: counts.withoutPrice, tone: "bad" as const, href: products, action: d.actionCheck, icon: <TagIcon /> },
+    { label: d.attentionOutOfStock, count: counts.outOfStock, tone: "bad" as const, href: `${products}?filter=out_of_stock`, action: d.actionOpen, icon: <AlertIcon /> },
+    { label: d.attentionLowStock, count: counts.lowStock, tone: "warn" as const, href: `${products}?filter=low_stock`, action: d.actionCheck, icon: <AlertIcon /> },
+    { label: d.attentionNoPhoto, count: counts.withoutPhoto, tone: "warn" as const, href: `${products}?filter=no_photo`, action: d.actionOpen, icon: <ImageIcon /> },
+    { label: d.attentionNoPrice, count: counts.withoutPrice, tone: "bad" as const, href: `${products}?filter=no_price`, action: d.actionCheck, icon: <TagIcon /> },
     ...(isAdmin
       ? [
           {
@@ -299,7 +299,7 @@ async function AttentionBlock({
           },
         ]
       : []),
-    { label: d.attentionNoVehicle, count: counts.withoutVehicle, tone: "info" as const, href: products, action: d.actionCheck, icon: <CarIcon /> },
+    { label: d.attentionNoVehicle, count: counts.withoutVehicle, tone: "info" as const, href: `${products}?filter=no_vehicle`, action: d.actionCheck, icon: <CarIcon /> },
     ...(isAdmin && counts.importConflicts > 0
       ? [
           {

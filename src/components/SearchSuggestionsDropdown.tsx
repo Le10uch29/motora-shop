@@ -45,28 +45,20 @@ export default function SearchSuggestionsDropdown({
         </p>
       ) : (
         <ul className="flex flex-col divide-y divide-zinc-100 dark:divide-zinc-800">
-          {results.map((result, index) => (
-            <li
-              key={result.id}
-              // Строка больше не целиком ссылка: внутри живут кнопки
-              // количества и «в корзину», а интерактивные элементы внутри
-              // <a> — невалидная разметка, по которой браузеры расходятся.
-              // Ссылкой осталась только левая часть (фото, название, код).
-              className={`flex flex-wrap items-center gap-x-4 gap-y-3 px-3 py-3 transition-colors sm:px-4 ${
-                index === highlightedIndex
-                  ? "bg-zinc-100 dark:bg-zinc-800"
-                  : "hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
-              }`}
-            >
-              <Link
-                href={`/${locale}/catalog/${result.slug}`}
-                onClick={onSelect}
-                className="flex min-w-0 flex-1 basis-48 items-center gap-3"
-              >
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-800">
+          {results.map((result, index) => {
+            const soldOut = result.stock <= 0;
+            const rowBody = (
+              <>
+                <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-800">
                   {result.image ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={productImageUrl(result.image, "thumb")} alt="" className="h-full w-full object-fill" loading="lazy" decoding="async" />
+                    <img
+                      src={productImageUrl(result.image, "thumb")}
+                      alt=""
+                      className="h-full w-full object-fill"
+                      loading="lazy"
+                      decoding="async"
+                    />
                   ) : (
                     <ProductVisual className="h-full w-full" />
                   )}
@@ -76,43 +68,83 @@ export default function SearchSuggestionsDropdown({
                     {result.name}
                   </span>
                   {result.productCode && (
-                    <span className="font-mono text-xs text-zinc-400">{result.productCode}</span>
+                    <span className="font-mono text-xs text-zinc-400">
+                      {result.productCode}
+                    </span>
                   )}
-                  <span className="text-xs text-emerald-600 dark:text-emerald-500">
-                    {dict.inStockLabel}
-                  </span>
-                </div>
-              </Link>
-
-              <div className="ml-auto flex shrink-0 items-center gap-3">
-                <div className="flex flex-col items-end">
-                  <span className="text-sm font-semibold text-zinc-900 sm:text-base dark:text-zinc-50">
-                    {formatGel(result.price, locale)}
-                  </span>
-                  {result.oldPrice && (
-                    <span className="text-xs text-zinc-400 line-through sm:text-sm">
-                      {formatGel(result.oldPrice, locale)}
+                  {soldOut ? (
+                    <span className="w-fit -rotate-3 rounded border border-red-600 px-1.5 text-[10px] font-extrabold uppercase tracking-wider text-red-600">
+                      {dict.soldOutLabel}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-emerald-600 dark:text-emerald-500">
+                      {dict.inStockLabel}
                     </span>
                   )}
                 </div>
-                {/* Та же плитка количества и кнопка, что на карточке товара в
+              </>
+            );
+            return (
+              <li
+                key={result.id}
+                // Строка больше не целиком ссылка: внутри живут кнопки
+                // количества и «в корзину», а интерактивные элементы внутри
+                // <a> — невалидная разметка, по которой браузеры расходятся.
+                // Ссылкой осталась только левая часть (фото, название, код).
+                className={`flex flex-wrap items-center gap-x-4 gap-y-3 px-3 py-3 transition-colors sm:px-4 ${
+                  soldOut
+                    ? "cursor-not-allowed opacity-60 grayscale"
+                    : index === highlightedIndex
+                      ? "bg-zinc-100 dark:bg-zinc-800"
+                      : "hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                }`}
+              >
+                {soldOut ? (
+                  <div className="flex min-w-0 flex-1 basis-48 items-center gap-3">
+                    {rowBody}
+                  </div>
+                ) : (
+                  <Link
+                    href={`/${locale}/catalog/${result.slug}`}
+                    onClick={onSelect}
+                    className="flex min-w-0 flex-1 basis-48 items-center gap-3"
+                  >
+                    {rowBody}
+                  </Link>
+                )}
+
+                <div className="ml-auto flex shrink-0 items-center gap-3">
+                  <div className="flex flex-col items-end">
+                    <span className="text-sm font-semibold text-zinc-900 sm:text-base dark:text-zinc-50">
+                      {formatGel(result.price, locale)}
+                    </span>
+                    {result.oldPrice && (
+                      <span className="text-xs text-zinc-400 line-through sm:text-sm">
+                        {formatGel(result.oldPrice, locale)}
+                      </span>
+                    )}
+                  </div>
+                  {/* Та же плитка количества и кнопка, что на карточке товара в
                     каталоге — чтобы из поиска можно было заказать не заходя в
                     товар. Подсказка при этом не закрывается: клик остаётся
                     внутри формы поиска. */}
-                <ProductCardAddToCart
-                  productId={result.id}
-                  stock={result.stock}
-                  labels={{
-                    addToCart: dict.addToCart,
-                    added: dict.addedToCart,
-                    quantityLabel: dict.quantityLabel,
-                    quantityDecreaseAria: dict.quantityDecreaseAria,
-                    quantityIncreaseAria: dict.quantityIncreaseAria,
-                  }}
-                />
-              </div>
-            </li>
-          ))}
+                  {!soldOut && (
+                    <ProductCardAddToCart
+                      productId={result.id}
+                      stock={result.stock}
+                      labels={{
+                        addToCart: dict.addToCart,
+                        added: dict.addedToCart,
+                        quantityLabel: dict.quantityLabel,
+                        quantityDecreaseAria: dict.quantityDecreaseAria,
+                        quantityIncreaseAria: dict.quantityIncreaseAria,
+                      }}
+                    />
+                  )}
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
 

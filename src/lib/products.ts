@@ -100,13 +100,50 @@ type ProductRow = {
 const SELECT_COLUMNS =
   "id, slug, name, make, model, fitments, year_from, year_to, price, old_price, description, specs, stock, badge, images, origin_code, product_code, is_popular, brands(slug)";
 
-/* The shop only ever shows what's actually in stock, so every public query
- * below carries `.gt("stock", 0)`.
+/* Закончившийся товар (stock = 0) на витрине виден, но после всех товаров в
+ * наличии — серым, со штампом «нет в наличии», без ссылки на страницу и без
+ * кнопки «в корзину». Покупатель видит, что такая деталь у магазина бывает,
+ * но заказать её не может.
  *
- * A product that runs out isn't deleted — it keeps its history and its orders,
- * stays in the admin product list with a 0, and comes back on the site by
- * itself the moment the stock is topped up again. The admin panel's own
- * queries (src/app/[locale]/admin) deliberately have no such filter. */
+ * Postgres не умеет через PostgREST сортировать по выражению «stock > 0»,
+ * поэтому списки со страницами собираются из двух запросов: сначала товары в
+ * наличии, а когда они кончаются — закончившиеся (см. pageInStockFirst).
+ *
+ * Страница самого товара (getProductBySlug) и корзина/оформление по-прежнему
+ * принимают только товар в наличии. */
+
+/** Одна страница списка, где товары в наличии идут раньше закончившихся.
+ *
+ * `run(inStock, from, to)` выполняет один и тот же запрос (со всеми фильтрами)
+ * для одной из двух частей и возвращает её строки в диапазоне и общее число
+ * строк в этой части. */
+export async function pageInStockFirst<T>(
+  run: (inStock: boolean, from: number, to: number) => PromiseLike<{ data: T[] | null; count: number | null }>,
+  from: number,
+  size: number
+): Promise<{ items: T[]; total: number }> {
+  // Первая часть и размер второй — параллельно; вторую дочитываем, только
+  // если страница заходит за конец товаров в наличии.
+  const [inStock, outProbe] = await Promise.all([run(true, from, from + size - 1), run(false, 0, 0)]);
+  const inStockCount = inStock.count ?? 0;
+  const outCount = outProbe.count ?? 0;
+  const items = [...(inStock.data ?? [])];
+
+  const missing = size - items.length;
+  if (missing > 0 && outCount > 0) {
+    const outFrom = Math.max(0, from - inStockCount);
+    if (outFrom < outCount) {
+      const rest = await run(false, outFrom, outFrom + missing - 1);
+      items.push(...(rest.data ?? []));
+    }
+  }
+  return { items, total: inStockCount + outCount };
+}
+
+/** Товары в наличии раньше закончившихся, порядок внутри частей сохраняется. */
+function inStockFirst<T extends { stock: number }>(products: T[]): T[] {
+  return [...products.filter((p) => p.stock > 0), ...products.filter((p) => p.stock <= 0)];
+}
 
 function mapRow(row: ProductRow): Product {
   const brand = Array.isArray(row.brands) ? row.brands[0] : row.brands;
@@ -152,23 +189,21 @@ export const getAllProducts = cache(async (): Promise<Product[]> => {
   return ((data ?? []) as unknown as ProductRow[]).map(mapRow);
 });
 
-/** One product by slug, or undefined when it doesn't exist *or* is out of
- * stock — a sold-out product's page 404s like any unknown address, so a
- * bookmark or a link can't reach what the catalog no longer lists. */
-/** How many products the shop has in stock, over the whole catalog.
+/** How many products the shop lists, over the whole catalog — закончившиеся
+ * тоже: они видны в каталоге, и число должно совпадать со списком.
  *
  * This is what "Все товары" counts in the category sidebar: it's the shop
  * itself, not the sum of the categories — products nobody has filed yet
  * belong to it too. */
-export const getInStockProductCount = cache(async (): Promise<number> => {
+export const getShopProductCount = cache(async (): Promise<number> => {
   const supabase = createPublicClient();
-  const { count } = await supabase
-    .from("products")
-    .select("id", { count: "exact", head: true })
-    .gt("stock", 0);
+  const { count } = await supabase.from("products").select("id", { count: "exact", head: true });
   return count ?? 0;
 });
 
+/** One product by slug, or undefined when it doesn't exist *or* is out of
+ * stock — a sold-out product's card isn't clickable, and its page 404s like
+ * any unknown address, so a bookmark can't reach it either. */
 export const getProductBySlug = cache(async (slug: string): Promise<Product | undefined> => {
   const supabase = createPublicClient();
   const { data } = await supabase
@@ -187,14 +222,21 @@ export const getProductBySlug = cache(async (slug: string): Promise<Product | un
  * to throw away everything but 4 of them client-side. */
 export const getFeaturedProducts = cache(async (limit = 4): Promise<Product[]> => {
   const supabase = createPublicClient();
-  const { data } = await supabase
-    .from("products")
-    .select(SELECT_COLUMNS)
-    .eq("is_popular", true)
-    .gt("stock", 0)
-    .order("created_at", { ascending: false })
-    .limit(limit);
-  return ((data ?? []) as unknown as ProductRow[]).map(mapRow);
+  const { items } = await pageInStockFirst(
+    (inStock, from, to) => {
+      const query = supabase
+        .from("products")
+        .select(SELECT_COLUMNS, { count: "exact" })
+        .eq("is_popular", true);
+      return (inStock ? query.gt("stock", 0) : query.lte("stock", 0))
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: true })
+        .range(from, to);
+    },
+    0,
+    limit
+  );
+  return (items as unknown as ProductRow[]).map(mapRow);
 });
 
 // `!inner` makes PostgREST actually filter top-level rows by the embedded
@@ -210,9 +252,8 @@ export const getProductsByBrandSlug = cache(async (brandSlug: string): Promise<P
     .from("products")
     .select(SELECT_COLUMNS_BRAND_FILTER)
     .eq("brands.slug", brandSlug)
-    .gt("stock", 0)
     .order("created_at", { ascending: false });
-  return ((data ?? []) as unknown as ProductRow[]).map(mapRow);
+  return inStockFirst(((data ?? []) as unknown as ProductRow[]).map(mapRow));
 });
 
 /** Product count per brand slug, computed from a single skinny query (just
@@ -220,7 +261,7 @@ export const getProductsByBrandSlug = cache(async (brandSlug: string): Promise<P
  * product's full row for the /brands listing page. */
 export const getProductCountsByBrandSlug = cache(async (): Promise<Record<string, number>> => {
   const supabase = createPublicClient();
-  const { data } = await supabase.from("products").select("brands(slug)").gt("stock", 0);
+  const { data } = await supabase.from("products").select("brands(slug)");
   const counts: Record<string, number> = {};
   for (const row of (data ?? []) as { brands: { slug: string } | { slug: string }[] | null }[]) {
     const brand = Array.isArray(row.brands) ? row.brands[0] : row.brands;
@@ -234,13 +275,15 @@ export type CartProductSummary = Pick<Product, "id" | "slug" | "name" | "price" 
    * деталь: названия у запчастей почти одинаковые («Прокладка крышки» —
    * четыре разных товара), и отличает их только код. */
   productCode: string | null;
+  /** Первое фото товара для миниатюры в строке корзины, или null. */
+  image: string | null;
 };
 
-/** Just the columns the cart view renders (name, code, price, stock) instead
- * of every product's full row. The cart itself lives in the browser's
+/** Just the columns the cart view renders (name, code, price, stock, photo)
+ * instead of every product's full row. The cart itself lives in the browser's
  * localStorage, so the server can't know in advance which product ids to
  * filter for — this still has to fetch every product, but a much lighter
- * row: no description, specs, images, or badge.
+ * row: no description, specs or badge, and only the first photo is kept.
  *
  * Paged, because PostgREST caps one response at 1000 rows: without this a
  * cart holding product №1001 would quietly show as empty. */
@@ -253,8 +296,12 @@ export const getProductsForCart = cache(async (): Promise<CartProductSummary[]> 
     price: number;
     stock: number;
     product_code: string | null;
+    images: string[] | null;
   }>((from, to) =>
-    supabase.from("products").select("id, slug, name, price, stock, product_code").range(from, to)
+    supabase
+      .from("products")
+      .select("id, slug, name, price, stock, product_code, images")
+      .range(from, to)
   );
   return rows.map((row) => ({
     id: row.id,
@@ -263,6 +310,7 @@ export const getProductsForCart = cache(async (): Promise<CartProductSummary[]> 
     price: Number(row.price),
     stock: row.stock,
     productCode: row.product_code ?? null,
+    image: row.images?.[0] ?? null,
   }));
 });
 
@@ -359,42 +407,45 @@ export async function getCatalogPage(
     return { items: [], total: 0 };
   }
 
-  let query = supabase.from("products").select(SELECT_COLUMNS, { count: "exact" }).gt("stock", 0);
+  const run = (inStock: boolean, from: number, to: number) => {
+    let query = supabase.from("products").select(SELECT_COLUMNS, { count: "exact" });
+    query = inStock ? query.gt("stock", 0) : query.lte("stock", 0);
 
-  if (filters.productIds) query = query.in("id", filters.productIds);
-  if (brandId) query = query.eq("brand_id", brandId);
-  // One vehicle of the part has to carry both the make and the model (jsonb
-  // containment matches them within a single array element), so a part for a
-  // MAZDA 6 and a BMW G30 doesn't turn up under "MAZDA G30".
-  if (filters.make || filters.model) {
-    const wanted: Partial<Fitment> = {};
-    if (filters.make) wanted.make = filters.make;
-    if (filters.model) wanted.model = filters.model.trim();
-    query = query.contains("fitments", JSON.stringify([wanted]));
-  }
-  // A part fits the wanted years when its own range overlaps them.
-  if (filters.yearFrom !== undefined) query = query.gte("year_to", filters.yearFrom);
-  if (filters.yearTo !== undefined) query = query.lte("year_from", filters.yearTo);
+    if (filters.productIds) query = query.in("id", filters.productIds);
+    if (brandId) query = query.eq("brand_id", brandId);
+    // One vehicle of the part has to carry both the make and the model (jsonb
+    // containment matches them within a single array element), so a part for a
+    // MAZDA 6 and a BMW G30 doesn't turn up under "MAZDA G30".
+    if (filters.make || filters.model) {
+      const wanted: Partial<Fitment> = {};
+      if (filters.make) wanted.make = filters.make;
+      if (filters.model) wanted.model = filters.model.trim();
+      query = query.contains("fitments", JSON.stringify([wanted]));
+    }
+    // A part fits the wanted years when its own range overlaps them.
+    if (filters.yearFrom !== undefined) query = query.gte("year_to", filters.yearFrom);
+    if (filters.yearTo !== undefined) query = query.lte("year_from", filters.yearTo);
 
-  for (const word of filters.query?.trim().toLowerCase().split(/\s+/) ?? []) {
-    const clause = searchClauseForWord(word, locale);
-    if (clause) query = query.or(clause);
-  }
+    for (const word of filters.query?.trim().toLowerCase().split(/\s+/) ?? []) {
+      const clause = searchClauseForWord(word, locale);
+      if (clause) query = query.or(clause);
+    }
+
+    // `id` breaks ties, and it has to: a bulk Excel import writes hundreds of
+    // products with the identical created_at, and Postgres is free to return
+    // equal rows in any order it likes per query. Ordering by created_at alone
+    // therefore made .range() pages overlap and skip products — paging through
+    // the catalog showed some twice and hid others entirely. This didn't come
+    // up while the whole catalog was fetched and sliced in one go.
+    return query
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: true })
+      .range(from, to);
+  };
 
   const safePage = page > 0 ? page : 1;
-  const from = (safePage - 1) * pageSize;
-  // `id` breaks ties, and it has to: a bulk Excel import writes hundreds of
-  // products with the identical created_at, and Postgres is free to return
-  // equal rows in any order it likes per query. Ordering by created_at alone
-  // therefore made .range() pages overlap and skip products — paging through
-  // the catalog showed some twice and hid others entirely. This didn't come
-  // up while the whole catalog was fetched and sliced in one go.
-  const { data, count } = await query
-    .order("created_at", { ascending: false })
-    .order("id", { ascending: true })
-    .range(from, from + pageSize - 1);
-
-  return { items: ((data ?? []) as unknown as ProductRow[]).map(mapRow), total: count ?? 0 };
+  const { items, total } = await pageInStockFirst(run, (safePage - 1) * pageSize, pageSize);
+  return { items: (items as unknown as ProductRow[]).map(mapRow), total };
 }
 
 /** Just the slugs, for generateStaticParams — it builds a route per product

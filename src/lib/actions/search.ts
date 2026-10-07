@@ -1,6 +1,7 @@
 "use server";
 
 import { createPublicClient } from "@/lib/supabase/public";
+import { pageInStockFirst } from "@/lib/products";
 import type { Locale } from "@/i18n/locales";
 
 export type SearchSuggestion = {
@@ -38,7 +39,11 @@ export async function searchProductSuggestionsAction(
   /** Сколько совпадений пропустить — для листания выдачи. В шапке сайта
    * листать нечего (список ведёт в каталог), а в админке заказ собирают
    * прямо из него, и до нужной позиции нужно уметь дойти. */
-  offset = 0
+  offset = 0,
+  /** Только товары в наличии — для заказа из админки, где закончившийся
+   * товар добавить всё равно нельзя. Витрина показывает и закончившиеся,
+   * после всех остальных и серыми. */
+  inStockOnly = false
 ): Promise<{ results: SearchSuggestion[]; total: number }> {
   const trimmed = query.trim();
   if (trimmed.length < 2) return { results: [], total: 0 };
@@ -55,42 +60,43 @@ export async function searchProductSuggestionsAction(
   // ternary select string) — supabase-js parses the select string at the
   // type level, and a select string built from a ternary produces a union
   // it can't resolve, even though each branch alone is fine.
-  const [{ data, error }, { count }] = brandSlug
-    ? await Promise.all([
-        supabase
-          .from("products")
-          .select(
-            "id, slug, name, price, old_price, images, product_code, stock, brands!inner(slug)"
-          )
-          .or(orFilter)
-          .eq("brands.slug", brandSlug)
-          .gt("stock", 0)
-          .order(ORDER.column, ORDER.options)
-          .range(offset, offset + limit - 1),
-        supabase
-          .from("products")
-          .select("id, brands!inner(slug)", { count: "exact", head: true })
-          .or(orFilter)
-          .eq("brands.slug", brandSlug)
-          .gt("stock", 0),
-      ])
-    : await Promise.all([
-        supabase
-          .from("products")
-          .select("id, slug, name, price, old_price, images, product_code, stock")
-          .or(orFilter)
-          .gt("stock", 0)
-          .order(ORDER.column, ORDER.options)
-          .range(offset, offset + limit - 1),
-        supabase
-          .from("products")
-          .select("id", { count: "exact", head: true })
-          .or(orFilter)
-          .gt("stock", 0),
-      ]);
-  if (error || !data) return { results: [], total: 0 };
+  const run = (inStock: boolean, from: number, to: number) => {
+    if (brandSlug) {
+      const query = supabase
+        .from("products")
+        .select("id, slug, name, price, old_price, images, product_code, stock, brands!inner(slug)", {
+          count: "exact",
+        })
+        .or(orFilter)
+        .eq("brands.slug", brandSlug);
+      return (inStock ? query.gt("stock", 0) : query.lte("stock", 0))
+        .order(ORDER.column, ORDER.options)
+        .order("id", { ascending: true })
+        .range(from, to);
+    }
+    const query = supabase
+      .from("products")
+      .select("id, slug, name, price, old_price, images, product_code, stock", { count: "exact" })
+      .or(orFilter);
+    return (inStock ? query.gt("stock", 0) : query.lte("stock", 0))
+      .order(ORDER.column, ORDER.options)
+      .order("id", { ascending: true })
+      .range(from, to);
+  };
 
-  const results: SearchSuggestion[] = data.map((row) => ({
+  let rows: Awaited<ReturnType<typeof run>>["data"];
+  let total: number;
+  if (inStockOnly) {
+    const { data, count, error } = await run(true, offset, offset + limit - 1);
+    if (error) return { results: [], total: 0 };
+    rows = data;
+    total = count ?? 0;
+  } else {
+    ({ items: rows, total } = await pageInStockFirst(run, offset, limit));
+  }
+  if (!rows) return { results: [], total: 0 };
+
+  const results: SearchSuggestion[] = rows.map((row) => ({
     id: row.id,
     slug: row.slug,
     name: row.name?.[locale] ?? row.name?.ru ?? "",
@@ -101,5 +107,5 @@ export async function searchProductSuggestionsAction(
     stock: row.stock,
   }));
 
-  return { results, total: count ?? results.length };
+  return { results, total };
 }

@@ -8,8 +8,13 @@ import {
   getBrandOptions,
   getProductsGrandTotal,
   getZeroStockProductsCount,
+  parseProductFilter,
+  parseProductSort,
+  PRODUCT_FILTERS,
   PRODUCTS_PAGE_SIZE,
+  type ProductFilter,
 } from "./data";
+import Link from "next/link";
 import { getWarehouseOptions, getProductStockMap } from "../warehouses/data";
 import { getAdminCategoryTree } from "../categories/data";
 import { categoryPicker } from "../categories/options";
@@ -29,6 +34,28 @@ export default async function AdminProductsPage({
   const sp = await searchParams;
   const query = single(sp.q) ?? "";
   const page = Number(single(sp.page)) || 1;
+  const sort = parseProductSort(single(sp.sort), single(sp.dir));
+  const filter = parseProductFilter(single(sp.filter));
+  const d = dict.dashboard;
+  const filterLabels: Record<ProductFilter, string> = {
+    in_stock: d.kpiInStock,
+    out_of_stock: d.kpiOutOfStock,
+    low_stock: d.kpiLowStock,
+    no_photo: d.attentionNoPhoto,
+    no_price: d.attentionNoPrice,
+    no_vehicle: d.attentionNoVehicle,
+  };
+  const filterHref = (next: ProductFilter | null) => {
+    const params = new URLSearchParams();
+    if (query) params.set("q", query);
+    if (sort) {
+      params.set("sort", sort.key);
+      params.set("dir", sort.dir);
+    }
+    if (next) params.set("filter", next);
+    const qs = params.toString();
+    return `/${locale}/admin/products${qs ? `?${qs}` : ""}`;
+  };
 
   // Warehouse data (names, per-warehouse stock) is admin-only UI in
   // ProductsListClient — don't even fetch it for a seller, since props on a
@@ -47,8 +74,8 @@ export default async function AdminProductsPage({
     stockByProduct,
     zeroStockCount,
   ] = await Promise.all([
-    getAdminProducts(locale, { query, page }),
-    query ? getProductsGrandTotal() : null,
+    getAdminProducts(locale, { query, page, sort, filter }),
+    query || filter ? getProductsGrandTotal() : null,
     getBrandOptions(),
     isAdmin ? getAdminCategoryTree() : [],
     isAdmin ? getWarehouseOptions() : [],
@@ -64,6 +91,7 @@ export default async function AdminProductsPage({
         dict={dict.admin}
         isAdmin={isAdmin}
         rows={rows}
+        sort={sort}
         total={grandTotal}
         zeroStockCount={zeroStockCount}
         brands={brands}
@@ -71,9 +99,34 @@ export default async function AdminProductsPage({
         warehouses={warehouses}
         stockByProduct={stockByProduct}
         searchSlot={
-          <form key="search" className="flex items-center gap-2">
-            <AdminSearchBox defaultValue={query} placeholder={dict.admin.searchPlaceholder} />
-          </form>
+          <div key="search" className="flex flex-col gap-3">
+            <form className="flex items-center gap-2">
+              <AdminSearchBox defaultValue={query} placeholder={dict.admin.searchPlaceholder} />
+              {/* Поиск не сбрасывает выбранный фильтр и сортировку. */}
+              {filter && <input type="hidden" name="filter" value={filter} />}
+              {sort && <input type="hidden" name="sort" value={sort.key} />}
+              {sort && <input type="hidden" name="dir" value={sort.dir} />}
+            </form>
+            <div className="flex flex-wrap items-center gap-2">
+              {([null, ...PRODUCT_FILTERS] as (ProductFilter | null)[]).map((option) => {
+                const active = option === filter;
+                return (
+                  <Link
+                    key={option ?? "all"}
+                    href={filterHref(option)}
+                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                      active
+                        ? "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900"
+                        : "border border-zinc-200 text-zinc-600 hover:border-orange-500 hover:text-orange-600 dark:border-zinc-700 dark:text-zinc-300"
+                    }`}
+                  >
+                    {option ? filterLabels[option] : d.kpiProductsTotal}
+                    {active && ` · ${total}`}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
         }
       />
 
@@ -82,7 +135,12 @@ export default async function AdminProductsPage({
         currentPage={page}
         total={total}
         pageSize={PRODUCTS_PAGE_SIZE}
-        searchParams={{ q: query || undefined }}
+        searchParams={{
+          q: query || undefined,
+          sort: sort?.key,
+          dir: sort?.dir,
+          filter: filter ?? undefined,
+        }}
       />
     </main>
   );

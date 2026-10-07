@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getCatalogPage, getInStockProductCount } from "@/lib/products";
+import { getCatalogPage, getShopProductCount } from "@/lib/products";
 import { getBrands } from "@/lib/brands";
 import {
   getPublicCategoryTree,
@@ -82,7 +82,7 @@ export default async function CatalogView({
     getCategoryProductCounts(),
     // The whole shop, not the sum of the categories: a product nobody has
     // filed yet still sits in "Все товары".
-    getInStockProductCount(),
+    getShopProductCount(),
   ]);
 
   const sidebarCategories: SidebarCategory[] = tree.map((node) => ({

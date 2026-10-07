@@ -28,10 +28,9 @@ const fetchProductFilterMeta = unstable_cache(
     const supabase = createPublicClient();
     const { data } = await supabase
       .from("products")
-      // Out-of-stock products are invisible in the shop, so the make/model
-      // lists must not offer a vehicle that only they fit.
-      .select("make, model, fitments, year_from, year_to")
-      .gt("stock", 0);
+      // Закончившиеся товары каталог тоже показывает, поэтому и их машины
+      // остаются в списках марок и моделей.
+      .select("make, model, fitments, year_from, year_to");
     return (data ?? []).map((row) => ({
       fitments: fitmentsOf({ ...row, yearFrom: row.year_from, yearTo: row.year_to }),
     }));

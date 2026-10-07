@@ -6,6 +6,7 @@ import { useCart } from "@/context/CartContext";
 import { placeOrderAction } from "@/app/[locale]/(public)/cart/actions";
 import { t, type CartProductSummary } from "@/lib/products";
 import { formatGel } from "@/lib/currency";
+import { productImageUrl } from "@/lib/productImageUrl";
 import type { Locale } from "@/i18n/locales";
 import type { Dictionary } from "@/i18n/dictionary";
 import ProductVisual from "@/components/ProductVisual";
@@ -102,8 +103,22 @@ export default function CartView({
             key={item.productId}
             className="flex items-center gap-4 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
           >
-            <Link href={`/${locale}/catalog/${product.slug}`} className="shrink-0">
-              <ProductVisual className="h-20 w-20 rounded-lg" />
+            <Link
+              href={`/${locale}/catalog/${product.slug}`}
+              className="h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800"
+            >
+              {product.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={productImageUrl(product.image, "thumb")}
+                  alt=""
+                  className="h-full w-full object-fill"
+                  loading="lazy"
+                  decoding="async"
+                />
+              ) : (
+                <ProductVisual className="h-full w-full" />
+              )}
             </Link>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <Link

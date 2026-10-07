@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, type ReactNode } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   deleteProductAction,
   deleteProductsAction,
@@ -13,35 +14,15 @@ import ImportProductsModal from "./ImportProductsModal";
 import ImportConflictsModal from "./ImportConflictsModal";
 import MissingDataModal from "./MissingDataModal";
 import { RowActionLink, RowActionButton, EyeIcon, PencilIcon, TrashIcon } from "@/components/admin/RowActions";
-import type { AdminProductRow } from "./data";
+import type { AdminProductRow, ProductSort, ProductSortKey } from "./data";
 import type { CategoryPickerNode } from "../categories/options";
 import { formatGel } from "@/lib/currency";
 import { productImageUrl } from "@/lib/productImageUrl";
 import type { Dictionary } from "@/i18n/dictionary";
 import type { Locale } from "@/i18n/locales";
 
-/** Колонки, по которым можно сортировать таблицу. */
-type SortKey = "productCode" | "originCode" | "displayName" | "brandName" | "price" | "stock";
-type Sort = { key: SortKey; dir: "asc" | "desc" };
-
-/** Пустое значение всегда внизу, в обе стороны: сортируют, чтобы найти
- * заполненные строки, а не пустые. Товар без бренда приходит из data.ts уже
- * с прочерком, поэтому прочерк тоже считается пустым. */
-function isBlank(value: string): boolean {
-  const trimmed = value.trim();
-  return trimmed === "" || trimmed === "—";
-}
-
-function comparatorFor({ key, dir }: Sort, locale: Locale) {
-  const sign = dir === "asc" ? 1 : -1;
-  return (a: AdminProductRow, b: AdminProductRow) => {
-    if (key === "price" || key === "stock") return (a[key] - b[key]) * sign;
-    const left = a[key];
-    const right = b[key];
-    if (isBlank(left) !== isBlank(right)) return isBlank(left) ? 1 : -1;
-    return left.localeCompare(right, locale) * sign;
-  };
-}
+type SortKey = ProductSortKey;
+type Sort = ProductSort;
 
 function SortableHeader({
   label,
@@ -88,6 +69,7 @@ export default function ProductsListClient({
   dict,
   isAdmin,
   rows,
+  sort,
   total,
   brands,
   categoryTree,
@@ -100,6 +82,8 @@ export default function ProductsListClient({
   dict: Dictionary["admin"];
   isAdmin: boolean;
   rows: AdminProductRow[];
+  /** Текущая сортировка из адреса — применена на сервере ко всему списку. */
+  sort: Sort | null;
   total: number;
   brands: { id: string; name: string }[];
   categoryTree: CategoryPickerNode[];
@@ -116,21 +100,29 @@ export default function ProductsListClient({
   const [warehouseModalRow, setWarehouseModalRow] = useState<AdminProductRow | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [sort, setSort] = useState<Sort | null>(null);
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
+  /** Сортировка живёт в адресе и выполняется на сервере по всему списку, а
+   * не по 30 строкам текущей страницы. Смена сортировки возвращает на первую
+   * страницу. */
   function toggleSort(key: SortKey) {
-    setSort((prev) => {
-      if (prev?.key === key) return { key, dir: prev.dir === "asc" ? "desc" : "asc" };
-      // Числовые колонки интереснее сверху вниз (самый дорогой, самый большой
-      // остаток), текстовые — по алфавиту.
-      return { key, dir: key === "price" || key === "stock" ? "desc" : "asc" };
-    });
+    const next: Sort =
+      sort?.key === key
+        ? { key, dir: sort.dir === "asc" ? "desc" : "asc" }
+        : // Числовые колонки интереснее сверху вниз (самый дорогой, самый
+          // большой остаток), текстовые — по алфавиту.
+          { key, dir: key === "price" || key === "stock" ? "desc" : "asc" };
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("sort", next.key);
+    params.set("dir", next.dir);
+    params.delete("page");
+    router.push(`${pathname}?${params.toString()}`);
   }
 
-  /** Sorts the rows this page holds — the list is paginated on the server, so
-   * this reorders the 30 rows in front of you, not the whole catalog. */
-  const displayRows = sort ? [...rows].sort(comparatorFor(sort, locale)) : rows;
+  const displayRows = rows;
 
   const allIds = rows.map((r) => r.id);
   const allSelected = allIds.length > 0 && allIds.every((id) => selectedIds.has(id));

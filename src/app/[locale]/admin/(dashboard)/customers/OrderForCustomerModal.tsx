@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { placeOrderForCustomerAction } from "./actions";
+import { addItemsToOrderAction } from "../orders/actions";
 import { searchProductSuggestionsAction, type SearchSuggestion } from "@/lib/actions/search";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import QuantityField from "@/components/QuantityField";
@@ -30,6 +31,7 @@ function errorText(code: string, dict: Dictionary["admin"]): string {
   if (code === "empty_cart") return dict.orderForCustomerEmptyCart;
   if (code === "customer_not_found") return dict.orderForCustomerNotFound;
   if (code === "products_not_found") return dict.orderForCustomerNoProducts;
+  if (code === "order_already_shipped") return dict.orderAddItemsShipped;
   return code;
 }
 
@@ -45,12 +47,16 @@ export default function OrderForCustomerModal({
   locale,
   dict,
   customer,
+  appendToOrder,
   onClose,
   onPlaced,
 }: {
   locale: Locale;
   dict: Dictionary["admin"];
   customer: { id: string; name: string; phone: string; organizationName: string };
+  /** Номер существующего заказа: товары дописываются в него, а не уходят
+   * новым заказом — покупатель что-то забыл, пока заказ собирают. */
+  appendToOrder?: number;
   onClose: () => void;
   /** Вызывается после успешного оформления — список заказов стоит перечитать. */
   onPlaced: () => void;
@@ -94,7 +100,8 @@ export default function OrderForCustomerModal({
           trimmed,
           undefined,
           SEARCH_PAGE_SIZE,
-          page * SEARCH_PAGE_SIZE
+          page * SEARCH_PAGE_SIZE,
+          true
         ).then((res) => {
           if (requestIdRef.current !== requestId) return;
           setResults(res.results);
@@ -136,11 +143,11 @@ export default function OrderForCustomerModal({
   function handlePlace() {
     setError(null);
     startTransition(async () => {
-      const result = await placeOrderForCustomerAction(
-        locale,
-        customer.id,
-        lines.map((line) => ({ productId: line.productId, quantity: line.quantity }))
-      );
+      const items = lines.map((line) => ({ productId: line.productId, quantity: line.quantity }));
+      const result =
+        appendToOrder !== undefined
+          ? await addItemsToOrderAction(locale, appendToOrder, items)
+          : await placeOrderForCustomerAction(locale, customer.id, items);
       if (result.error) {
         setError(errorText(result.error, dict));
         return;
@@ -155,7 +162,7 @@ export default function OrderForCustomerModal({
       <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-16">
         <div className="relative flex w-full max-w-md flex-col gap-4 rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900">
           <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
-            {dict.orderForCustomerDoneTitle}
+            {appendToOrder !== undefined ? dict.orderAddItemsDoneTitle : dict.orderForCustomerDoneTitle}
           </h2>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             {dict.orderForCustomerDoneText} №{placedNumber} — {customer.name}
@@ -184,7 +191,9 @@ export default function OrderForCustomerModal({
         <div className="flex shrink-0 items-start justify-between gap-4">
           <div className="flex flex-col gap-0.5">
             <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
-              {dict.orderForCustomerTitle}
+              {appendToOrder !== undefined
+                ? `${dict.orderAddItemsTitle} №${appendToOrder}`
+                : dict.orderForCustomerTitle}
             </h2>
             <span className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
               {customer.name}
@@ -343,7 +352,11 @@ export default function OrderForCustomerModal({
             onClick={handlePlace}
             className="rounded-full bg-orange-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-orange-500 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {pending ? dict.orderForCustomerPlacing : dict.orderForCustomerSubmit}
+            {pending
+              ? dict.orderForCustomerPlacing
+              : appendToOrder !== undefined
+                ? dict.orderAddItemsSubmit
+                : dict.orderForCustomerSubmit}
           </button>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { t, discountPercent, type Product } from "@/lib/products";
 import { formatGel } from "@/lib/currency";
 import type { Locale } from "@/i18n/locales";
@@ -22,6 +23,9 @@ export default function ProductCard({
 }) {
   const brand = brands.find((b) => b.slug === product.brand);
   const percent = discountPercent(product);
+  // Закончившийся товар виден, но не кликабелен: серый, со штампом, без
+  // ссылки на страницу и без кнопки «в корзину».
+  const soldOut = product.stock <= 0;
 
   return (
     // Hover is tracked on this wrapper, which never moves: were it on the card
@@ -30,9 +34,22 @@ export default function ProductCard({
     // translate-* sets the CSS `translate` property, so that's what's animated.
     // Карточка на 10% уже своей ячейки и выровнена по центру: при полной
     // ширине они выходили крупнее, чем нужно для мелкой детали.
-    <div className="group mx-auto flex w-[90%]">
-      <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-md shadow-black/5 transition-[translate,box-shadow] duration-300 ease-in-out group-hover:translate-x-[5px] group-hover:-translate-y-[5px] group-hover:shadow-lg group-hover:shadow-black/10 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0 motion-reduce:group-hover:translate-y-0 dark:border-zinc-800 dark:bg-zinc-900">
-        <Link href={`/${locale}/catalog/${product.slug}`} className="flex flex-1 flex-col">
+    <div
+      className={`mx-auto flex w-[90%] ${soldOut ? "" : "group"}`}
+      aria-disabled={soldOut || undefined}
+    >
+      <div
+        className={`flex flex-1 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-md shadow-black/5 dark:border-zinc-800 dark:bg-zinc-900 ${
+          soldOut
+            ? "cursor-not-allowed select-none opacity-60 grayscale"
+            : "transition-[translate,box-shadow] duration-300 ease-in-out group-hover:translate-x-[5px] group-hover:-translate-y-[5px] group-hover:shadow-lg group-hover:shadow-black/10 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0 motion-reduce:group-hover:translate-y-0"
+        }`}
+      >
+        <CardBody
+          soldOut={soldOut}
+          href={`/${locale}/catalog/${product.slug}`}
+          className="flex flex-1 flex-col"
+        >
           <div className="relative">
             {product.images?.[0] ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -56,6 +73,11 @@ export default function ProductCard({
                 {t(product.badge, locale)}
               </span>
             )}
+            {soldOut && (
+              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 rounded-md border-2 border-red-600 bg-white/90 px-3 py-1 text-sm font-extrabold uppercase tracking-wider text-red-600 dark:bg-zinc-900/90">
+                {dict.product.soldOut}
+              </span>
+            )}
           </div>
           <div className="flex flex-1 flex-col gap-2 p-4 pb-0">
             {(product.originCode || product.productCode) && (
@@ -67,7 +89,9 @@ export default function ProductCard({
                 )}
                 {product.productCode && (
                   <span className="font-semibold text-zinc-900 dark:text-zinc-50">
-                    {brand?.initials ? `${brand.initials}-${product.productCode}` : product.productCode}
+                    {brand?.initials
+                      ? `${brand.initials}-${product.productCode}`
+                      : product.productCode}
                   </span>
                 )}
               </div>
@@ -103,7 +127,7 @@ export default function ProductCard({
               </div>
             </div>
           </div>
-        </Link>
+        </CardBody>
         <div className="p-4 pt-3">
           {product.stock > 0 ? (
             <ProductCardAddToCart
@@ -119,11 +143,31 @@ export default function ProductCard({
             />
           ) : (
             <span className="block rounded-full bg-zinc-100 px-3 py-1.5 text-center text-xs font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
-              {dict.product.onOrder}
+              {dict.product.soldOut}
             </span>
           )}
         </div>
       </div>
     </div>
+  );
+}
+
+/** Ссылка на страницу товара — или просто блок, если товар закончился. */
+function CardBody({
+  soldOut,
+  href,
+  className,
+  children,
+}: {
+  soldOut: boolean;
+  href: string;
+  className: string;
+  children: ReactNode;
+}) {
+  if (soldOut) return <div className={className}>{children}</div>;
+  return (
+    <Link href={href} className={className}>
+      {children}
+    </Link>
   );
 }

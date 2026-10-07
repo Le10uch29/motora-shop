@@ -320,6 +320,103 @@ export async function updateOrderDiscountAction(
   return { error: null };
 }
 
+/** Добавляет товары в уже оформленный заказ — тот же номер, тот же инвойс.
+ *
+ * Покупатель часто вспоминает о забытой детали, пока заказ ещё собирают, и
+ * второй заказ ради неё означал бы два инвойса и две отгрузки. Поэтому новые
+ * строки получают номер существующего заказа (триггер номера явно переданный
+ * не трогает), его заказчика, статус и склад. Цену и название, как и при
+ * обычном оформлении, проставляет триггер orders_set_price_from_product.
+ *
+ * Только пока заказ не отправлен: на «отправлен» склад уже списан, и
+ * добавленная после этого строка либо не списалась бы вовсе, либо требовала
+ * бы отдельного списания задним числом.
+ *
+ * Товар, который в заказе уже есть, новой строкой не дублируется — к его
+ * строке просто прибавляется количество. */
+export async function addItemsToOrderAction(
+  locale: Locale,
+  orderNumber: number,
+  items: { productId: string; quantity: number }[]
+): Promise<{ error: string | null; orderNumber: number | null }> {
+  const actor = await requireStaff(locale);
+  if (items.length === 0) return { error: "empty_cart", orderNumber: null };
+
+  const admin = createAdminClient();
+  const { data: lines } = await admin
+    .from("orders")
+    .select("id, customer_id, product_id, quantity, status, warehouse_id, line_number")
+    .eq("order_number", orderNumber);
+  const active = (lines ?? []).filter((line) => line.status !== "cancelled");
+  if (active.length === 0) return { error: "not_found", orderNumber: null };
+  if (active.some((line) => isStatusAtOrPast(line.status, STOCK_DEDUCTION_STATUS))) {
+    return { error: "order_already_shipped", orderNumber: null };
+  }
+
+  // Одно и то же может прийти дважды — складываем.
+  const wanted = new Map<string, number>();
+  for (const item of items) {
+    const quantity = Math.max(1, Math.floor(item.quantity));
+    if (!Number.isFinite(quantity)) continue;
+    wanted.set(item.productId, (wanted.get(item.productId) ?? 0) + quantity);
+  }
+
+  // Закончившийся товар в заказ не идёт — то же правило, что и при оформлении.
+  const { data: products } = await admin
+    .from("products")
+    .select("id")
+    .in("id", [...wanted.keys()])
+    .gt("stock", 0);
+  const orderable = new Set((products ?? []).map((product) => product.id));
+  for (const productId of [...wanted.keys()]) {
+    if (!orderable.has(productId)) wanted.delete(productId);
+  }
+  if (wanted.size === 0) return { error: "products_not_found", orderNumber: null };
+
+  const first = active[0];
+  const status = first.status;
+  const warehouseId = active.find((line) => line.warehouse_id)?.warehouse_id ?? null;
+  let nextLine = Math.max(0, ...(lines ?? []).map((line) => line.line_number ?? 0)) + 1;
+
+  const updates: PromiseLike<{ error: { message: string } | null }>[] = [];
+  const rows: Record<string, unknown>[] = [];
+  for (const [productId, quantity] of wanted) {
+    const existing = active.find((line) => line.product_id === productId);
+    if (existing) {
+      updates.push(
+        admin.from("orders").update({ quantity: existing.quantity + quantity }).eq("id", existing.id)
+      );
+    } else {
+      rows.push({
+        order_number: orderNumber,
+        customer_id: first.customer_id,
+        product_id: productId,
+        quantity,
+        status,
+        line_number: nextLine++,
+        ...(warehouseId ? { warehouse_id: warehouseId } : {}),
+      });
+    }
+  }
+
+  const results = await Promise.all([
+    ...updates,
+    ...(rows.length > 0 ? [admin.from("orders").insert(rows)] : []),
+  ]);
+  const failed = results.find((result) => result.error);
+  if (failed?.error) return { error: failed.error.message, orderNumber: null };
+
+  await logAction(actor, "update", "order", `№${orderNumber} + ${wanted.size}`, {
+    details: {
+      addedLines: String(rows.length),
+      increasedLines: String(updates.length),
+    },
+  });
+  revalidateOrderPaths(locale, orderNumber);
+  revalidatePath(`/${locale}/admin`);
+  return { error: null, orderNumber };
+}
+
 /** Безвозвратно удаляет одну строку заказа — только админ.
  *
  * Раньше удалять разрешалось лишь отменённые и отправленные: по замыслу —

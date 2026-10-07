@@ -124,6 +124,11 @@ export type Dictionary = {
     orderForCustomerDoneText: string;
     orderForCustomerNotFound: string;
     orderForCustomerNoProducts: string;
+    orderAddItemsButton: string;
+    orderAddItemsTitle: string;
+    orderAddItemsSubmit: string;
+    orderAddItemsDoneTitle: string;
+    orderAddItemsShipped: string;
     logPlacedByEmailLabel: string;
     quantityLabel: string;
     quantityDecreaseAria: string;
@@ -440,6 +445,7 @@ export type Dictionary = {
      * клиентский компонент, а функции через эту границу не проходят. */
     inStockLabel: string;
     unitsShort: string;
+    soldOutLabel: string;
     addToCart: string;
     addedToCart: string;
     quantityLabel: string;
@@ -570,6 +576,8 @@ export type Dictionary = {
     breadcrumbCatalog: string;
     inStock: string;
     onOrder: string;
+    /** Штамп на карточке закончившегося товара. */
+    soldOut: string;
     addToCart: string;
     added: string;
     originCodeLabel: string;

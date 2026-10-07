@@ -103,7 +103,8 @@ export function useSearchSuggestions(
       setHighlightedIndex((i) => (i <= 0 ? results.length - 1 : i - 1));
     } else if (event.key === "Enter" && highlightedIndex >= 0) {
       event.preventDefault();
-      onSelect(results[highlightedIndex]);
+      // Закончившийся товар в подсказках виден, но страницы у него нет.
+      if (results[highlightedIndex].stock > 0) onSelect(results[highlightedIndex]);
     } else if (event.key === "Escape") {
       close();
     }
