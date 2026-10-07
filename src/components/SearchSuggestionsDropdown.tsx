@@ -9,10 +9,6 @@ import { productImageUrl } from "@/lib/productImageUrl";
 import type { Locale } from "@/i18n/locales";
 import type { Dictionary } from "@/i18n/dictionary";
 
-// Остаток ниже этого считаем «на исходе» и подсвечиваем: покупатель должен
-// видеть, что 2 штуки — это не «бери сколько надо».
-const LOW_STOCK = 5;
-
 export default function SearchSuggestionsDropdown({
   locale,
   dict,
@@ -82,14 +78,8 @@ export default function SearchSuggestionsDropdown({
                   {result.productCode && (
                     <span className="font-mono text-xs text-zinc-400">{result.productCode}</span>
                   )}
-                  <span
-                    className={`text-xs ${
-                      result.stock <= LOW_STOCK
-                        ? "text-amber-600 dark:text-amber-500"
-                        : "text-emerald-600 dark:text-emerald-500"
-                    }`}
-                  >
-                    {dict.inStockLabel}: {result.stock} {dict.unitsShort}
+                  <span className="text-xs text-emerald-600 dark:text-emerald-500">
+                    {dict.inStockLabel}
                   </span>
                 </div>
               </Link>

@@ -2,12 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { cancelOrderAction, deleteOrderAction, updateOrderStatusAction } from "../actions";
-import {
-  orderStatusLabel,
-  orderStatusClass,
-  PROGRESSABLE_STATUSES,
-} from "../statusStyles";
+import { cancelOrderAction, deleteOrderAction } from "../actions";
+import { orderStatusLabel, orderStatusClass } from "../statusStyles";
 import type { OrderStatus } from "../data";
 import { RowActionLink, RowActionButton, EyeIcon, XCircleIcon, TrashIcon } from "@/components/admin/RowActions";
 import type { Dictionary } from "@/i18n/dictionary";
@@ -36,15 +32,6 @@ export default function OrderLineRowActions({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-
-  // Orders placed before "gathered"/"delivered" were retired still carry those
-  // values. The <select> is controlled by currentStatus, so a value missing
-  // from the options would make the control display a different status than the
-  // order actually has — it's listed (and disabled) instead of silently lying.
-  const statusOptions: OrderStatus[] = PROGRESSABLE_STATUSES.includes(currentStatus)
-    ? PROGRESSABLE_STATUSES
-    : [...PROGRESSABLE_STATUSES, currentStatus];
-
   function handleCancel() {
     if (!window.confirm(dict.confirmCancelOrder)) return;
     startTransition(async () => {
@@ -63,45 +50,17 @@ export default function OrderLineRowActions({
     });
   }
 
-  function handleStatusChange(status: OrderStatus) {
-    if (status === "cancelled" || !PROGRESSABLE_STATUSES.includes(status)) return;
-    startTransition(async () => {
-      const result = await updateOrderStatusAction(locale, orderId, orderNumber, status, label);
-      if (result.error) setError(result.error);
-      else router.refresh();
-    });
-  }
-
   return (
     <div className="flex flex-col items-end gap-1">
       <div className="flex items-center justify-end gap-2 whitespace-nowrap">
-        {currentStatus === "cancelled" ? (
+        {/* Статуса у отдельной позиции здесь больше нет: заказ двигают
+            целиком, переключатель один на весь заказ в его шапке. Отменённую
+            строку всё же помечаем — она выпадает из общего статуса заказа, и
+            об этом надо знать. */}
+        {currentStatus === "cancelled" && (
           <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${orderStatusClass(currentStatus)}`}>
             {orderStatusLabel(currentStatus, dict)}
           </span>
-        ) : (
-          <select
-            aria-label={dict.orderStatusSelectLabel}
-            value={currentStatus}
-            disabled={pending}
-            onChange={(event) => handleStatusChange(event.target.value as OrderStatus)}
-            className={`rounded-full border-0 px-2.5 py-1.5 text-xs font-medium ${orderStatusClass(currentStatus)}`}
-          >
-            {statusOptions.map((status) => (
-              // The dropdown list itself ignores the <select>'s Tailwind
-              // classes in most browsers, so each <option> needs its own
-              // (plain, always-readable) colors — the colored pill look is
-              // only for the closed control.
-              <option
-                key={status}
-                value={status}
-                disabled={!PROGRESSABLE_STATUSES.includes(status)}
-                className="bg-white text-zinc-900"
-              >
-                {orderStatusLabel(status, dict)}
-              </option>
-            ))}
-          </select>
         )}
         <RowActionLink href={`/${locale}/admin/orders/${orderNumber}/${orderId}`} label={dict.actionDetails}>
           <EyeIcon />

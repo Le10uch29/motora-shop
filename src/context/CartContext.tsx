@@ -160,6 +160,12 @@ export function CartProvider({
   const addItem = useCallback(
     (productId: string, quantity = 1) => {
       update((prev) => {
+        // После оформленного заказа корзина начинается заново. Позиции в ней
+        // остаются только ради экрана подтверждения; без этого сброса
+        // следующая покупка уехала бы вместе с уже заказанным — то есть
+        // отправилась бы вторым таким же заказом.
+        if (prev.orderPlaced) return { items: [{ productId, quantity }], orderPlaced: false };
+
         const existing = prev.items.find((item) => item.productId === productId);
         const items = existing
           ? prev.items.map((item) =>

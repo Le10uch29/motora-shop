@@ -568,7 +568,7 @@ const ka: Dictionary = {
     makeLabel: "მარკა",
     modelLabel: "მოდელი",
     yearLabel: "წელი",
-    stockCount: (n) => `საწყობში ${n} ცალი`,
+    stockCount: (n) => `${n} ცალი`,
     quantityLabel: "რაოდენობა",
     quantityDecreaseAria: "რაოდენობის შემცირება",
     quantityIncreaseAria: "რაოდენობის გაზრდა",

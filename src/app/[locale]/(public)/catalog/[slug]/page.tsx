@@ -74,25 +74,31 @@ export default async function ProductPage({
         ]}
       />
 
-      <div className="grid grid-cols-1 items-start gap-10 lg:grid-cols-2">
-        <ProductGallery
-          images={product.images}
-          alt={t(product.name, locale)}
-          overlay={
-            <>
-              <BrandLogo
-                logoUrl={brand?.badgeLogoUrl}
-                name={brand?.name ?? product.brand}
-                className="absolute left-4 top-4"
-              />
-              {product.badge && (
-                <span className="absolute bottom-4 right-4 rounded-full bg-black/80 px-3 py-1 text-xs font-medium text-white">
-                  {t(product.badge, locale)}
-                </span>
-              )}
-            </>
-          }
-        />
+      {/* Колонка с фото задана шириной, а не половиной экрана: при двух равных
+          колонках снимок растягивался до ~685px и занимал пол-страницы, хотя
+          это мелкая деталь. Ширина ограничена и на телефоне, чтобы фото не
+          растягивалось на весь экран. */}
+      <div className="grid grid-cols-1 items-start gap-10 lg:grid-cols-[25rem_minmax(0,1fr)]">
+        <div className="w-full max-w-[25rem]">
+          <ProductGallery
+            images={product.images}
+            alt={t(product.name, locale)}
+            overlay={
+              <>
+                <BrandLogo
+                  logoUrl={brand?.badgeLogoUrl}
+                  name={brand?.name ?? product.brand}
+                  className="absolute left-2 top-2"
+                />
+                {product.badge && (
+                  <span className="absolute bottom-2 right-2 rounded-full bg-black/80 px-2 py-0.5 text-[10px] font-medium text-white">
+                    {t(product.badge, locale)}
+                  </span>
+                )}
+              </>
+            }
+          />
+        </div>
 
         <div className="flex flex-col gap-5">
           <div className="flex flex-col gap-1">
@@ -131,22 +137,17 @@ export default async function ProductPage({
 
           <p className="text-zinc-600 dark:text-zinc-400">{t(product.description, locale)}</p>
 
-          <div className="flex items-center gap-3">
-            <p
-              className={
-                product.stock > 0
-                  ? "text-sm font-medium text-emerald-600"
-                  : "text-sm font-medium text-zinc-500"
-              }
-            >
-              {product.stock > 0 ? dict.product.inStock : dict.product.onOrder}
-            </p>
-            {product.stock > 0 && (
-              <span className="text-[1.75rem] text-zinc-500">
-                {dict.product.stockCount(product.stock)}
-              </span>
-            )}
-          </div>
+          {/* Только «в наличии / под заказ» — сколько штук на складе,
+              покупателю не показываем. */}
+          <p
+            className={
+              product.stock > 0
+                ? "text-sm font-medium text-emerald-600"
+                : "text-sm font-medium text-zinc-500"
+            }
+          >
+            {product.stock > 0 ? dict.product.inStock : dict.product.onOrder}
+          </p>
 
           <AddToCartButton
             productId={product.id}

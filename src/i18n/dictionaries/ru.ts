@@ -577,7 +577,7 @@ const ru: Dictionary = {
     makeLabel: "Марка",
     modelLabel: "Модель",
     yearLabel: "Год",
-    stockCount: (n) => `${n} шт. на складе`,
+    stockCount: (n) => `${n} шт.`,
     quantityLabel: "Количество",
     quantityDecreaseAria: "Уменьшить количество",
     quantityIncreaseAria: "Увеличить количество",

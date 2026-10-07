@@ -568,7 +568,7 @@ const az: Dictionary = {
     makeLabel: "Marka",
     modelLabel: "Model",
     yearLabel: "İl",
-    stockCount: (n) => `Anbarda ${n} ədəd`,
+    stockCount: (n) => `${n} ədəd`,
     quantityLabel: "Miqdar",
     quantityDecreaseAria: "Miqdarı azalt",
     quantityIncreaseAria: "Miqdarı artır",

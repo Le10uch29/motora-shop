@@ -28,7 +28,9 @@ export default function ProductCard({
     // itself, a cursor near the bottom/left edge would lose the card as it
     // slides away, and the card would twitch back and forth. Tailwind's
     // translate-* sets the CSS `translate` property, so that's what's animated.
-    <div className="group flex">
+    // Карточка на 10% уже своей ячейки и выровнена по центру: при полной
+    // ширине они выходили крупнее, чем нужно для мелкой детали.
+    <div className="group mx-auto flex w-[90%]">
       <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-md shadow-black/5 transition-[translate,box-shadow] duration-300 ease-in-out group-hover:translate-x-[5px] group-hover:-translate-y-[5px] group-hover:shadow-lg group-hover:shadow-black/10 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0 motion-reduce:group-hover:translate-y-0 dark:border-zinc-800 dark:bg-zinc-900">
         <Link href={`/${locale}/catalog/${product.slug}`} className="flex flex-1 flex-col">
           <div className="relative">
@@ -99,9 +101,6 @@ export default function ProductCard({
                   </span>
                 )}
               </div>
-              {product.stock > 0 && (
-                <span className="text-2xl text-zinc-400">{dict.product.stockCount(product.stock)}</span>
-              )}
             </div>
           </div>
         </Link>

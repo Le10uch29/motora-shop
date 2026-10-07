@@ -42,7 +42,7 @@ export default function ProductGallery({
         {overlay}
       </div>
       {photos.length > 1 && (
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {photos.map((photo, index) => (
             <button
               key={photo}

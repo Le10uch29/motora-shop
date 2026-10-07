@@ -22,9 +22,10 @@ export default function AddToCartButton({
     quantityIncreaseAria: string;
   };
 }) {
-  const { addItem, items } = useCart();
+  const { addItem, items, orderPlaced } = useCart();
   const maxQuantity = inStock ? Math.max(stock, 1) : 99;
-  const inCart = items.find((item) => item.productId === productId)?.quantity ?? 0;
+  // Оформленный заказ считается пустой корзиной — товар снова можно добавить.
+  const inCart = orderPlaced ? 0 : items.find((item) => item.productId === productId)?.quantity ?? 0;
   const [quantity, setQuantity] = useState(1);
 
   return (

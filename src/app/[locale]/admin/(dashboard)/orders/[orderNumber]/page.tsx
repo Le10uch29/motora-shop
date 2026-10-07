@@ -8,6 +8,7 @@ import { formatGel } from "@/lib/currency";
 import OrderLineRowActions from "./OrderLineRowActions";
 import OrderDiscountInput from "./OrderDiscountInput";
 import OrderQuantityInput from "./OrderQuantityInput";
+import OrderStatusControl from "./OrderStatusControl";
 import Pagination from "@/components/admin/Pagination";
 import { single } from "@/lib/searchParams";
 import { ORDER_LINES_PAGE_SIZE } from "../data";
@@ -33,6 +34,11 @@ export default async function OrderPage({
   // Позиций в заказе бывает за сотню — страница с ними всеми и грузится
   // дольше, и читается хуже. Общая сумма считается по всему заказу, а не по
   // показанной странице.
+  // Статус заказа один на все его позиции; разойтись они могут только если
+  // часть отменили — тогда единого статуса нет.
+  const activeStatuses = [...new Set(lines.map((line) => line.status))];
+  const orderStatus = activeStatuses.length === 1 ? activeStatuses[0] : null;
+
   const sp = await searchParams;
   const page = Math.max(1, Number(single(sp.page)) || 1);
   const pageLines = lines.slice((page - 1) * ORDER_LINES_PAGE_SIZE, page * ORDER_LINES_PAGE_SIZE);
@@ -75,6 +81,14 @@ export default async function OrderPage({
         <p className="text-sm text-zinc-500">
           {orderer.phone || "—"} · {orderer.email || "—"}
         </p>
+        <div className="mt-3">
+          <OrderStatusControl
+            locale={locale}
+            dict={dict.admin}
+            orderNumber={orderNumber}
+            status={orderStatus}
+          />
+        </div>
       </div>
 
       {profileFields.length > 0 && (
@@ -103,7 +117,7 @@ export default async function OrderPage({
                 <th className="px-4 py-3 font-medium">{dict.admin.orderColumnUnitPrice}</th>
                 <th className="px-4 py-3 font-medium">{dict.admin.orderColumnLineTotal}</th>
                 <th className="px-4 py-3 font-medium">{dict.admin.orderColumnWhen}</th>
-                <th className="px-4 py-3 font-medium">{dict.admin.orderColumnStatus}</th>
+                <th className="px-4 py-3 font-medium" />
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
