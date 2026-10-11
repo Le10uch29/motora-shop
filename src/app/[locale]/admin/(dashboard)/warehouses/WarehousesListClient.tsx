@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
+import { useConfirm } from "@/context/ConfirmContext";
 import { deleteWarehouseAction } from "./actions";
 import WarehouseFormModal, { type WarehouseFormValues } from "./WarehouseFormModal";
 import { RowActionButton, PencilIcon, TrashIcon } from "@/components/admin/RowActions";
@@ -23,9 +24,10 @@ export default function WarehousesListClient({
   const [modal, setModal] = useState<{ mode: "create" | "edit"; values?: WarehouseFormValues } | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const confirm = useConfirm();
 
-  function handleDelete(row: WarehouseRow) {
-    if (!window.confirm(dict.confirmDeleteWarehouse)) return;
+  async function handleDelete(row: WarehouseRow) {
+    if (!(await confirm({ message: dict.confirmDeleteWarehouse, details: row.name }))) return;
     startTransition(async () => {
       const result = await deleteWarehouseAction(locale, row.id, row.name);
       setDeleteError(result.error);

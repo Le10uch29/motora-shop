@@ -2,6 +2,7 @@
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 import { useState, useTransition } from "react";
+import { useConfirm } from "@/context/ConfirmContext";
 import { createPortal } from "react-dom";
 import {
   addProductsToCategoryAction,
@@ -49,9 +50,10 @@ export default function CategoryProductsClient({
   const [moveTarget, setMoveTarget] = useState<CategoryProductRow | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const confirm = useConfirm();
 
-  function handleDetach(product: CategoryProductRow) {
-    if (!window.confirm(dict.confirmDetachProduct)) return;
+  async function handleDetach(product: CategoryProductRow) {
+    if (!(await confirm({ message: dict.confirmDetachProduct, irreversible: false }))) return;
     setError(null);
     startTransition(async () => {
       const result = await detachProductAction(locale, product.id, categoryId);

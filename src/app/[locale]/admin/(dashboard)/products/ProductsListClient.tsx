@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, type ReactNode } from "react";
+import { useConfirm } from "@/context/ConfirmContext";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   deleteProductAction,
@@ -101,6 +102,7 @@ export default function ProductsListClient({
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [pending, startTransition] = useTransition();
+  const confirm = useConfirm();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -141,17 +143,19 @@ export default function ProductsListClient({
     });
   }
 
-  function handleDelete(row: AdminProductRow) {
-    if (!window.confirm(dict.confirmDeleteProduct)) return;
+  async function handleDelete(row: AdminProductRow) {
+    const details = [row.productCode, row.displayName].filter(Boolean).join(" · ");
+    if (!(await confirm({ message: dict.confirmDeleteProduct, details }))) return;
     startTransition(async () => {
       const result = await deleteProductAction(locale, row.id, row.displayName);
       setDeleteError(result.error);
     });
   }
 
-  function handleDeleteSelected() {
+  async function handleDeleteSelected() {
     if (selectedIds.size === 0) return;
-    if (!window.confirm(dict.confirmDeleteSelectedProducts)) return;
+    const details = `${dict.confirmDeleteAllProductsCountLabel} ${selectedIds.size}`;
+    if (!(await confirm({ message: dict.confirmDeleteSelectedProducts, details }))) return;
     const ids = Array.from(selectedIds);
     startTransition(async () => {
       const result = await deleteProductsAction(locale, ids);
@@ -160,11 +164,10 @@ export default function ProductsListClient({
     });
   }
 
-  function handleDeleteAll() {
+  async function handleDeleteAll() {
     if (total === 0) return;
-    if (!window.confirm(`${dict.confirmDeleteAllProducts}\n${dict.confirmDeleteAllProductsCountLabel} ${total}`)) {
-      return;
-    }
+    const details = `${dict.confirmDeleteAllProductsCountLabel} ${total}`;
+    if (!(await confirm({ message: dict.confirmDeleteAllProducts, details }))) return;
     startTransition(async () => {
       const result = await deleteAllProductsAction(locale);
       setDeleteError(result.error);
@@ -172,15 +175,10 @@ export default function ProductsListClient({
     });
   }
 
-  function handleDeleteZeroStock() {
+  async function handleDeleteZeroStock() {
     if (zeroStockCount === 0) return;
-    if (
-      !window.confirm(
-        `${dict.confirmDeleteZeroStockProducts}\n${dict.confirmDeleteAllProductsCountLabel} ${zeroStockCount}`
-      )
-    ) {
-      return;
-    }
+    const details = `${dict.confirmDeleteAllProductsCountLabel} ${zeroStockCount}`;
+    if (!(await confirm({ message: dict.confirmDeleteZeroStockProducts, details }))) return;
     startTransition(async () => {
       const result = await deleteZeroStockProductsAction(locale);
       setDeleteError(result.error);

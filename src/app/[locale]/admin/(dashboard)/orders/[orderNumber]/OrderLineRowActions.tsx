@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useConfirm } from "@/context/ConfirmContext";
 import { useRouter } from "next/navigation";
 import { cancelOrderAction, deleteOrderAction } from "../actions";
 import { orderStatusLabel, orderStatusClass } from "../statusStyles";
@@ -31,9 +32,14 @@ export default function OrderLineRowActions({
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const confirm = useConfirm();
 
-  function handleCancel() {
-    if (!window.confirm(dict.confirmCancelOrder)) return;
+  async function handleCancel() {
+    if (
+      !(await confirm({ message: dict.confirmCancelOrder, details: label, confirmLabel: dict.actionCancelOrder }))
+    ) {
+      return;
+    }
     startTransition(async () => {
       const result = await cancelOrderAction(locale, orderId, orderNumber, label);
       if (result.error) setError(result.error);
@@ -41,8 +47,8 @@ export default function OrderLineRowActions({
     });
   }
 
-  function handleDelete() {
-    if (!window.confirm(dict.confirmDeleteOrder)) return;
+  async function handleDelete() {
+    if (!(await confirm({ message: dict.confirmDeleteOrder, details: label }))) return;
     startTransition(async () => {
       const result = await deleteOrderAction(locale, orderId, orderNumber, label);
       if (result.error) setError(result.error);

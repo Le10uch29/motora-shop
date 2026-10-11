@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useConfirm } from "@/context/ConfirmContext";
 import { removeStockAction } from "../actions";
 import AddStockModal from "./AddStockModal";
 import { RowActionButton, TrashIcon } from "@/components/admin/RowActions";
@@ -26,10 +27,12 @@ export default function WarehouseStockListClient({
   const [modalOpen, setModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const confirm = useConfirm();
 
-  function handleRemove(productId: string) {
+  async function handleRemove(row: WarehouseStockRow) {
+    if (!(await confirm({ message: dict.confirmRemoveFromWarehouse, details: row.productName }))) return;
     startTransition(async () => {
-      const result = await removeStockAction(locale, warehouseId, productId);
+      const result = await removeStockAction(locale, warehouseId, row.productId);
       setError(result.error);
     });
   }
@@ -78,7 +81,7 @@ export default function WarehouseStockListClient({
                         label={dict.actionRemove}
                         disabled={pending}
                         danger
-                        onClick={() => handleRemove(row.productId)}
+                        onClick={() => handleRemove(row)}
                       >
                         <TrashIcon />
                       </RowActionButton>

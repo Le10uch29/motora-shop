@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, type ReactNode } from "react";
+import { useConfirm } from "@/context/ConfirmContext";
 import { useRouter } from "next/navigation";
 import { deleteCustomerAction } from "./actions";
 import CustomerFormModal, { type CustomerFormValues } from "./CustomerFormModal";
@@ -41,10 +42,14 @@ export default function CustomerListClient({
   const [orderFor, setOrderFor] = useState<CustomerRow | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const confirm = useConfirm();
   const router = useRouter();
 
-  function handleDelete(row: CustomerRow) {
-    if (!window.confirm(dict.confirmDeleteCustomer)) return;
+  async function handleDelete(row: CustomerRow) {
+    if (!(await confirm({
+        message: dict.confirmDeleteCustomer,
+        details: `${row.firstName} ${row.lastName}`.trim(),
+      }))) return;
     startTransition(async () => {
       const result = await deleteCustomerAction(locale, row.id, `${row.firstName} ${row.lastName}`);
       setDeleteError(result.error);

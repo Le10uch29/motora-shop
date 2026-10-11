@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { notFound } from "next/navigation";
 import "../globals.css";
 import { CartProvider } from "@/context/CartContext";
+import { ConfirmProvider } from "@/context/ConfirmContext";
 import { locales, isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
 import { createClient } from "@/lib/supabase/server";
@@ -42,7 +43,7 @@ export default async function LocaleLayout({
   if (!isLocale(locale)) notFound();
 
   const supabase = await createClient();
-  const user = await getAuthIdentity(supabase);
+  const [user, dict] = await Promise.all([getAuthIdentity(supabase), getDictionary(locale)]);
 
   return (
     <html
@@ -66,7 +67,9 @@ export default async function LocaleLayout({
         />
       </head>
       <body className="flex min-h-full flex-col bg-zinc-50 dark:bg-black">
-        <CartProvider userId={user?.id ?? null}>{children}</CartProvider>
+        <ConfirmProvider dict={dict.confirmDialog}>
+          <CartProvider userId={user?.id ?? null}>{children}</CartProvider>
+        </ConfirmProvider>
       </body>
     </html>
   );

@@ -278,6 +278,7 @@ export type Dictionary = {
     warehouseNameLabel: string;
     warehouseAddressLabel: string;
     confirmDeleteWarehouse: string;
+    confirmRemoveFromWarehouse: string;
     warehouseProductCountLabel: string;
     backToWarehouses: string;
     warehouseProductsTitle: string;
@@ -592,6 +593,15 @@ export type Dictionary = {
     quantityDecreaseAria: string;
     quantityIncreaseAria: string;
   };
+  /** Окно подтверждения удаления и других необратимых действий. */
+  confirmDialog: {
+    title: string;
+    deleteTitle: string;
+    confirm: string;
+    delete: string;
+    cancel: string;
+    irreversible: string;
+  };
   cart: {
     title: string;
     emptyTitle: string;
@@ -602,6 +612,8 @@ export type Dictionary = {
     removeAria: string;
     total: string;
     clear: string;
+    confirmRemoveItem: string;
+    confirmClear: string;
     checkout: string;
     orderPlaced: string;
     orderError: string;

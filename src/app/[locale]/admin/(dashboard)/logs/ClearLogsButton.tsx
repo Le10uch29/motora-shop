@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useConfirm } from "@/context/ConfirmContext";
 import { clearLogsAction } from "./actions";
 import type { Locale } from "@/i18n/locales";
 
@@ -15,9 +16,10 @@ export default function ClearLogsButton({
 }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const confirm = useConfirm();
 
-  function handleClick() {
-    if (!window.confirm(confirmMessage)) return;
+  async function handleClick() {
+    if (!(await confirm(confirmMessage))) return;
     startTransition(async () => {
       const result = await clearLogsAction(locale);
       setError(result.error);

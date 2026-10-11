@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useConfirm } from "@/context/ConfirmContext";
 import { useRouter } from "next/navigation";
 import { cancelOrderAction, deleteOrderAction } from "../../actions";
 import type { OrderStatus } from "../../data";
@@ -25,11 +26,16 @@ export default function OrderDetailActions({
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const confirm = useConfirm();
 
   const isCancellable = status !== "cancelled";
 
-  function handleCancel() {
-    if (!window.confirm(dict.confirmCancelOrder)) return;
+  async function handleCancel() {
+    if (
+      !(await confirm({ message: dict.confirmCancelOrder, details: label, confirmLabel: dict.actionCancelOrder }))
+    ) {
+      return;
+    }
     startTransition(async () => {
       const result = await cancelOrderAction(locale, id, orderNumber, label);
       if (result.error) setError(result.error);
@@ -37,8 +43,8 @@ export default function OrderDetailActions({
     });
   }
 
-  function handleDelete() {
-    if (!window.confirm(dict.confirmDeleteOrder)) return;
+  async function handleDelete() {
+    if (!(await confirm({ message: dict.confirmDeleteOrder, details: label }))) return;
     startTransition(async () => {
       const result = await deleteOrderAction(locale, id, orderNumber, label);
       if (result.error) setError(result.error);

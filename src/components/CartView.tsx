@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, useTransition, type ReactNode } from "react";
 import { useCart } from "@/context/CartContext";
+import { useConfirm } from "@/context/ConfirmContext";
 import { placeOrderAction } from "@/app/[locale]/(public)/cart/actions";
 import { t, type CartProductSummary } from "@/lib/products";
 import { formatGel } from "@/lib/currency";
@@ -37,6 +38,18 @@ export default function CartView({
   const { items, setQuantity, removeItem, clear, orderPlaced, markOrdered } = useCart();
   const [orderError, setOrderError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const confirm = useConfirm();
+
+  async function handleRemove(product: CartProductSummary) {
+    const details = [product.productCode, t(product.name, locale)].filter(Boolean).join(" · ");
+    if (await confirm({ message: dict.confirmRemoveItem, details, irreversible: false })) {
+      removeItem(product.id);
+    }
+  }
+
+  async function handleClear() {
+    if (await confirm({ message: dict.confirmClear, irreversible: false })) clear();
+  }
 
   const rows = items
     .map((item) => ({
@@ -156,7 +169,7 @@ export default function CartView({
             <button
               type="button"
               aria-label={dict.removeAria}
-              onClick={() => removeItem(item.productId)}
+              onClick={() => handleRemove(product)}
               className="text-zinc-400 transition-colors hover:text-red-600"
             >
               ✕
@@ -177,7 +190,7 @@ export default function CartView({
         <div className="flex gap-3">
           <button
             type="button"
-            onClick={clear}
+            onClick={handleClear}
             className="rounded-full border border-zinc-200 px-5 py-2.5 text-sm font-medium text-zinc-600 transition-colors hover:border-red-400 hover:text-red-600 dark:border-zinc-700 dark:text-zinc-300"
           >
             {dict.clear}

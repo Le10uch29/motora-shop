@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useConfirm } from "@/context/ConfirmContext";
 import { useRouter } from "next/navigation";
 import { updateOrderStatusByNumberAction, deleteOrderByNumberAction } from "./actions";
 import { orderStatusLabel, PROGRESSABLE_STATUSES } from "./statusStyles";
@@ -25,10 +26,14 @@ export default function OrderRowActions({
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const confirm = useConfirm();
 
-  function handleBulkStatusChange(status: OrderStatus) {
+  async function handleBulkStatusChange(status: OrderStatus) {
     if (!PROGRESSABLE_STATUSES.includes(status)) return;
-    if (!window.confirm(`${dict.confirmBulkStatusChange} ${label}?`)) return;
+    if (!(await confirm({
+        message: `${dict.confirmBulkStatusChange} ${label}?`,
+        tone: "default",
+      }))) return;
     startTransition(async () => {
       const result = await updateOrderStatusByNumberAction(locale, orderNumber, status);
       if (result.error) setError(result.error);
@@ -36,8 +41,8 @@ export default function OrderRowActions({
     });
   }
 
-  function handleBulkDelete() {
-    if (!window.confirm(`${dict.confirmBulkDeleteOrders} ${label}?`)) return;
+  async function handleBulkDelete() {
+    if (!(await confirm(`${dict.confirmBulkDeleteOrders} ${label}?`))) return;
     startTransition(async () => {
       const result = await deleteOrderByNumberAction(locale, orderNumber);
       if (result.error) setError(result.error);

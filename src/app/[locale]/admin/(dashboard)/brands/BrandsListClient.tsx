@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, type ReactNode } from "react";
+import { useConfirm } from "@/context/ConfirmContext";
 import { deleteBrandAction } from "./actions";
 import BrandFormModal, { type BrandFormValues } from "./BrandFormModal";
 import { RowActionButton, PencilIcon, TrashIcon } from "@/components/admin/RowActions";
@@ -34,9 +35,10 @@ export default function BrandsListClient({
   const [modal, setModal] = useState<{ mode: "create" | "edit"; values?: BrandFormValues } | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const confirm = useConfirm();
 
-  function handleDelete(row: BrandRow) {
-    if (!window.confirm(dict.confirmDeleteBrand)) return;
+  async function handleDelete(row: BrandRow) {
+    if (!(await confirm({ message: dict.confirmDeleteBrand, details: row.name }))) return;
     startTransition(async () => {
       const result = await deleteBrandAction(locale, row.id, row.name);
       setDeleteError(result.error);

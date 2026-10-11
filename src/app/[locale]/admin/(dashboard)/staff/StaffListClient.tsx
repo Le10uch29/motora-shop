@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, type ReactNode } from "react";
+import { useConfirm } from "@/context/ConfirmContext";
 import { deleteStaffAction } from "./actions";
 import StaffFormModal, { type StaffFormValues } from "./StaffFormModal";
 import { RowActionLink, RowActionButton, EyeIcon, PencilIcon, XCircleIcon } from "@/components/admin/RowActions";
@@ -49,9 +50,13 @@ export default function StaffListClient({
   const [modal, setModal] = useState<{ mode: "create" | "edit"; values?: StaffFormValues } | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const confirm = useConfirm();
 
-  function handleFire(row: StaffRow) {
-    if (!window.confirm(dict.confirmFire)) return;
+  async function handleFire(row: StaffRow) {
+    if (!(await confirm({
+        message: dict.confirmFire,
+        details: `${row.firstName} ${row.lastName}`.trim(),
+      }))) return;
     startTransition(async () => {
       const result = await deleteStaffAction(locale, row.id, `${row.firstName} ${row.lastName}`);
       setDeleteError(result.error === "cannot_fire_self" ? dict.cannotFireSelf : result.error);
