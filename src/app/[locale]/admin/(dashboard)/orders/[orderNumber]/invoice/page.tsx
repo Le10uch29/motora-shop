@@ -6,6 +6,7 @@ import { getOrderByNumber } from "../../data";
 import { formatGel } from "@/lib/currency";
 import { productImageUrl } from "@/lib/productImageUrl";
 import PrintButton from "./PrintButton";
+import { primaryOem } from "@/lib/oem";
 
 const COMPANY_PHONE = "+995 577 46 66 11";
 
@@ -123,7 +124,7 @@ export default async function InvoicePage({
                 <td className="py-2 pr-3 font-medium text-zinc-900 dark:text-zinc-50 print:text-black">
                   <span className="block">{line.productCode || "—"}</span>
                   <span className="block font-normal text-zinc-500 dark:text-zinc-400 print:text-black">
-                    {line.originCode || "—"}
+                    {primaryOem(line.originCode) || "—"}
                   </span>
                 </td>
                 <td className="py-2 pr-3 font-medium text-zinc-900 dark:text-zinc-50 print:text-black">

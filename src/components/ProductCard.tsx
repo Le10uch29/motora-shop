@@ -9,6 +9,7 @@ import ProductVisual from "@/components/ProductVisual";
 import BrandLogo from "@/components/BrandLogo";
 import ProductCardAddToCart from "@/components/ProductCardAddToCart";
 import FitmentList from "@/components/FitmentList";
+import { primaryOem } from "@/lib/oem";
 
 export default function ProductCard({
   product,
@@ -84,7 +85,7 @@ export default function ProductCard({
               <div className="flex flex-col gap-0.5">
                 {product.originCode && (
                   <span className="font-semibold text-zinc-900 dark:text-zinc-50">
-                    {dict.product.originCodeCardLabel}: {product.originCode}
+                    {dict.product.originCodeCardLabel}: {primaryOem(product.originCode)}
                   </span>
                 )}
                 {product.productCode && (

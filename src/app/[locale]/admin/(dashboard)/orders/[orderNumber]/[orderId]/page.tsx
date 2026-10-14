@@ -7,6 +7,7 @@ import { getOrderDetail } from "../../data";
 import { orderStatusLabel, orderStatusClass } from "../../statusStyles";
 import { formatGel } from "@/lib/currency";
 import OrderDetailActions from "./OrderDetailActions";
+import { primaryOem } from "@/lib/oem";
 
 export default async function OrderDetailPage({
   params,
@@ -98,7 +99,7 @@ export default async function OrderDetailPage({
                   {dict.admin.productOriginCodeLabel}
                 </dt>
                 <dd className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
-                  {order.product.originCode || "—"}
+                  {primaryOem(order.product.originCode) || "—"}
                 </dd>
               </div>
               <div className="flex flex-col gap-0.5">

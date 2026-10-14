@@ -7,6 +7,7 @@ import Link from "next/link";
 import { getProductsCompletenessAction, type ProductCompletenessRow } from "./actions";
 import type { Locale } from "@/i18n/locales";
 import type { Dictionary } from "@/i18n/dictionary";
+import { primaryOem } from "@/lib/oem";
 
 type Filter = "all" | "price" | "originCode" | "productCode";
 
@@ -97,7 +98,7 @@ export default function MissingDataModal({
                       </span>
                       <span className="text-xs text-zinc-500">
                         {dict.importFieldProductCode}: {row.productCode || "—"} ·{" "}
-                        {dict.importFieldOriginCode}: {row.originCode || "—"} · {dict.importFieldPrice}:{" "}
+                        {dict.importFieldOriginCode}: {primaryOem(row.originCode) || "—"} · {dict.importFieldPrice}:{" "}
                         {row.price || "—"}
                       </span>
                     </div>

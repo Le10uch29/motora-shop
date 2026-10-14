@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { t } from "@/lib/products";
 import { formatGel } from "@/lib/currency";
 import { actionLabel } from "../../logs/labels";
+import { oemCodes } from "@/lib/oem";
 
 export default async function ProductDetailPage({
   params,
@@ -50,7 +51,7 @@ export default async function ProductDetailPage({
     [dict.admin.productYearToLabel, String(row.year_to)],
     [dict.admin.productsColPrice, formatGel(row.price, locale)],
     [dict.admin.productsColStock, String(row.stock)],
-    [dict.admin.productOriginCodeLabel, row.origin_code ?? "—"],
+    [dict.admin.productOriginCodeLabel, oemCodes(row.origin_code).join(", ") || "—"],
     [dict.admin.productProductCodeLabel, row.product_code ?? "—"],
     [dict.admin.tableId, row.id],
   ];

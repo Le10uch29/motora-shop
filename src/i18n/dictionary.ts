@@ -584,6 +584,9 @@ export type Dictionary = {
     originCodeLabel: string;
     productCodeLabel: string;
     originCodeCardLabel: string;
+    copyCodeAria: string;
+    copyAllCodesAria: string;
+    copiedLabel: string;
     brandLabel: string;
     makeLabel: string;
     modelLabel: string;

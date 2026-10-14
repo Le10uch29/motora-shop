@@ -21,6 +21,7 @@ import { formatGel } from "@/lib/currency";
 import { productImageUrl } from "@/lib/productImageUrl";
 import type { Dictionary } from "@/i18n/dictionary";
 import type { Locale } from "@/i18n/locales";
+import { oemCodes, primaryOem } from "@/lib/oem";
 
 type SortKey = ProductSortKey;
 type Sort = ProductSort;
@@ -346,7 +347,12 @@ export default function ProductsListClient({
                     </div>
                   </td>
                   <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{row.productCode || "—"}</td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{row.originCode || "—"}</td>
+                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400" title={oemCodes(row.originCode).join(", ")}>
+                    {primaryOem(row.originCode) || "—"}
+                    {oemCodes(row.originCode).length > 1 && (
+                      <span className="ml-1 text-xs text-zinc-400">+{oemCodes(row.originCode).length - 1}</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50">{row.displayName}</td>
                   <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{row.brandName}</td>
                   <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">

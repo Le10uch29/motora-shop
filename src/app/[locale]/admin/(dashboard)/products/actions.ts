@@ -18,6 +18,7 @@ import {
   fitmentsToFields,
   type Fitment,
 } from "@/lib/fitments";
+import { mergeOem, normalizeOem, primaryOem } from "@/lib/oem";
 
 export type ProductActionState = { error: string | null };
 
@@ -109,7 +110,7 @@ function readFields(formData: FormData): ParsedFields | null {
     price,
     oldPrice: oldPriceRaw ? Number(oldPriceRaw) : null,
     stock: stockRaw ? Number(stockRaw) || 0 : 0,
-    originCode: originCode || null,
+    originCode: normalizeOem(originCode),
     productCode: productCode || null,
     name,
     description,
@@ -518,7 +519,7 @@ function mergeDuplicateImportRows(rows: ImportRow[]): {
         price = Math.max(existing.price, raw.price);
         conflicts.push({
           productCode: code,
-          originCode: existing.originCode ?? raw.originCode,
+          originCode: primaryOem(existing.originCode ?? raw.originCode),
           field: "price",
           values: [String(existing.price), String(raw.price)],
           resolvedValue: String(price),
@@ -528,7 +529,8 @@ function mergeDuplicateImportRows(rows: ImportRow[]): {
 
     byCode.set(key, {
       productCode: existing.productCode,
-      originCode: existing.originCode ?? raw.originCode,
+      // Повторы одного кода могут нести разные OEM — сохраняем все.
+      originCode: mergeOem(existing.originCode, raw.originCode) ?? undefined,
       price,
       stock: existing.stock ?? raw.stock,
       nameRu: existing.nameRu ?? raw.nameRu,
@@ -653,7 +655,9 @@ export async function importProductsAction(
     const nameValue = anyName
       ? { ru: nameRu || anyName, az: nameAz || anyName, ka: nameKa || anyName }
       : { ru: code, az: code, ka: code };
-    const originCode = row.originCode?.trim();
+    // Несколько OEM-кодов в ячейке идут через «/» — хранятся так же, первый
+    // из них главный (см. lib/oem.ts).
+    const originCode = normalizeOem(row.originCode);
     const make = row.make?.trim();
     // "ASTRA H///1,6" — всё после трёх слешей это описание, а не модель.
     // Отдельная колонка описания, если она в файле есть и заполнена, важнее:
@@ -695,7 +699,12 @@ export async function importProductsAction(
     const patch: Record<string, unknown> = {};
     if ((existing.price === 0 || existing.price == null) && row.price) patch.price = row.price;
     if ((existing.stock === 0 || existing.stock == null) && row.stock) patch.stock = row.stock;
-    if (!existing.origin_code && originCode) patch.origin_code = originCode;
+    // OEM-коды только дополняются: коды из файла, которых у товара ещё нет,
+    // дописываются в конец, а уже стоящий первым главный код не меняется.
+    if (originCode) {
+      const mergedOem = mergeOem(existing.origin_code, originCode);
+      if (mergedOem !== normalizeOem(existing.origin_code)) patch.origin_code = mergedOem;
+    }
     // Vehicles follow the same "fill only what's empty" rule, column by column:
     // the file's makes replace a product without one, its models one without
     // models, its years one still on the default range. The result is paired

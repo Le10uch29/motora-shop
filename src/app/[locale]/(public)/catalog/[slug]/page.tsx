@@ -11,6 +11,8 @@ import BrandLogo from "@/components/BrandLogo";
 import AddToCartButton from "@/components/AddToCartButton";
 import FitmentList from "@/components/FitmentList";
 import Breadcrumbs from "@/components/Breadcrumbs";
+import OemCodeList from "@/components/OemCodeList";
+import { oemCodes, primaryOem } from "@/lib/oem";
 
 export async function generateStaticParams() {
   const slugs = await getAllProductSlugs();
@@ -79,7 +81,7 @@ export default async function ProductPage({
           это мелкая деталь. Ширина ограничена и на телефоне, чтобы фото не
           растягивалось на весь экран. */}
       <div className="grid grid-cols-1 items-start gap-10 lg:grid-cols-[25rem_minmax(0,1fr)]">
-        <div className="w-full max-w-[25rem]">
+        <div className="flex w-full max-w-[25rem] flex-col gap-4">
           <ProductGallery
             images={product.images}
             alt={t(product.name, locale)}
@@ -98,6 +100,16 @@ export default async function ProductPage({
               </>
             }
           />
+          {/* Все OEM-коды детали, включая главный, — с копированием в один клик. */}
+          <OemCodeList
+            codes={oemCodes(product.originCode)}
+            labels={{
+              title: dict.product.originCodeLabel,
+              copyCode: dict.product.copyCodeAria,
+              copyAll: dict.product.copyAllCodesAria,
+              copied: dict.product.copiedLabel,
+            }}
+          />
         </div>
 
         <div className="flex flex-col gap-5">
@@ -105,7 +117,7 @@ export default async function ProductPage({
             <div className="flex items-center gap-2">
               <span className="flex flex-wrap items-center gap-x-3 text-xs text-zinc-400">
                 <span>
-                  {dict.product.originCodeLabel}: {product.originCode ?? "—"}
+                  {dict.product.originCodeLabel}: {primaryOem(product.originCode) || "—"}
                 </span>
                 <span>
                   {dict.product.productCodeLabel}: {product.productCode ?? "—"}

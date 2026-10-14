@@ -324,7 +324,7 @@ export default function ProductFormModal({
 
           <div className="flex flex-col gap-1.5">
             <label htmlFor="product-origin-code" className={labelClass}>{dict.productOriginCodeLabel}</label>
-            <input id="product-origin-code" name="originCode" defaultValue={initialValues?.originCode} className={inputClass} />
+            <input id="product-origin-code" name="originCode" defaultValue={initialValues?.originCode} placeholder="8200768913 / 7701477028" className={inputClass} />
           </div>
 
           <div className="flex flex-col gap-1.5">
