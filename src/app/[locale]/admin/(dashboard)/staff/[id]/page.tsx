@@ -22,7 +22,7 @@ export default async function StaffDetailPage({
 
   const { data: row } = await admin
     .from("staff")
-    .select("id, first_name, last_name, phone, id_card_number, role, warehouse_id, created_at")
+    .select("id, first_name, last_name, phone, role, warehouse_id, created_at")
     .eq("id", id)
     .single();
 
@@ -47,7 +47,6 @@ export default async function StaffDetailPage({
     [dict.admin.lastNameLabel, row.last_name],
     ["Email", authUser?.email ?? "—"],
     [dict.admin.phoneLabel, row.phone ?? "—"],
-    [dict.admin.idCardLabel, row.id_card_number ?? "—"],
     [dict.admin.roleLabel, row.role === "admin" ? dict.admin.roleAdmin : dict.admin.roleSeller],
     [dict.admin.warehouseAssignedLabel, warehouseName || "—"],
     [dict.admin.tableId, row.id],
@@ -76,7 +75,6 @@ export default async function StaffDetailPage({
             firstName: row.first_name,
             lastName: row.last_name,
             phone: row.phone ?? "",
-            idCardNumber: row.id_card_number ?? "",
             role: row.role,
             warehouseId: row.warehouse_id ?? "",
           }}

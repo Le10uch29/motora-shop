@@ -59,7 +59,6 @@ function readCustomerFields(formData: FormData) {
     firstName,
     lastName,
     phone: rawPhone ? normalizePhone(rawPhone) : "",
-    idCardNumber: String(formData.get("idCardNumber") ?? "").trim(),
     organizationName: String(formData.get("organizationName") ?? "").trim(),
     organizationIdNumber: String(formData.get("organizationIdNumber") ?? "").trim(),
     address: String(formData.get("address") ?? "").trim(),
@@ -109,7 +108,6 @@ export async function createCustomerAction(
   if (
     !fields.firstName ||
     !fields.phone ||
-    !fields.idCardNumber ||
     !fields.organizationName ||
     !fields.organizationIdNumber ||
     !fields.address ||
@@ -142,7 +140,9 @@ export async function createCustomerAction(
     first_name: fields.firstName,
     last_name: fields.lastName,
     phone: fields.phone,
-    id_card_number: fields.idCardNumber,
+    // Личный номер (ID card) больше не собирается. Колонка в базе осталась
+    // обязательной, поэтому новая запись получает пустую строку.
+    id_card_number: "",
     organization_name: fields.organizationName,
     organization_id_number: fields.organizationIdNumber,
     address: fields.address,
@@ -177,7 +177,6 @@ export async function updateCustomerAction(
     !id ||
     !fields.firstName ||
     !fields.phone ||
-    !fields.idCardNumber ||
     !fields.organizationName ||
     !fields.organizationIdNumber ||
     !fields.address ||
@@ -194,7 +193,7 @@ export async function updateCustomerAction(
   const { data: before } = await admin
     .from("customers")
     .select(
-      "first_name, last_name, phone, id_card_number, organization_name, organization_id_number, address, city"
+      "first_name, last_name, phone, organization_name, organization_id_number, address, city"
     )
     .eq("id", id)
     .single();
@@ -207,7 +206,6 @@ export async function updateCustomerAction(
       first_name: fields.firstName,
       last_name: fields.lastName,
       phone: fields.phone,
-      id_card_number: fields.idCardNumber,
       organization_name: fields.organizationName,
       organization_id_number: fields.organizationIdNumber,
       address: fields.address,
@@ -244,7 +242,6 @@ export async function updateCustomerAction(
       firstName: before.first_name,
       lastName: before.last_name,
       phone: before.phone,
-      idCardNumber: before.id_card_number,
       organizationName: before.organization_name,
       organizationIdNumber: before.organization_id_number,
       address: before.address,

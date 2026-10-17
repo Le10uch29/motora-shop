@@ -25,7 +25,7 @@ export default async function CustomerDetailPage({
   const { data: row } = await admin
     .from("customers")
     .select(
-      "id, first_name, last_name, phone, id_card_number, organization_name, organization_id_number, address, city"
+      "id, first_name, last_name, phone, organization_name, organization_id_number, address, city"
     )
     .eq("id", id)
     .single();
@@ -77,7 +77,6 @@ export default async function CustomerDetailPage({
             firstName: row.first_name,
             lastName: row.last_name,
             phone: row.phone,
-            idCardNumber: row.id_card_number,
             organizationName: row.organization_name,
             organizationIdNumber: row.organization_id_number,
             address: row.address,

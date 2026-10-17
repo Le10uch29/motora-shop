@@ -22,7 +22,6 @@ function readStaffFields(formData: FormData) {
     firstName: String(formData.get("firstName") ?? "").trim(),
     lastName: String(formData.get("lastName") ?? "").trim(),
     phone: rawPhone ? normalizePhone(rawPhone) : null,
-    idCardNumber: String(formData.get("idCardNumber") ?? "").trim() || null,
     role: String(formData.get("role") ?? "seller") === "admin" ? "admin" : "seller",
     warehouseId: String(formData.get("warehouseId") ?? "").trim() || null,
   };
@@ -66,7 +65,6 @@ export async function createStaffAction(
     first_name: fields.firstName,
     last_name: fields.lastName,
     phone: fields.phone,
-    id_card_number: fields.idCardNumber,
     role: fields.role,
     warehouse_id: fields.warehouseId,
   });
@@ -110,7 +108,6 @@ export async function updateStaffAction(
       first_name: fields.firstName,
       last_name: fields.lastName,
       phone: fields.phone,
-      id_card_number: fields.idCardNumber,
       role: fields.role,
       warehouse_id: fields.warehouseId,
     })

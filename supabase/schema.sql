@@ -677,3 +677,40 @@ grant insert (customer_id, product_id, quantity, line_number) on orders to authe
 
 revoke update on orders from authenticated;
 grant update (status, warehouse_id, stock_deducted_at, discounted_price) on orders to authenticated;
+
+-- Год машины теперь необязателен. Раньше товар, у которого в Excel не было
+-- года, получал диапазон «2000 — год импорта» (2000-2026), и этот выдуманный
+-- год показывался в карточках. Здесь такие годы превращаются в «не указан»:
+-- в fitments — null, в колонках year_from/year_to — самый широкий диапазон
+-- (0 и 9999), чтобы фильтр по годам по-прежнему находил товар. Только
+-- точное совпадение 2000-2026, поэтому настоящие годы не трогаются;
+-- повторный запуск ничего не меняет.
+update products
+set fitments = (
+  select jsonb_agg(
+    case
+      when (f->>'yearFrom')::int = 2000 and (f->>'yearTo')::int = 2026
+        then f || jsonb_build_object('yearFrom', null, 'yearTo', null)
+      else f
+    end
+  )
+  from jsonb_array_elements(fitments) f
+)
+where jsonb_typeof(fitments) = 'array'
+  and exists (
+    select 1 from jsonb_array_elements(fitments) f
+    where (f->>'yearFrom')::int = 2000 and (f->>'yearTo')::int = 2026
+  );
+
+update products
+set year_from = case when year_from = 2000 then 0 else year_from end,
+    year_to = case when year_to = 2026 then 9999 else year_to end
+where exists (
+  select 1 from jsonb_array_elements(fitments) f
+  where f->'yearFrom' = 'null'::jsonb or f->'yearTo' = 'null'::jsonb
+);
+
+-- Личный номер (ID card) больше не собирается и нигде не показывается.
+-- Колонки остаются, чтобы ничего не сломать; у покупателей она больше не
+-- обязательна.
+alter table customers alter column id_card_number drop not null;

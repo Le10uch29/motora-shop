@@ -12,7 +12,6 @@ export type CurrentStaff = {
   firstName: string;
   lastName: string;
   phone: string | null;
-  idCardNumber: string | null;
   role: StaffRole;
   warehouseId: string | null;
 };
@@ -28,7 +27,7 @@ export const getCurrentStaff = cache(async function getCurrentStaff(): Promise<C
 
   const { data: staff } = await supabase
     .from("staff")
-    .select("id, first_name, last_name, phone, id_card_number, role, warehouse_id")
+    .select("id, first_name, last_name, phone, role, warehouse_id")
     .eq("id", user.id)
     .single();
   if (!staff) return null;
@@ -39,7 +38,6 @@ export const getCurrentStaff = cache(async function getCurrentStaff(): Promise<C
     firstName: staff.first_name,
     lastName: staff.last_name,
     phone: staff.phone,
-    idCardNumber: staff.id_card_number,
     role: staff.role,
     warehouseId: staff.warehouse_id,
   };
@@ -65,7 +63,6 @@ export type CurrentCustomer = {
   firstName: string;
   lastName: string;
   phone: string;
-  idCardNumber: string;
   organizationName: string;
   photoUrl: string | null;
 };
@@ -80,7 +77,7 @@ export const getCurrentCustomer = cache(async function getCurrentCustomer(): Pro
 
   const { data: customer } = await supabase
     .from("customers")
-    .select("id, first_name, last_name, phone, id_card_number, organization_name, photo_url")
+    .select("id, first_name, last_name, phone, organization_name, photo_url")
     .eq("id", user.id)
     .single();
   if (!customer) return null;
@@ -91,7 +88,6 @@ export const getCurrentCustomer = cache(async function getCurrentCustomer(): Pro
     firstName: customer.first_name,
     lastName: customer.last_name,
     phone: customer.phone,
-    idCardNumber: customer.id_card_number,
     organizationName: customer.organization_name,
     photoUrl: customer.photo_url,
   };

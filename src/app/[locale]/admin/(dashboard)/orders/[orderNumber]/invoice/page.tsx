@@ -77,9 +77,6 @@ export default async function InvoicePage({
             <>
               <p className="text-zinc-600 dark:text-zinc-400 print:text-black">{orderer.organizationName}</p>
               <p className="text-zinc-600 dark:text-zinc-400 print:text-black">
-                {dict.admin.personalNumberLabel}: {orderer.idCardNumber}
-              </p>
-              <p className="text-zinc-600 dark:text-zinc-400 print:text-black">
                 {dict.admin.phoneLabel}: {orderer.phone || "—"}
               </p>
               <p className="text-zinc-600 dark:text-zinc-400 print:text-black">

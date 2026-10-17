@@ -149,7 +149,6 @@ export default async function OrderDetailPage({
                 [dict.admin.lastNameLabel, order.customer.lastName],
                 ["Email", order.customer.email],
                 [dict.admin.phoneLabel, order.customer.phone],
-                [dict.admin.idCardLabel, order.customer.idCardNumber],
                 [dict.admin.organizationNameLabel, order.customer.organizationName],
                 [dict.admin.cityLabel, order.customer.city],
                 [dict.admin.addressLabel, order.customer.address],

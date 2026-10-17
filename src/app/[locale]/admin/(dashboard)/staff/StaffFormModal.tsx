@@ -13,7 +13,6 @@ export type StaffFormValues = {
   firstName: string;
   lastName: string;
   phone: string;
-  idCardNumber: string;
   role: StaffRole;
   warehouseId: string;
 };
@@ -24,7 +23,6 @@ const EMPTY_VALUES: StaffFormValues = {
   firstName: "",
   lastName: "",
   phone: "",
-  idCardNumber: "",
   role: "seller",
   warehouseId: "",
 };
@@ -144,18 +142,6 @@ export default function StaffFormModal({
             className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
           />
           <span className="text-xs text-zinc-500">{dict.phoneOrEmailHint}</span>
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="staff-idCard" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            {dict.idCardLabel}
-          </label>
-          <input
-            id="staff-idCard"
-            name="idCardNumber"
-            defaultValue={values.idCardNumber}
-            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-          />
         </div>
 
         {mode === "create" ? (

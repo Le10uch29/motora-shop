@@ -14,7 +14,6 @@ export type StaffRow = {
   firstName: string;
   lastName: string;
   phone: string;
-  idCardNumber: string;
   role: "admin" | "seller";
   warehouseId: string;
   warehouseName: string;
@@ -78,7 +77,6 @@ export default function StaffListClient({
                 firstName: "",
                 lastName: "",
                 phone: "",
-                idCardNumber: "",
                 role: defaultRole,
                 warehouseId: "",
               },
@@ -139,7 +137,6 @@ export default function StaffListClient({
                               firstName: row.firstName,
                               lastName: row.lastName,
                               phone: row.phone,
-                              idCardNumber: row.idCardNumber,
                               role: row.role,
                               warehouseId: row.warehouseId,
                             },

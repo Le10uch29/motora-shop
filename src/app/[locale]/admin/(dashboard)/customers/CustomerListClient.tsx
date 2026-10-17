@@ -16,7 +16,6 @@ export type CustomerRow = {
   firstName: string;
   lastName: string;
   phone: string;
-  idCardNumber: string;
   organizationName: string;
   organizationIdNumber: string;
   address: string;
@@ -73,7 +72,6 @@ export default function CustomerListClient({
                 firstName: "",
                 lastName: "",
                 phone: "",
-                idCardNumber: "",
                 organizationName: "",
                 organizationIdNumber: "",
                 address: "",
@@ -103,7 +101,6 @@ export default function CustomerListClient({
                 <th className="px-4 py-3 font-medium">{dict.tableOrganization}</th>
                 <th className="px-4 py-3 font-medium">{dict.tablePhone}</th>
                 <th className="px-4 py-3 font-medium">{dict.tableEmail}</th>
-                <th className="px-4 py-3 font-medium">{dict.idCardLabel}</th>
                 <th className="px-4 py-3 font-medium" />
               </tr>
             </thead>
@@ -143,7 +140,6 @@ export default function CustomerListClient({
                   <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{row.organizationName}</td>
                   <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{row.phone}</td>
                   <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{row.email}</td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{row.idCardNumber}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-2 whitespace-nowrap">
                       <RowActionLink href={`/${locale}/admin/customers/${row.id}`} label={dict.actionDetails}>

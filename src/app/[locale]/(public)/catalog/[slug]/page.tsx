@@ -182,6 +182,7 @@ export default async function ProductPage({
               make: dict.product.makeLabel,
               model: dict.product.modelLabel,
               year: dict.product.yearLabel,
+              engine: dict.product.engineLabel,
             }}
             className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
           />

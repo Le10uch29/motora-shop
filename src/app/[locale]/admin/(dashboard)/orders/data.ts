@@ -25,7 +25,6 @@ type OrdererInfo =
       firstName: string;
       lastName: string;
       organizationName: string;
-      idCardNumber: string;
       address: string;
       city: string;
       phone: string;
@@ -46,7 +45,7 @@ async function resolveOrderers(
   const [{ data: customerRows }, { data: allStaffRows }, authUsers] = await Promise.all([
     admin
       .from("customers")
-      .select("id, first_name, last_name, organization_name, id_card_number, address, city, phone")
+      .select("id, first_name, last_name, organization_name, address, city, phone")
       .in("id", ids),
     admin.from("staff").select("id, first_name, last_name, phone").in("id", ids),
     // One bulk fetch instead of a getUserById() per orderer — same approach
@@ -66,7 +65,6 @@ async function resolveOrderers(
       firstName: row.first_name,
       lastName: row.last_name,
       organizationName: row.organization_name,
-      idCardNumber: row.id_card_number,
       address: row.address,
       city: row.city,
       phone: row.phone,
@@ -263,7 +261,6 @@ export type OrdererProfile =
       firstName: string;
       lastName: string;
       organizationName: string;
-      idCardNumber: string;
       address: string;
       city: string;
       phone: string;
@@ -410,7 +407,6 @@ export type OrderDetail = {
     lastName: string;
     email: string;
     phone: string;
-    idCardNumber: string;
     organizationName: string;
     address: string;
     city: string;
@@ -468,7 +464,7 @@ export async function getOrderDetail(id: string, locale: Locale): Promise<OrderD
 
   const { data: customerRow } = await admin
     .from("customers")
-    .select("id, first_name, last_name, phone, id_card_number, organization_name, address, city")
+    .select("id, first_name, last_name, phone, organization_name, address, city")
     .eq("id", row.customer_id)
     .maybeSingle();
 
@@ -483,7 +479,6 @@ export async function getOrderDetail(id: string, locale: Locale): Promise<OrderD
       lastName: customerRow.last_name,
       email: authUser?.email ?? "",
       phone: customerRow.phone,
-      idCardNumber: customerRow.id_card_number,
       organizationName: customerRow.organization_name,
       address: customerRow.address,
       city: customerRow.city,

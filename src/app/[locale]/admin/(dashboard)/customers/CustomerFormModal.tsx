@@ -16,7 +16,6 @@ export type CustomerFormValues = {
   firstName: string;
   lastName: string;
   phone: string;
-  idCardNumber: string;
   organizationName: string;
   organizationIdNumber: string;
   address: string;
@@ -29,7 +28,6 @@ const EMPTY_VALUES: CustomerFormValues = {
   firstName: "",
   lastName: "",
   phone: "",
-  idCardNumber: "",
   organizationName: "",
   organizationIdNumber: "",
   address: "",
@@ -145,20 +143,8 @@ export default function CustomerFormModal({
           />
         </div>
 
-        {/* 2–3. Personal ID card and organization identification number. */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="customer-idCard" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              {dict.idCardLabel}
-            </label>
-            <input
-              id="customer-idCard"
-              name="idCardNumber"
-              required
-              defaultValue={values.idCardNumber}
-              className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-            />
-          </div>
+        {/* 2–3. Organization identification number. */}
+        <div className="grid grid-cols-1 gap-3">
           <div className="flex flex-col gap-1.5">
             <label
               htmlFor="customer-organizationIdNumber"

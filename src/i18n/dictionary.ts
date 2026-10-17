@@ -152,7 +152,6 @@ export type Dictionary = {
     discountedPriceInvalid: string;
     discountedPriceLabel: string;
     companyPhoneLabel: string;
-    personalNumberLabel: string;
     actionCancelOrder: string;
     confirmCancelOrder: string;
     confirmDeleteOrder: string;
@@ -591,6 +590,7 @@ export type Dictionary = {
     makeLabel: string;
     modelLabel: string;
     yearLabel: string;
+    engineLabel: string;
     stockCount: (count: number) => string;
     quantityLabel: string;
     quantityDecreaseAria: string;

@@ -16,6 +16,8 @@ import {
   splitModelAndDescription,
   fitmentsOf,
   fitmentsToFields,
+  OPEN_YEAR_FROM,
+  OPEN_YEAR_TO,
   type Fitment,
 } from "@/lib/fitments";
 import { mergeOem, normalizeOem, primaryOem } from "@/lib/oem";
@@ -468,7 +470,10 @@ export type ImportResult = {
   error: string | null;
 };
 
-const IMPORT_DEFAULT_YEAR_FROM = 2000;
+/** Так раньше записывался товар, у которого в файле не было года: с 2000 по
+ * год импорта. Теперь год просто остаётся пустым, но такие старые товары
+ * по-прежнему считаются «без года» — файл может их дополнить. */
+const LEGACY_DEFAULT_YEAR_FROM = 2000;
 
 function chunk<T>(items: T[], size: number): T[][] {
   const groups: T[][] = [];
@@ -668,7 +673,6 @@ export async function importProductsAction(
     const yearFrom = row.yearFrom?.trim();
     const yearTo = row.yearTo?.trim();
     const photoUrl = row.photoUrl?.trim();
-    const yearDefaults = { yearFrom: IMPORT_DEFAULT_YEAR_FROM, yearTo: currentYear };
 
     const resolvedWarehouseId = resolveWarehouseId(row.warehouseName);
     if (resolvedWarehouseId && row.stock) {
@@ -679,7 +683,7 @@ export async function importProductsAction(
       toInsert.push({
         slug: uniqueSlug(slugify(code)),
         category: DEFAULT_CATEGORY,
-        ...fitmentColumns(fitmentsFromImport({ make, model, years, yearFrom, yearTo }, yearDefaults)),
+        ...fitmentColumns(fitmentsFromImport({ make, model, years, yearFrom, yearTo })),
         brand_id: brandId,
         price: row.price ?? 0,
         old_price: null,
@@ -710,15 +714,22 @@ export async function importProductsAction(
     // models, its years one still on the default range. The result is paired
     // up again as a whole, so the n-th make still meets the n-th model.
     const fillMake = (!existing.make || existing.make === UNIVERSAL_MAKE) && Boolean(make);
-    const fillModel = !existing.model && Boolean(model);
-    const fillYears =
-      existing.year_from === IMPORT_DEFAULT_YEAR_FROM &&
-      existing.year_to === currentYear &&
-      Boolean(years || yearFrom || yearTo);
+    const existingFitments = fitmentsOf({
+      ...existing,
+      yearFrom: existing.year_from,
+      yearTo: existing.year_to,
+    });
+    // Двигатели в скобках («F10/GT (4,4-4,8)») дополняют товар, у которого
+    // их ещё нет, — вместе с моделями из той же ячейки.
+    const fillEngines =
+      Boolean(model?.includes("(")) && !existingFitments.some((f) => f.engines && f.engines.length > 0);
+    const fillModel = (!existing.model && Boolean(model)) || fillEngines;
+    const hasNoYears =
+      (existing.year_from === OPEN_YEAR_FROM && existing.year_to === OPEN_YEAR_TO) ||
+      (existing.year_from === LEGACY_DEFAULT_YEAR_FROM && existing.year_to === currentYear);
+    const fillYears = hasNoYears && Boolean(years || yearFrom || yearTo);
     if (fillMake || fillModel || fillYears) {
-      const current = fitmentsToFields(
-        fitmentsOf({ ...existing, yearFrom: existing.year_from, yearTo: existing.year_to })
-      );
+      const current = fitmentsToFields(existingFitments);
       // Years the product already has are written back as one range per
       // vehicle ("2000-2002; 2010-2015"), which reads as the file's own single
       // year column would; the file's two columns are only consulted when it
@@ -734,8 +745,7 @@ export async function importProductsAction(
               years: keepYears ? current.years : years,
               yearFrom: keepYears || years ? undefined : yearFrom,
               yearTo: keepYears || years ? undefined : yearTo,
-            },
-            yearDefaults
+            }
           )
         )
       );

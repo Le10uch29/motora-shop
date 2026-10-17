@@ -8,6 +8,7 @@ import { t } from "@/lib/products";
 import { formatGel } from "@/lib/currency";
 import { actionLabel } from "../../logs/labels";
 import { oemCodes } from "@/lib/oem";
+import { fitmentEngines, fitmentsOf, formatFitmentYears, type Fitment } from "@/lib/fitments";
 
 export default async function ProductDetailPage({
   params,
@@ -22,7 +23,7 @@ export default async function ProductDetailPage({
   const { data: row } = await admin
     .from("products")
     .select(
-      "id, make, model, year_from, year_to, price, old_price, stock, origin_code, product_code, name, description, brands(name)"
+      "id, make, model, fitments, year_from, year_to, price, old_price, stock, origin_code, product_code, name, description, brands(name)"
     )
     .eq("id", id)
     .single();
@@ -42,13 +43,24 @@ export default async function ProductDetailPage({
   const createdEntry = (entries ?? []).find((entry) => entry.action === "create");
   const lastUpdatedEntry = (entries ?? []).find((entry) => entry.action === "update");
 
+  const fitments = fitmentsOf({
+    fitments: row.fitments as Fitment[] | null,
+    make: row.make,
+    model: row.model,
+    yearFrom: row.year_from,
+    yearTo: row.year_to,
+  });
+  // Год не указан — строки нет вовсе; «2012+» — подходит всем начиная с 2012.
+  const years = Array.from(new Set(fitments.map(formatFitmentYears).filter(Boolean))).join(", ");
+  const engines = fitmentEngines(fitments).join(" / ");
+
   const fields: [string, string][] = [
     [dict.admin.productsColName, t(row.name, locale)],
     [dict.admin.productsColBrand, brand?.name ?? "—"],
     [dict.admin.productMakeLabel, row.make],
     [dict.admin.productModelLabel, row.model ?? "—"],
-    [dict.admin.productYearFromLabel, String(row.year_from)],
-    [dict.admin.productYearToLabel, String(row.year_to)],
+    ...(years ? [[dict.admin.productYearLabel, years] as [string, string]] : []),
+    ...(engines ? [[dict.product.engineLabel, engines] as [string, string]] : []),
     [dict.admin.productsColPrice, formatGel(row.price, locale)],
     [dict.admin.productsColStock, String(row.stock)],
     [dict.admin.productOriginCodeLabel, oemCodes(row.origin_code).join(", ") || "—"],

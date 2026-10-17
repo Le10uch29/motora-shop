@@ -12,7 +12,7 @@ export async function getStaffList(
 
   const { data: staffRows } = await admin
     .from("staff")
-    .select("id, first_name, last_name, phone, id_card_number, role, warehouse_id")
+    .select("id, first_name, last_name, phone, role, warehouse_id")
     .eq("role", role)
     .order("created_at", { ascending: false });
 
@@ -27,7 +27,6 @@ export async function getStaffList(
     firstName: row.first_name,
     lastName: row.last_name,
     phone: row.phone ?? "",
-    idCardNumber: row.id_card_number ?? "",
     role: row.role,
     warehouseId: row.warehouse_id ?? "",
     warehouseName: row.warehouse_id ? warehouseNameById.get(row.warehouse_id) ?? "" : "",

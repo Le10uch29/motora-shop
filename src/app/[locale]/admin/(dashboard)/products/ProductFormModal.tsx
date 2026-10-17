@@ -247,7 +247,7 @@ export default function ProductFormModal({
 
           <div className="flex flex-col gap-1.5">
             <label htmlFor="product-model" className={labelClass}>{dict.productModelLabel}</label>
-            <input id="product-model" name="model" defaultValue={initialVehicle?.model} className={inputClass} />
+            <input id="product-model" name="model" defaultValue={initialVehicle?.model} placeholder="F10 (4,4/4,8); E70 (4,4/4,8)" className={inputClass} />
             <span className="text-xs text-zinc-400">{dict.productModelHint}</span>
           </div>
 
@@ -256,8 +256,7 @@ export default function ProductFormModal({
             <input
               id="product-year"
               name="year"
-              required
-              placeholder="2002-2015"
+              placeholder="2002-2015 / 2012+"
               defaultValue={initialVehicle?.years}
               className={inputClass}
             />

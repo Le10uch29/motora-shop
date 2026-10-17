@@ -56,7 +56,6 @@ export default async function OrderPage({
     orderer.kind === "customer"
       ? [
           [dict.admin.organizationNameLabel, orderer.organizationName],
-          [dict.admin.idCardLabel, orderer.idCardNumber],
           [dict.admin.cityLabel, orderer.city],
           [dict.admin.addressLabel, orderer.address],
         ]
