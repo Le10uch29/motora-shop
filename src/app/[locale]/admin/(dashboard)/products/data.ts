@@ -130,6 +130,7 @@ export const PRODUCT_FILTERS = [
   "no_photo",
   "no_price",
   "no_vehicle",
+  "no_oem",
 ] as const;
 export type ProductFilter = (typeof PRODUCT_FILTERS)[number];
 
@@ -214,6 +215,9 @@ export async function getAdminProducts(
       break;
     case "no_vehicle":
       query = query.or("make.eq.universal,model.is.null,model.eq.");
+      break;
+    case "no_oem":
+      query = query.or("origin_code.is.null,origin_code.eq.");
       break;
   }
 

@@ -1,6 +1,6 @@
 "use client";
 
-const STORAGE_KEY = "araz-motors-theme";
+import { THEME_KEY, savePreference } from "@/lib/preferences";
 
 function SunIcon() {
   return (
@@ -22,11 +22,9 @@ function MoonIcon() {
 function toggleTheme() {
   const next = !document.documentElement.classList.contains("dark");
   document.documentElement.classList.toggle("dark", next);
-  try {
-    window.localStorage.setItem(STORAGE_KEY, next ? "dark" : "light");
-  } catch {
-    // Private browsing / storage disabled — theme just won't persist.
-  }
+  // И localStorage, и cookie: по cookie сервер сам отдаёт <html class="dark">,
+  // поэтому тема не слетает при смене языка и при новом заходе.
+  savePreference(THEME_KEY, next ? "dark" : "light");
 }
 
 export default function ThemeToggle({ ariaLabel }: { ariaLabel: string }) {
@@ -38,8 +36,8 @@ export default function ThemeToggle({ ariaLabel }: { ariaLabel: string }) {
       className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-zinc-200 text-zinc-700 transition-colors hover:border-orange-500 hover:text-orange-600 dark:border-zinc-700 dark:text-zinc-200"
     >
       {/* Which icon shows is driven purely by the .dark class already set
-          on <html> before first paint (see the blocking script in the root
-          layout) — no React state needed, so there's nothing to hydrate. */}
+          on <html> by the server (from the theme cookie) — no React state
+          needed, so there's nothing to hydrate. */}
       <span className="dark:hidden">
         <SunIcon />
       </span>

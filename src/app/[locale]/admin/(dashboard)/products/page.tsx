@@ -44,6 +44,7 @@ export default async function AdminProductsPage({
     no_photo: d.attentionNoPhoto,
     no_price: d.attentionNoPrice,
     no_vehicle: d.attentionNoVehicle,
+    no_oem: dict.admin.missingDataFilterOriginCode,
   };
   const filterHref = (next: ProductFilter | null) => {
     const params = new URLSearchParams();

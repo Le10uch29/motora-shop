@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { locales, type Locale } from "@/i18n/locales";
+import { LOCALE_KEY, savePreference } from "@/lib/preferences";
 
 // Transparent-background flag badges in /public — a native <select> can't
 // render <img> inside its <option> list (browsers just strip it), so this
@@ -43,6 +44,8 @@ export default function LanguageSwitcher({
 
   function select(target: Locale) {
     setOpen(false);
+    // Запоминаем выбор: при следующем заходе сайт сразу откроется на нём.
+    savePreference(LOCALE_KEY, target);
     if (target !== locale) router.push(pathFor(target));
   }
 

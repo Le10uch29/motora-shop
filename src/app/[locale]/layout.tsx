@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { notFound } from "next/navigation";
+import { cookies } from "next/headers";
+import { LOCALE_KEY, THEME_KEY } from "@/lib/preferences";
 import "../globals.css";
 import { CartProvider } from "@/context/CartContext";
 import { ConfirmProvider } from "@/context/ConfirmContext";
@@ -43,26 +45,32 @@ export default async function LocaleLayout({
   if (!isLocale(locale)) notFound();
 
   const supabase = await createClient();
-  const [user, dict] = await Promise.all([getAuthIdentity(supabase), getDictionary(locale)]);
+  const [user, dict, cookieStore] = await Promise.all([
+    getAuthIdentity(supabase),
+    getDictionary(locale),
+    cookies(),
+  ]);
+  // Тема приходит с сервера, из cookie: <html> рисуется заново при каждой
+  // смене языка, и класс, поставленный скриптом в браузере, при этом терялся —
+  // тёмная тема сбрасывалась на светлую.
+  const dark = cookieStore.get(THEME_KEY)?.value === "dark";
 
   return (
     <html
       lang={locale}
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-      // The blocking script below adds .dark to this element before React
-      // hydrates (that's the point — it prevents a light-then-dark flash for
-      // returning dark-theme visitors), so its class attribute legitimately
-      // differs from what was server-rendered. That's expected, not a bug.
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased${dark ? " dark" : ""}`}
+      // The script below may still add .dark before React hydrates (a visitor
+      // whose choice so far lives only in localStorage), so the class can
+      // legitimately differ from what was server-rendered.
       suppressHydrationWarning
     >
       <head>
-        {/* Runs before paint so a returning visitor who chose dark doesn't
-            flash light first — first-time visitors have nothing stored, so
-            this does nothing and they see the light theme, as intended. */}
+        {/* Посетитель, выбравший тему или язык до появления cookie, хранит
+            выбор только в localStorage: скрипт применяет тему до отрисовки и
+            переносит оба значения в cookie, чтобы дальше их знал и сервер. */}
         <script
           dangerouslySetInnerHTML={{
-            __html:
-              "try{if(localStorage.getItem('araz-motors-theme')==='dark'){document.documentElement.classList.add('dark')}}catch(e){}",
+            __html: `try{var y=31536000,c=document.cookie,t=localStorage.getItem('${THEME_KEY}'),l=localStorage.getItem('${LOCALE_KEY}');if(t==='dark'){document.documentElement.classList.add('dark')}if(t&&c.indexOf('${THEME_KEY}=')<0){document.cookie='${THEME_KEY}='+t+';path=/;max-age='+y+';samesite=lax'}if(l&&c.indexOf('${LOCALE_KEY}=')<0){document.cookie='${LOCALE_KEY}='+l+';path=/;max-age='+y+';samesite=lax'}}catch(e){}`,
           }}
         />
       </head>

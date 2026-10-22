@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { locales, defaultLocale } from "@/i18n/locales";
+import { locales, defaultLocale, isLocale } from "@/i18n/locales";
+import { LOCALE_KEY } from "@/lib/preferences";
 import { getAuthIdentity } from "@/lib/supabase/authUsers";
 
 export async function proxy(request: NextRequest) {
@@ -12,8 +13,12 @@ export async function proxy(request: NextRequest) {
   );
 
   if (!matchedLocale) {
+    // Язык, который посетитель выбрал сам в прошлый раз (cookie ставит
+    // переключатель языка), — иначе язык по умолчанию.
+    const saved = request.cookies.get(LOCALE_KEY)?.value;
+    const preferred = saved && isLocale(saved) ? saved : defaultLocale;
     const url = request.nextUrl.clone();
-    url.pathname = `/${defaultLocale}${pathname}`;
+    url.pathname = `/${preferred}${pathname === "/" ? "" : pathname}`;
     return NextResponse.redirect(url);
   }
 
