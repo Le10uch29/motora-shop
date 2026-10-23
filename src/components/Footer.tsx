@@ -2,6 +2,7 @@ import Link from "next/link";
 import { SHOP_CONTACTS, SITE_AUTHOR, emailHref, phoneHref } from "@/lib/contacts";
 import type { Locale } from "@/i18n/locales";
 import type { Dictionary } from "@/i18n/dictionary";
+import SiteLogo from "@/components/SiteLogo";
 
 /**
  * Подвал витрины: логотип, контакты и подпись автора.
@@ -30,11 +31,8 @@ export default function Footer({ locale, dict }: { locale: Locale; dict: Diction
     <footer className="mt-auto border-t border-zinc-300 bg-zinc-200 dark:border-zinc-700 dark:bg-zinc-800">
       <div className="mx-auto flex w-full max-w-[120rem] flex-col gap-8 px-4 py-10 sm:px-2">
         <div className="flex flex-col items-center gap-2 text-center">
-          <Link
-            href={`/${locale}`}
-            className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50"
-          >
-            ARAZ MOTORS<span>-2026</span>
+          <Link href={`/${locale}`} aria-label="ARAZ-MOTORS 2026">
+            <SiteLogo className="h-16" sizes="130px" />
           </Link>
           <p className="max-w-md text-sm text-zinc-600 dark:text-zinc-400">{dict.home.heroTitle}</p>
         </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type ReactNode } from "react";
+import { useCallback, useState, useTransition, type ReactNode } from "react";
 import { useConfirm } from "@/context/ConfirmContext";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -15,6 +15,7 @@ import ImportProductsModal from "./ImportProductsModal";
 import ImportConflictsModal from "./ImportConflictsModal";
 import MissingDataModal from "./MissingDataModal";
 import { RowActionLink, RowActionButton, EyeIcon, PencilIcon, TrashIcon } from "@/components/admin/RowActions";
+import RowMenu, { isInteractiveTarget } from "@/components/admin/RowMenu";
 import type { AdminProductRow, ProductSort, ProductSortKey } from "./data";
 import type { CategoryPickerNode } from "../categories/options";
 import { formatGel } from "@/lib/currency";
@@ -24,6 +25,23 @@ import type { Locale } from "@/i18n/locales";
 import { oemCodes, primaryOem } from "@/lib/oem";
 
 type SortKey = ProductSortKey;
+
+function WarehouseIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-4 w-4"
+    >
+      <path d="M3 9.5 12 4l9 5.5" />
+      <path d="M5 10v9a1 1 0 0 0 1 1h3v-6h6v6h3a1 1 0 0 0 1-1v-9" />
+    </svg>
+  );
+}
 type Sort = ProductSort;
 
 function SortableHeader({
@@ -103,6 +121,8 @@ export default function ProductsListClient({
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [pending, startTransition] = useTransition();
+  const [rowMenu, setRowMenu] = useState<{ row: AdminProductRow; x: number; y: number } | null>(null);
+  const closeRowMenu = useCallback(() => setRowMenu(null), []);
   const confirm = useConfirm();
   const router = useRouter();
   const pathname = usePathname();
@@ -324,9 +344,27 @@ export default function ProductsListClient({
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
               {displayRows.map((row) => (
-                <tr key={row.id}>
+                <tr
+                  key={row.id}
+                  tabIndex={0}
+                  aria-haspopup="menu"
+                  onClick={(event) => {
+                    if (isInteractiveTarget(event.target)) return;
+                    setRowMenu({ row, x: event.clientX, y: event.clientY });
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.target !== event.currentTarget) return;
+                    if (event.key !== "Enter" && event.key !== " ") return;
+                    event.preventDefault();
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    setRowMenu({ row, x: rect.left + 16, y: rect.bottom });
+                  }}
+                  className={`cursor-pointer transition-colors hover:bg-zinc-50 focus:bg-orange-50/60 focus:outline-none dark:hover:bg-zinc-900/60 dark:focus:bg-orange-950/20 ${
+                    rowMenu?.row.id === row.id ? "bg-orange-50/60 dark:bg-orange-950/20" : ""
+                  }`}
+                >
                   {isAdmin && (
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" data-row-menu-ignore>
                       <input
                         type="checkbox"
                         checked={selectedIds.has(row.id)}
@@ -369,7 +407,7 @@ export default function ProductsListClient({
                       {row.stock}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3" data-row-menu-ignore>
                     <div className="flex items-center justify-end gap-2">
                       <RowActionLink href={`/${locale}/admin/products/${row.id}`} label={dict.actionDetails}>
                         <EyeIcon />
@@ -380,18 +418,7 @@ export default function ProductsListClient({
                             label={dict.productWarehousesButtonLabel}
                             onClick={() => setWarehouseModalRow(row)}
                           >
-                            <svg
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth={1.5}
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              className="h-4 w-4"
-                            >
-                              <path d="M3 9.5 12 4l9 5.5" />
-                              <path d="M5 10v9a1 1 0 0 0 1 1h3v-6h6v6h3a1 1 0 0 0 1-1v-9" />
-                            </svg>
+                            <WarehouseIcon />
                           </RowActionButton>
                           <RowActionButton label={dict.actionEdit} onClick={() => openEdit(row)}>
                             <PencilIcon />
@@ -413,6 +440,44 @@ export default function ProductsListClient({
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Клик по строке — меню тех же действий, что и иконки справа. */}
+      {rowMenu && (
+        <RowMenu
+          x={rowMenu.x}
+          y={rowMenu.y}
+          onClose={closeRowMenu}
+          items={[
+            ...(isAdmin
+              ? [{ kind: "button" as const, label: dict.actionEdit, icon: <PencilIcon />, onClick: () => openEdit(rowMenu.row) }]
+              : []),
+            {
+              kind: "link" as const,
+              label: dict.actionDetails,
+              icon: <EyeIcon />,
+              href: `/${locale}/admin/products/${rowMenu.row.id}`,
+            },
+            ...(isAdmin
+              ? [
+                  {
+                    kind: "button" as const,
+                    label: dict.productWarehousesButtonLabel,
+                    icon: <WarehouseIcon />,
+                    onClick: () => setWarehouseModalRow(rowMenu.row),
+                  },
+                  {
+                    kind: "button" as const,
+                    label: dict.actionDelete,
+                    icon: <TrashIcon />,
+                    danger: true,
+                    disabled: pending,
+                    onClick: () => handleDelete(rowMenu.row),
+                  },
+                ]
+              : []),
+          ]}
+        />
       )}
 
       {modal && (

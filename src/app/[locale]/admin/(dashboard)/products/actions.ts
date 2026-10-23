@@ -21,6 +21,7 @@ import {
   type Fitment,
 } from "@/lib/fitments";
 import { mergeOem, normalizeOem, primaryOem } from "@/lib/oem";
+import { syncPopularFromProductFlag } from "@/lib/promotions";
 
 export type ProductActionState = { error: string | null };
 
@@ -277,6 +278,7 @@ export async function createProductAction(
   );
   if (categoryError) return { error: categoryError };
 
+  await syncPopularFromProductFlag(created.id, fields.isPopular);
   await logAction(actor, "create", "product", fields.name.ru, { entityId: created.id });
   revalidatePath(`/${locale}/admin/products`);
   revalidatePath(`/${locale}/catalog`);
@@ -343,6 +345,7 @@ export async function updateProductAction(
   );
   if (categoryError) return { error: categoryError };
 
+  await syncPopularFromProductFlag(id, fields.isPopular);
   await logAction(actor, "update", "product", fields.name.ru, { entityId: id });
   revalidatePath(`/${locale}/admin/products`);
   revalidatePath(`/${locale}/catalog`);

@@ -14,6 +14,7 @@ import CartIndicator from "@/components/CartIndicator";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import HeaderSearch from "@/components/HeaderSearch";
 import MobileMenu from "@/components/MobileMenu";
+import SiteLogo from "@/components/SiteLogo";
 
 export default async function Header({
   locale,
@@ -27,7 +28,6 @@ export default async function Header({
     { href: `/${locale}/promotions`, label: dict.header.promotions },
     { href: `/${locale}/about`, label: dict.header.about },
     { href: `/${locale}/brands`, label: dict.header.brands },
-    { href: `/${locale}/products`, label: dict.header.products },
     { href: `/${locale}/contacts`, label: dict.header.contacts },
   ];
 
@@ -47,16 +47,8 @@ export default async function Header({
   return (
     <header className="flame-header sticky top-0 z-30 border-b border-zinc-200 shadow-md shadow-black/5 backdrop-blur dark:border-zinc-800">
       <div className="relative mx-auto flex max-w-[120rem] items-center gap-3 px-4 py-4 sm:gap-4 sm:px-2">
-        <Link
-          href={`/${locale}`}
-          className="shrink-0 text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50"
-        >
-          <span className="sm:hidden">
-            ARAZ<span>-2026</span>
-          </span>
-          <span className="hidden sm:inline">
-            ARAZ MOTORS<span>-2026</span>
-          </span>
+        <Link href={`/${locale}`} className="shrink-0" aria-label="ARAZ-MOTORS 2026">
+          <SiteLogo className="h-9 sm:h-11" sizes="(min-width: 640px) 90px, 74px" />
         </Link>
         <div className="min-w-0 flex-1">
           <Suspense fallback={<div className="h-9 w-full rounded-full bg-zinc-100 dark:bg-zinc-800" />}>

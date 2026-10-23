@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getFeaturedProducts } from "@/lib/products";
+import { getFeaturedProducts, getProductsByIds } from "@/lib/products";
+import { getPromoIds, PROMO_LIMIT } from "@/lib/promotions";
 import { getBrands } from "@/lib/brands";
 import {
   getPublicCategoryTree,
@@ -17,13 +18,19 @@ export default async function Home({ params }: PageProps<"/[locale]">) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
   const dict = await getDictionary(locale);
-  const [brands, featured, tree, counts] = await Promise.all([
+  const [brands, popularIds, newIds, tree, counts] = await Promise.all([
     getBrands(),
-    // 15 — потолок ленты «Популярное»: больше одной прокрутки до конца никто
-    // не досматривает, а каждая карточка тянет своё фото.
-    getFeaturedProducts(15),
+    getPromoIds("popular"),
+    getPromoIds("new"),
     getPublicCategoryTree(),
     getCategoryProductCounts(),
+  ]);
+  // Обе ленты собирает админ в разделе «Акции» (до 15 товаров, в его
+  // порядке). «Популярное», которое ещё ни разу не сохраняли, по-старому
+  // берётся из галочки «популярный» у товаров.
+  const [featured, arrivals] = await Promise.all([
+    popularIds ? getProductsByIds(popularIds) : getFeaturedProducts(PROMO_LIMIT),
+    getProductsByIds(newIds ?? []),
   ]);
 
   // Every active category, whether or not anything is filed under it yet —
@@ -119,6 +126,28 @@ export default async function Home({ params }: PageProps<"/[locale]">) {
             }
           >
             {featured.map((product) => (
+              <ProductCard key={product.id} product={product} locale={locale} dict={dict} brands={brands} />
+            ))}
+          </FeaturedCarousel>
+        </section>
+      )}
+
+      {arrivals.length > 0 && (
+        <section className="mx-auto flex w-full max-w-[120rem] flex-col gap-6 px-2">
+          <FeaturedCarousel
+            title={dict.home.newArrivals}
+            labels={{ prev: dict.home.carouselPrev, next: dict.home.carouselNext }}
+            viewAllSlot={
+              <Link
+                key="viewAll"
+                href={`/${locale}/catalog`}
+                className="text-sm font-medium text-orange-600 hover:underline"
+              >
+                {dict.home.viewAll}
+              </Link>
+            }
+          >
+            {arrivals.map((product) => (
               <ProductCard key={product.id} product={product} locale={locale} dict={dict} brands={brands} />
             ))}
           </FeaturedCarousel>

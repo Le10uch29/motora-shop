@@ -1,26 +1,10 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { isLocale } from "@/i18n/locales";
-import { getDictionary } from "@/i18n/getDictionary";
-import Breadcrumbs from "@/components/Breadcrumbs";
 
-export default async function ProductsPage({
-  params,
-}: PageProps<"/[locale]/products">) {
+/** Пункта «Продукты» в меню больше нет — это был тот же каталог. Адрес
+ * оставлен, чтобы старые закладки и ссылки вели в «Весь каталог», а не на 404. */
+export default async function ProductsPage({ params }: PageProps<"/[locale]/products">) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
-  const dict = await getDictionary(locale);
-
-  return (
-    <main className="mx-auto flex w-full max-w-[120rem] flex-1 flex-col gap-4 px-2 py-10">
-      <Breadcrumbs
-        locale={locale}
-        labels={{ home: dict.catalog.breadcrumbHome, back: dict.catalog.backButton }}
-        items={[{ label: dict.header.products }]}
-      />
-      <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-        {dict.header.products}
-      </h1>
-      <p className="text-zinc-600 dark:text-zinc-400">{dict.pages.comingSoon}</p>
-    </main>
-  );
+  redirect(`/${locale}/catalog`);
 }

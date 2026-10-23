@@ -7,6 +7,7 @@ import { formatGel } from "@/lib/currency";
 import { productImageUrl } from "@/lib/productImageUrl";
 import PrintButton from "./PrintButton";
 import { primaryOem } from "@/lib/oem";
+import SiteLogo from "@/components/SiteLogo";
 
 const COMPANY_PHONE = "+995 577 46 66 11";
 
@@ -47,8 +48,8 @@ export default async function InvoicePage({
       <div className="grid grid-cols-1 gap-8 border-b border-zinc-200 pb-6 dark:border-zinc-800 print:border-black sm:grid-cols-2">
         {/* Company info — left side. */}
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 print:text-black">
-            ARAZ MOTORS<span>-2026</span>
+          <h1>
+            <SiteLogo className="h-16" sizes="130px" printable />
           </h1>
           <p className="mt-1 text-sm text-zinc-500 print:text-black">{dict.admin.invoiceTitle}</p>
           {(warehouseName || warehouseAddress) && (

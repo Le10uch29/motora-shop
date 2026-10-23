@@ -239,6 +239,17 @@ export const getFeaturedProducts = cache(async (limit = 4): Promise<Product[]> =
   return (items as unknown as ProductRow[]).map(mapRow);
 });
 
+/** Товары по списку id — в порядке списка (так их расставил админ в
+ * «Акциях»), но закончившиеся уходят в конец, как и везде на витрине.
+ * Удалённые товары просто пропускаются. */
+export async function getProductsByIds(ids: string[]): Promise<Product[]> {
+  if (ids.length === 0) return [];
+  const supabase = createPublicClient();
+  const { data } = await supabase.from("products").select(SELECT_COLUMNS).in("id", ids);
+  const byId = new Map(((data ?? []) as unknown as ProductRow[]).map((row) => [row.id, mapRow(row)]));
+  return inStockFirst(ids.map((id) => byId.get(id)).filter((p): p is Product => Boolean(p)));
+}
+
 // `!inner` makes PostgREST actually filter top-level rows by the embedded
 // resource's column — without it, .eq("brands.slug", …) is silently ignored.
 const SELECT_COLUMNS_BRAND_FILTER = SELECT_COLUMNS.replace("brands(slug)", "brands!inner(slug)");

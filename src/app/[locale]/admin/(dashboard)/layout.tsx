@@ -7,6 +7,7 @@ import { requireStaff } from "@/lib/auth";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import ThemeToggle from "@/components/ThemeToggle";
 import { signOutAction } from "./actions";
+import SiteLogo from "@/components/SiteLogo";
 
 export default async function AdminDashboardLayout({
   children,
@@ -27,6 +28,7 @@ export default async function AdminDashboardLayout({
     { href: `/${locale}/admin/warehouses`, label: dict.admin.navWarehouses, show: isAdmin },
     { href: `/${locale}/admin/products`, label: dict.admin.navProducts, show: true },
     { href: `/${locale}/admin/categories`, label: dict.admin.navCategories, show: isAdmin },
+    { href: `/${locale}/admin/promotions`, label: dict.admin.navPromotions, show: isAdmin },
     { href: `/${locale}/admin/orders`, label: dict.admin.navOrders, show: true },
     { href: `/${locale}/admin/logs`, label: dict.admin.navLogs, show: isAdmin },
   ];
@@ -34,11 +36,8 @@ export default async function AdminDashboardLayout({
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <header className="flame-header flex shrink-0 items-center justify-between border-b border-zinc-200 px-2 py-4 shadow-md shadow-black/5 dark:border-zinc-800 print:hidden">
-        <Link
-          href={`/${locale}`}
-          className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50"
-        >
-          ARAZ MOTORS<span>-2026</span>
+        <Link href={`/${locale}`} aria-label="ARAZ-MOTORS 2026">
+          <SiteLogo className="h-10" sizes="82px" />
         </Link>
         <div className="flex items-center gap-3">
           <Suspense fallback={<div className="h-8 w-[104px]" />}>
