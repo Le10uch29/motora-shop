@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthUserById } from "@/lib/supabase/authUsers";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, requireCustomerManager } from "@/lib/auth";
 import { logAction } from "@/lib/logs";
 import { generateTempPassword } from "@/lib/password";
 import { normalizePhone, normalizePhoneForAuth } from "@/lib/phone";
@@ -97,7 +97,8 @@ export async function createCustomerAction(
   formData: FormData
 ): Promise<CustomerActionState> {
   const locale = readLocale(formData);
-  const actor = await requireAdmin(locale);
+  // Добавлять покупателей может и старший продавец.
+  const actor = await requireCustomerManager(locale);
 
   const email = String(formData.get("email") ?? "").trim();
   const fields = readCustomerFields(formData);
@@ -282,6 +283,39 @@ export async function deleteCustomerAction(
   await logAction(actor, "delete", "customer", label, { entityId: id });
   revalidateCustomerPaths(locale);
   return { error: null };
+}
+
+/** Меняет пароль покупателю — админ или старший продавец.
+ *
+ * Пустой пароль — сгенерировать новый (как при создании покупателя). Новый
+ * пароль возвращается, чтобы показать его и передать покупателю: сам он его
+ * не знает. Остальные данные покупателя здесь не меняются — их правит
+ * только админ. */
+export async function changeCustomerPasswordAction(
+  locale: Locale,
+  id: string,
+  password: string
+): Promise<{ error: string | null; password: string | null }> {
+  const actor = await requireCustomerManager(locale);
+  const next = password.trim() || generateTempPassword();
+  if (next.length < 6) return { error: "password_too_short", password: null };
+
+  const admin = createAdminClient();
+  const { data: customer } = await admin
+    .from("customers")
+    .select("first_name, last_name")
+    .eq("id", id)
+    .maybeSingle();
+  if (!customer) return { error: "not_found", password: null };
+
+  const { error } = await admin.auth.admin.updateUserById(id, { password: next });
+  if (error) return { error: error.message, password: null };
+
+  await logAction(actor, "update", "customer", `${customer.first_name} ${customer.last_name}`.trim(), {
+    entityId: id,
+    details: { password: true },
+  });
+  return { error: null, password: next };
 }
 
 /** Товары, которые админ собрал в корзину вместо покупателя. */

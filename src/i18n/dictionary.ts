@@ -74,6 +74,11 @@ export type Dictionary = {
     roleLabel: string;
     roleAdmin: string;
     roleSeller: string;
+    roleSeniorSeller: string;
+    actionChangePassword: string;
+    customerPasswordTitle: string;
+    newPasswordHint: string;
+    passwordChangedTitle: string;
     identifierLabel: string;
     phoneOrEmailHint: string;
     customerEmailOptionalHint: string;

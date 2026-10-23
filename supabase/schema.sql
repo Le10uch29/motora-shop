@@ -714,3 +714,8 @@ where exists (
 -- Колонки остаются, чтобы ничего не сломать; у покупателей она больше не
 -- обязательна.
 alter table customers alter column id_card_number drop not null;
+
+-- Старший продавец: всё, что продавец, плюс раздел «Покупатели» — добавлять
+-- новых покупателей и менять им пароль. Права проверяет приложение
+-- (requireCustomerManager), в RLS он такой же сотрудник, как продавец.
+alter type staff_role add value if not exists 'senior_seller';

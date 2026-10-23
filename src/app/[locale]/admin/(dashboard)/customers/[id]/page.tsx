@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
-import { requireAdmin } from "@/lib/auth";
+import { requireCustomerManager } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthUserById } from "@/lib/supabase/authUsers";
 import { isPhoneAliasEmail } from "@/lib/phoneLogin";
@@ -17,7 +17,7 @@ export default async function CustomerDetailPage({
 }: PageProps<"/[locale]/admin/customers/[id]">) {
   const { locale, id } = await params;
   if (!isLocale(locale)) notFound();
-  await requireAdmin(locale);
+  const staff = await requireCustomerManager(locale);
   const dict = await getDictionary(locale);
 
   const admin = createAdminClient();
@@ -71,6 +71,7 @@ export default async function CustomerDetailPage({
         <CustomerDetailActions
           locale={locale}
           dict={dict.admin}
+          isAdmin={staff.role === "admin"}
           values={{
             id: row.id,
             email,

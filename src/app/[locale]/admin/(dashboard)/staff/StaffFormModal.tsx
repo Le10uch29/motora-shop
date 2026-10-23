@@ -184,6 +184,7 @@ export default function StaffFormModal({
             className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
           >
             <option value="seller">{dict.roleSeller}</option>
+            <option value="senior_seller">{dict.roleSeniorSeller}</option>
             <option value="admin">{dict.roleAdmin}</option>
           </select>
         </div>

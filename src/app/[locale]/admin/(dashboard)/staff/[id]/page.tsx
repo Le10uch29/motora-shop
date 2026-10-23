@@ -9,6 +9,7 @@ import { getWarehouseOptions } from "../../warehouses/data";
 import { actionLabel } from "../../logs/labels";
 import DetailsToggle, { type LogDetails } from "../../logs/DetailsToggle";
 import StaffDetailActions from "./StaffDetailActions";
+import { roleLabel } from "@/lib/roles";
 
 export default async function StaffDetailPage({
   params,
@@ -47,7 +48,7 @@ export default async function StaffDetailPage({
     [dict.admin.lastNameLabel, row.last_name],
     ["Email", authUser?.email ?? "—"],
     [dict.admin.phoneLabel, row.phone ?? "—"],
-    [dict.admin.roleLabel, row.role === "admin" ? dict.admin.roleAdmin : dict.admin.roleSeller],
+    [dict.admin.roleLabel, roleLabel(row.role, dict.admin)],
     [dict.admin.warehouseAssignedLabel, warehouseName || "—"],
     [dict.admin.tableId, row.id],
   ];

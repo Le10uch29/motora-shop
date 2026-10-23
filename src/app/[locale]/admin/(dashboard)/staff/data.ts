@@ -5,6 +5,7 @@ import { getWarehouseOptions } from "../warehouses/data";
 import type { StaffRow } from "./StaffListClient";
 
 export async function getStaffList(
+  /** «Продавцы» — это и продавцы, и старшие продавцы: один список. */
   role: "admin" | "seller",
   options: { query?: string; page?: number } = {}
 ): Promise<{ rows: StaffRow[]; total: number }> {
@@ -13,7 +14,7 @@ export async function getStaffList(
   const { data: staffRows } = await admin
     .from("staff")
     .select("id, first_name, last_name, phone, role, warehouse_id")
-    .eq("role", role)
+    .in("role", role === "admin" ? ["admin"] : ["seller", "senior_seller"])
     .order("created_at", { ascending: false });
 
   const authUsers = await listAllAuthUsers(admin);

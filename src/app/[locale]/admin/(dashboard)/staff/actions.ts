@@ -7,6 +7,7 @@ import { logAction } from "@/lib/logs";
 import { normalizePhone, normalizePhoneForAuth } from "@/lib/phone";
 import type { Locale } from "@/i18n/locales";
 import { isLocale } from "@/i18n/locales";
+import { isStaffRole } from "@/lib/roles";
 
 export type StaffActionState = { error: string | null };
 
@@ -22,7 +23,10 @@ function readStaffFields(formData: FormData) {
     firstName: String(formData.get("firstName") ?? "").trim(),
     lastName: String(formData.get("lastName") ?? "").trim(),
     phone: rawPhone ? normalizePhone(rawPhone) : null,
-    role: String(formData.get("role") ?? "seller") === "admin" ? "admin" : "seller",
+    role: (() => {
+      const raw = String(formData.get("role") ?? "seller");
+      return isStaffRole(raw) ? raw : "seller";
+    })(),
     warehouseId: String(formData.get("warehouseId") ?? "").trim() || null,
   };
 }

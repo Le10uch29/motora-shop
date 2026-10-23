@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { deleteCustomerAction } from "./actions";
 import CustomerFormModal, { type CustomerFormValues } from "./CustomerFormModal";
 import OrderForCustomerModal from "./OrderForCustomerModal";
-import { RowActionLink, RowActionButton, EyeIcon, PencilIcon, TrashIcon } from "@/components/admin/RowActions";
+import { RowActionLink, RowActionButton, EyeIcon, KeyIcon, PencilIcon, TrashIcon } from "@/components/admin/RowActions";
+import CustomerPasswordModal from "./CustomerPasswordModal";
 import type { Dictionary } from "@/i18n/dictionary";
 import type { Locale } from "@/i18n/locales";
 
@@ -26,12 +27,16 @@ export type CustomerRow = {
 export default function CustomerListClient({
   locale,
   dict,
+  isAdmin,
   customers,
   emptyMessage,
   searchSlot,
 }: {
   locale: Locale;
   dict: Dictionary["admin"];
+  /** Нет — старший продавец: добавляет покупателей и меняет пароль, но не
+   * правит, не удаляет и не оформляет заказ вместо покупателя. */
+  isAdmin: boolean;
   customers: CustomerRow[];
   emptyMessage: string;
   searchSlot?: ReactNode;
@@ -39,6 +44,7 @@ export default function CustomerListClient({
   const [modal, setModal] = useState<{ mode: "create" | "edit"; values?: CustomerFormValues } | null>(null);
   // Покупатель, за которого сейчас собирают заказ.
   const [orderFor, setOrderFor] = useState<CustomerRow | null>(null);
+  const [passwordFor, setPasswordFor] = useState<CustomerRow | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const confirm = useConfirm();
@@ -96,7 +102,7 @@ export default function CustomerListClient({
           <table className="w-full min-w-[860px] text-left text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
               <tr>
-                <th className="px-4 py-3 font-medium" />
+                {isAdmin && <th className="px-4 py-3 font-medium" />}
                 <th className="px-4 py-3 font-medium">{dict.tableName}</th>
                 <th className="px-4 py-3 font-medium">{dict.tableOrganization}</th>
                 <th className="px-4 py-3 font-medium">{dict.tablePhone}</th>
@@ -111,6 +117,7 @@ export default function CustomerListClient({
                       покупателя». Фотографии покупателей из проекта убраны, и
                       столбец стоял пустыми кружками; сюда же она и просится,
                       рядом с именем того, за кого оформляют. */}
+                  {isAdmin && (
                   <td className="px-4 py-3">
                     <button
                       type="button"
@@ -134,6 +141,7 @@ export default function CustomerListClient({
                       </svg>
                     </button>
                   </td>
+                  )}
                   <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50">
                     {row.firstName} {row.lastName}
                   </td>
@@ -145,17 +153,24 @@ export default function CustomerListClient({
                       <RowActionLink href={`/${locale}/admin/customers/${row.id}`} label={dict.actionDetails}>
                         <EyeIcon />
                       </RowActionLink>
-                      <RowActionButton label={dict.actionEdit} onClick={() => setModal({ mode: "edit", values: row })}>
-                        <PencilIcon />
+                      <RowActionButton label={dict.actionChangePassword} onClick={() => setPasswordFor(row)}>
+                        <KeyIcon />
                       </RowActionButton>
-                      <RowActionButton
-                        label={dict.actionDelete}
-                        disabled={pending}
-                        danger
-                        onClick={() => handleDelete(row)}
-                      >
-                        <TrashIcon />
-                      </RowActionButton>
+                      {isAdmin && (
+                        <>
+                          <RowActionButton label={dict.actionEdit} onClick={() => setModal({ mode: "edit", values: row })}>
+                            <PencilIcon />
+                          </RowActionButton>
+                          <RowActionButton
+                            label={dict.actionDelete}
+                            disabled={pending}
+                            danger
+                            onClick={() => handleDelete(row)}
+                          >
+                            <TrashIcon />
+                          </RowActionButton>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -163,6 +178,15 @@ export default function CustomerListClient({
             </tbody>
           </table>
         </div>
+      )}
+
+      {passwordFor && (
+        <CustomerPasswordModal
+          locale={locale}
+          dict={dict}
+          customer={{ id: passwordFor.id, name: `${passwordFor.firstName} ${passwordFor.lastName}`.trim() }}
+          onClose={() => setPasswordFor(null)}
+        />
       )}
 
       {orderFor && (

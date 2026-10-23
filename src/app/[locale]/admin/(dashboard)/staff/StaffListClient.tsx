@@ -7,6 +7,7 @@ import StaffFormModal, { type StaffFormValues } from "./StaffFormModal";
 import { RowActionLink, RowActionButton, EyeIcon, PencilIcon, XCircleIcon } from "@/components/admin/RowActions";
 import type { Dictionary } from "@/i18n/dictionary";
 import type { Locale } from "@/i18n/locales";
+import { roleLabel, type StaffRole } from "@/lib/roles";
 
 export type StaffRow = {
   id: string;
@@ -14,7 +15,7 @@ export type StaffRow = {
   firstName: string;
   lastName: string;
   phone: string;
-  role: "admin" | "seller";
+  role: StaffRole;
   warehouseId: string;
   warehouseName: string;
 };
@@ -118,7 +119,7 @@ export default function StaffListClient({
                   <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{row.email}</td>
                   <td className="px-4 py-3 text-xs text-zinc-400">{row.id}</td>
                   <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                    {row.role === "admin" ? dict.roleAdmin : dict.roleSeller}
+                    {roleLabel(row.role, dict)}
                   </td>
                   <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{row.warehouseName || "—"}</td>
                   <td className="px-4 py-3">

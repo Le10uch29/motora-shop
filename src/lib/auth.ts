@@ -3,8 +3,9 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthIdentity } from "@/lib/supabase/authUsers";
 import type { Locale } from "@/i18n/locales";
+import { canManageCustomers, type StaffRole } from "@/lib/roles";
 
-export type StaffRole = "admin" | "seller";
+export type { StaffRole };
 
 export type CurrentStaff = {
   id: string;
@@ -47,6 +48,14 @@ export const getCurrentStaff = cache(async function getCurrentStaff(): Promise<C
 export async function requireStaff(locale: Locale): Promise<CurrentStaff> {
   const staff = await getCurrentStaff();
   if (!staff) redirect(`/${locale}/admin/login`);
+  return staff;
+}
+
+/** Админ или старший продавец — раздел «Покупатели» (добавить покупателя,
+ * сменить пароль). Остальных отправляет на главную панели. */
+export async function requireCustomerManager(locale: Locale): Promise<CurrentStaff> {
+  const staff = await requireStaff(locale);
+  if (!canManageCustomers(staff.role)) redirect(`/${locale}/admin`);
   return staff;
 }
 

@@ -49,6 +49,7 @@ import {
   UsersIcon,
 } from "@/components/admin/dashboard/icons";
 import type { Dictionary } from "@/i18n/dictionary";
+import { roleLabel } from "@/lib/roles";
 
 type Dash = Dictionary["dashboard"];
 
@@ -119,7 +120,7 @@ export default async function AdminDashboardPage({
           </h1>
           <p className="text-zinc-500">
             {greeting(d)}, {staff.firstName} ·{" "}
-            {isAdmin ? dict.admin.roleAdmin : dict.admin.roleSeller}
+            {roleLabel(staff.role, dict.admin)}
           </p>
         </div>
         <PeriodTabs

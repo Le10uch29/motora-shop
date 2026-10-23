@@ -8,6 +8,7 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import ThemeToggle from "@/components/ThemeToggle";
 import { signOutAction } from "./actions";
 import SiteLogo from "@/components/SiteLogo";
+import { canManageCustomers, roleLabel } from "@/lib/roles";
 
 export default async function AdminDashboardLayout({
   children,
@@ -23,7 +24,8 @@ export default async function AdminDashboardLayout({
     { href: `/${locale}/admin`, label: dict.admin.navDashboard, show: true },
     { href: `/${locale}/admin/staff/admins`, label: dict.admin.navStaffAdmins, show: isAdmin },
     { href: `/${locale}/admin/staff/sellers`, label: dict.admin.navStaffSellers, show: isAdmin },
-    { href: `/${locale}/admin/customers`, label: dict.admin.navCustomers, show: isAdmin },
+    // Старший продавец тоже: добавляет покупателей и меняет им пароль.
+    { href: `/${locale}/admin/customers`, label: dict.admin.navCustomers, show: canManageCustomers(staff.role) },
     { href: `/${locale}/admin/brands`, label: dict.admin.navBrands, show: isAdmin },
     { href: `/${locale}/admin/warehouses`, label: dict.admin.navWarehouses, show: isAdmin },
     { href: `/${locale}/admin/products`, label: dict.admin.navProducts, show: true },
@@ -75,7 +77,7 @@ export default async function AdminDashboardLayout({
           <div className="mt-auto flex flex-col gap-1 border-t border-zinc-200 pt-4 text-sm dark:border-zinc-800">
             <span className="px-3 pb-1 text-xs text-zinc-500">
               {staff.firstName} {staff.lastName} ·{" "}
-              {isAdmin ? dict.admin.roleAdmin : dict.admin.roleSeller}
+              {roleLabel(staff.role, dict.admin)}
             </span>
             <Link
               href={`/${locale}/admin/account`}

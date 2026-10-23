@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
-import { requireAdmin } from "@/lib/auth";
+import { requireCustomerManager } from "@/lib/auth";
 import { single } from "@/lib/searchParams";
 import { getCustomersList } from "./data";
 import CustomerListClient from "./CustomerListClient";
@@ -14,7 +14,7 @@ export default async function CustomersPage({
 }: PageProps<"/[locale]/admin/customers">) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
-  await requireAdmin(locale);
+  const staff = await requireCustomerManager(locale);
   const dict = await getDictionary(locale);
 
   const sp = await searchParams;
@@ -28,6 +28,7 @@ export default async function CustomersPage({
       <CustomerListClient
         locale={locale}
         dict={dict.admin}
+        isAdmin={staff.role === "admin"}
         customers={rows}
         emptyMessage={query ? dict.admin.noResults : dict.admin.emptyCustomers}
         searchSlot={
