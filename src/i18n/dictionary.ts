@@ -641,6 +641,12 @@ export type Dictionary = {
     clear: string;
     confirmRemoveItem: string;
     confirmClear: string;
+    orderedTitle: string;
+    orderedHint: string;
+    orderNumberLabel: string;
+    orderPlacedNotice: string;
+    confirmRemoveOrdered: string;
+    loading: string;
     checkout: string;
     orderPlaced: string;
     orderError: string;

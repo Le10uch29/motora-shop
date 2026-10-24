@@ -4,139 +4,81 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
-  useSyncExternalStore,
+  useRef,
+  useState,
   type ReactNode,
 } from "react";
+import {
+  clearCartAction,
+  getCartAction,
+  importLocalCartAction,
+  removeOrderedCartItemAction,
+  setCartItemAction,
+  type CartItem,
+  type CartSnapshot,
+  type OrderedCartItem,
+} from "@/lib/actions/cart";
 
-export type CartItem = {
-  productId: string;
-  quantity: number;
-};
-
-type CartState = {
-  items: CartItem[];
-  // Whether the current cart contents were just submitted as an order.
-  // Reset to false any time the cart itself changes.
-  orderPlaced: boolean;
-};
+export type { CartItem, OrderedCartItem };
 
 type CartContextValue = {
+  /** Что лежит в корзине и уйдёт в следующий заказ. */
   items: CartItem[];
+  /** Уже заказанное — остаётся в корзине 3 дня, потом удаляется само. */
+  ordered: OrderedCartItem[];
+  /** Корзина уже пришла с сервера (до этого она пустая не потому, что пустая). */
+  loaded: boolean;
+  /** Заказ только что оформлен — до следующего изменения корзины. */
   orderPlaced: boolean;
   addItem: (productId: string, quantity?: number) => void;
   removeItem: (productId: string) => void;
   setQuantity: (productId: string, quantity: number) => void;
+  removeOrdered: (id: string) => void;
   clear: () => void;
+  /** Вызывается после успешного оформления: перечитывает корзину. */
   markOrdered: () => void;
   totalItems: number;
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
-const EMPTY_STATE: CartState = { items: [], orderPlaced: false };
+const EMPTY: CartSnapshot = { items: [], ordered: [] };
 
-// Keyed per logged-in user so one browser can't leak an admin's test cart
-// into a customer's session (or vice versa) after switching accounts.
-function storageKeyFor(userId: string | null): string {
-  return `araz-motors-cart:${userId ?? "anon"}`;
+/** Ключ, под которым корзина лежала в localStorage до переезда на сервер. */
+function legacyStorageKey(userId: string): string {
+  return `araz-motors-cart:${userId}`;
 }
 
-/* ------------------------------------------------------------------------ *
- * Корзина как внешнее хранилище.
- *
- * Она живёт в localStorage, а не в React, и подписка на неё сделана через
- * useSyncExternalStore — штатный для этого случая API. Раньше чтение стояло в
- * useEffect с setState внутри: React рисовал провайдер с пустой корзиной,
- * эффект срабатывал и тут же вызывал второй проход. Кроме лишнего прохода это
- * давало и настоящую ловушку — при смене аккаунта состояние предыдущего
- * пользователя успевало записаться в ключ нового, и от неё приходилось
- * защищаться отдельным флагом hydratedKey.
- *
- * Здесь состояние не хранится дважды: оно выводится из localStorage по ключу,
- * поэтому у чужого ключа нечему протечь, а запись в хранилище происходит
- * только при настоящем изменении.
- * ------------------------------------------------------------------------ */
-
-const listeners = new Set<() => void>();
-
-function emit() {
-  for (const listener of listeners) listener();
-}
-
-/** Подписка на изменения. Событие `storage` браузер шлёт только в *другие*
- * вкладки, поэтому оно даёт синхронизацию между ними, а свои изменения
- * рассылает emit() после записи. */
-function subscribe(listener: () => void): () => void {
-  listeners.add(listener);
-  if (listeners.size === 1) window.addEventListener("storage", emit);
-  return () => {
-    listeners.delete(listener);
-    if (listeners.size === 0) window.removeEventListener("storage", emit);
-  };
-}
-
-function parseState(raw: string | null): CartState {
-  if (!raw) return EMPTY_STATE;
+function readLegacyCart(userId: string): CartItem[] {
   try {
+    const raw = window.localStorage.getItem(legacyStorageKey(userId));
+    if (!raw) return [];
     const parsed = JSON.parse(raw);
-    // Старые сохранённые корзины были просто массивом позиций — до того, как
-    // появился orderPlaced.
     const items: unknown = Array.isArray(parsed) ? parsed : parsed?.items;
-    if (!Array.isArray(items)) return EMPTY_STATE;
-    // Хранилище правит кто угодно через консоль браузера, поэтому форму строк
-    // проверяем, а не принимаем на веру.
-    const clean = items.filter(
+    // Заказанная тогда корзина (orderPlaced) переносить не нужно — она уже заказ.
+    if (!Array.isArray(items) || (!Array.isArray(parsed) && parsed?.orderPlaced)) return [];
+    return items.filter(
       (item): item is CartItem =>
         typeof item?.productId === "string" && Number.isFinite(item?.quantity) && item.quantity > 0
     );
-    return { items: clean, orderPlaced: Array.isArray(parsed) ? false : Boolean(parsed?.orderPlaced) };
   } catch {
-    return EMPTY_STATE;
+    return [];
   }
 }
 
-// useSyncExternalStore сравнивает снимки по ссылке и зациклится, если каждый
-// раз отдавать новый объект. Поэтому разобранное значение кэшируется, пока в
-// хранилище лежит ровно та же строка.
-let cachedKey: string | null = null;
-let cachedRaw: string | null = null;
-let cachedState: CartState = EMPTY_STATE;
-
-function readState(storageKey: string): CartState {
-  let raw: string | null = null;
-  try {
-    raw = window.localStorage.getItem(storageKey);
-  } catch {
-    // Приватный режим или запрет на хранилище — корзина просто не переживёт
-    // перезагрузку, но работать не перестанет.
-    raw = null;
-  }
-  if (storageKey === cachedKey && raw === cachedRaw) return cachedState;
-  cachedKey = storageKey;
-  cachedRaw = raw;
-  cachedState = parseState(raw);
-  return cachedState;
-}
-
-function writeState(storageKey: string, next: CartState) {
-  const raw = JSON.stringify(next);
-  try {
-    window.localStorage.setItem(storageKey, raw);
-  } catch {
-    // Записать не вышло — корзина всё равно обновится в этой вкладке.
-  }
-  cachedKey = storageKey;
-  cachedRaw = raw;
-  cachedState = next;
-  emit();
-}
-
-/** Снимок для сервера: там localStorage нет, и корзина у любого посетителя
- * одинаково пустая. Ссылка постоянная — этого требует useSyncExternalStore. */
-function getServerState(): CartState {
-  return EMPTY_STATE;
-}
-
+/**
+ * Корзина пользователя. Хранится на сервере (таблица cart_items), поэтому
+ * одна и та же — в любом браузере и на любом устройстве, где он вошёл.
+ *
+ * Изменения показываются сразу (не дожидаясь ответа), а на сервер уходят по
+ * очереди, одно за другим: иначе быстрые нажатия «+» могли бы прийти в
+ * другом порядке и оставить не то количество. Если сервер ответил ошибкой,
+ * корзина перечитывается и показывает то, что там на самом деле.
+ *
+ * Корзина перечитывается и при возвращении на вкладку — так видно, что
+ * поменяли на другом устройстве.
+ */
 export function CartProvider({
   userId,
   children,
@@ -144,87 +86,151 @@ export function CartProvider({
   userId: string | null;
   children: ReactNode;
 }) {
-  const storageKey = storageKeyFor(userId);
-  const getState = useCallback(() => readState(storageKey), [storageKey]);
-  const state = useSyncExternalStore(subscribe, getState, getServerState);
+  const [snapshot, setSnapshot] = useState<CartSnapshot>(EMPTY);
+  const [loaded, setLoaded] = useState(false);
+  const [orderPlaced, setOrderPlaced] = useState(false);
+  const queueRef = useRef<Promise<unknown>>(Promise.resolve());
+  /** Растёт с каждым локальным изменением: перечитанная корзина, запрошенная
+   * до него, уже устарела и не должна затирать то, что человек только что
+   * сделал. */
+  const versionRef = useRef(0);
 
-  const update = useCallback(
-    (recipe: (prev: CartState) => CartState) => {
-      // Исходное состояние читается из хранилища, а не из замыкания: соседняя
-      // вкладка могла изменить корзину уже после этого рендера.
-      writeState(storageKey, recipe(readState(storageKey)));
+  const refresh = useCallback(() => {
+    if (!userId) return;
+    const version = versionRef.current;
+    getCartAction()
+      .then((next) => {
+        if (versionRef.current !== version) return;
+        setSnapshot(next);
+        setLoaded(true);
+      })
+      .catch(() => setLoaded(true));
+  }, [userId]);
+
+  const enqueue = useCallback(
+    (run: () => Promise<{ error: string | null }>) => {
+      versionRef.current++;
+      queueRef.current = queueRef.current
+        .then(run)
+        .then((result) => {
+          if (result.error) refresh();
+        })
+        .catch(() => refresh());
     },
-    [storageKey]
+    [refresh]
   );
+
+  // Первая загрузка: перенос старой корзины из localStorage (один раз) и
+  // чтение корзины с сервера.
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    const legacy = readLegacyCart(userId);
+    const start = legacy.length > 0 ? importLocalCartAction(legacy) : Promise.resolve({ error: null });
+    start
+      .then((result) => {
+        if (!result.error) {
+          try {
+            window.localStorage.removeItem(legacyStorageKey(userId));
+          } catch {
+            // Не удалилось — при следующем заходе просто ничего не добавится сверху.
+          }
+        }
+      })
+      .finally(() => {
+        if (!cancelled) refresh();
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, refresh]);
+
+  // Вернулись на вкладку — корзину могли поменять на другом устройстве.
+  useEffect(() => {
+    if (!userId) return;
+    function handleVisible() {
+      if (document.visibilityState === "visible") refresh();
+    }
+    document.addEventListener("visibilitychange", handleVisible);
+    return () => document.removeEventListener("visibilitychange", handleVisible);
+  }, [userId, refresh]);
+
+  const changeItems = useCallback((recipe: (items: CartItem[]) => CartItem[]) => {
+    setOrderPlaced(false);
+    setSnapshot((prev) => ({ ...prev, items: recipe(prev.items) }));
+  }, []);
 
   const addItem = useCallback(
     (productId: string, quantity = 1) => {
-      update((prev) => {
-        // После оформленного заказа корзина начинается заново. Позиции в ней
-        // остаются только ради экрана подтверждения; без этого сброса
-        // следующая покупка уехала бы вместе с уже заказанным — то есть
-        // отправилась бы вторым таким же заказом.
-        if (prev.orderPlaced) return { items: [{ productId, quantity }], orderPlaced: false };
-
-        const existing = prev.items.find((item) => item.productId === productId);
-        const items = existing
-          ? prev.items.map((item) =>
+      changeItems((items) =>
+        items.some((item) => item.productId === productId)
+          ? items.map((item) =>
               item.productId === productId ? { ...item, quantity: item.quantity + quantity } : item
             )
-          : [...prev.items, { productId, quantity }];
-        return { items, orderPlaced: false };
-      });
+          : [...items, { productId, quantity }]
+      );
+      enqueue(() => setCartItemAction(productId, quantity, true));
     },
-    [update]
-  );
-
-  const removeItem = useCallback(
-    (productId: string) => {
-      update((prev) => ({
-        items: prev.items.filter((item) => item.productId !== productId),
-        orderPlaced: false,
-      }));
-    },
-    [update]
+    [changeItems, enqueue]
   );
 
   const setQuantity = useCallback(
     (productId: string, quantity: number) => {
-      update((prev) => ({
-        items:
-          quantity <= 0
-            ? prev.items.filter((item) => item.productId !== productId)
-            : prev.items.map((item) =>
-                item.productId === productId ? { ...item, quantity } : item
-              ),
-        orderPlaced: false,
-      }));
+      changeItems((items) =>
+        quantity <= 0
+          ? items.filter((item) => item.productId !== productId)
+          : items.map((item) => (item.productId === productId ? { ...item, quantity } : item))
+      );
+      enqueue(() => setCartItemAction(productId, quantity));
     },
-    [update]
+    [changeItems, enqueue]
   );
 
-  const clear = useCallback(() => update(() => EMPTY_STATE), [update]);
+  const removeItem = useCallback(
+    (productId: string) => {
+      changeItems((items) => items.filter((item) => item.productId !== productId));
+      enqueue(() => setCartItemAction(productId, 0));
+    },
+    [changeItems, enqueue]
+  );
+
+  const clear = useCallback(() => {
+    changeItems(() => []);
+    enqueue(() => clearCartAction());
+  }, [changeItems, enqueue]);
+
+  const removeOrdered = useCallback(
+    (id: string) => {
+      setSnapshot((prev) => ({ ...prev, ordered: prev.ordered.filter((item) => item.id !== id) }));
+      enqueue(() => removeOrderedCartItemAction(id));
+    },
+    [enqueue]
+  );
 
   const markOrdered = useCallback(() => {
-    update((prev) => ({ ...prev, orderPlaced: true }));
-  }, [update]);
+    setOrderPlaced(true);
+    refresh();
+  }, [refresh]);
 
   // Count of distinct products in the cart, not the sum of their quantities
   // (30 units of one part should show as 1, not 30).
-  const totalItems = state.items.length;
+  const totalItems = snapshot.items.length;
 
   const value = useMemo(
     () => ({
-      items: state.items,
-      orderPlaced: state.orderPlaced,
+      items: snapshot.items,
+      ordered: snapshot.ordered,
+      loaded,
+      orderPlaced,
       addItem,
       removeItem,
       setQuantity,
+      removeOrdered,
       clear,
       markOrdered,
       totalItems,
     }),
-    [state, addItem, removeItem, setQuantity, clear, markOrdered, totalItems]
+    [snapshot, loaded, orderPlaced, addItem, removeItem, setQuantity, removeOrdered, clear, markOrdered, totalItems]
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

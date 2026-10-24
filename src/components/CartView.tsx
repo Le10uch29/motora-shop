@@ -35,7 +35,8 @@ export default function CartView({
    * переживают границу сервер→клиент. */
   breadcrumbs?: ReactNode;
 }) {
-  const { items, setQuantity, removeItem, clear, orderPlaced, markOrdered } = useCart();
+  const { items, ordered, loaded, setQuantity, removeItem, removeOrdered, clear, orderPlaced, markOrdered } =
+    useCart();
   const [orderError, setOrderError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const confirm = useConfirm();
@@ -44,6 +45,15 @@ export default function CartView({
     const details = [product.productCode, t(product.name, locale)].filter(Boolean).join(" · ");
     if (await confirm({ message: dict.confirmRemoveItem, details, irreversible: false })) {
       removeItem(product.id);
+    }
+  }
+
+  async function handleRemoveOrdered(id: string, product: CartProductSummary | undefined) {
+    const details = product
+      ? [product.productCode, t(product.name, locale)].filter(Boolean).join(" · ")
+      : undefined;
+    if (await confirm({ message: dict.confirmRemoveOrdered, details, irreversible: false })) {
+      removeOrdered(id);
     }
   }
 
@@ -67,16 +77,17 @@ export default function CartView({
   // drop it from the stored cart too, not just this render, so the header
   // badge and a fresh page load agree with what's actually orderable.
   useEffect(() => {
+    if (!loaded) return;
     for (const item of items) {
       const product = products.find((p) => p.id === item.productId);
       if (!product || product.stock <= 0) removeItem(item.productId);
     }
-  }, [items, products, removeItem]);
+  }, [loaded, items, products, removeItem]);
 
   function handleCheckout() {
     setOrderError(null);
     startTransition(async () => {
-      const result = await placeOrderAction(items);
+      const result = await placeOrderAction();
       if (result.error) {
         setOrderError(orderErrorText(result.error, dict));
         return;
@@ -85,7 +96,16 @@ export default function CartView({
     });
   }
 
-  if (rows.length === 0) {
+  if (!loaded) {
+    return (
+      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center gap-4 px-2 py-24 text-center">
+        {breadcrumbs}
+        <p className="text-zinc-500">{dict.loading}</p>
+      </main>
+    );
+  }
+
+  if (rows.length === 0 && ordered.length === 0) {
     return (
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center gap-4 px-2 py-24 text-center">
         {breadcrumbs}
@@ -110,105 +130,185 @@ export default function CartView({
         {dict.title}
       </h1>
 
-      <ul className="flex flex-col gap-4">
-        {rows.map(({ item, product }) => (
-          <li
-            key={item.productId}
-            className="flex items-center gap-4 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
-          >
-            <Link
-              href={`/${locale}/catalog/${product.slug}`}
-              className="h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800"
-            >
-              {product.image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={productImageUrl(product.image, "thumb")}
-                  alt=""
-                  className="h-full w-full object-fill"
-                  loading="lazy"
-                  decoding="async"
-                />
-              ) : (
-                <ProductVisual className="h-full w-full" />
-              )}
-            </Link>
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <Link
-                href={`/${locale}/catalog/${product.slug}`}
-                className="font-semibold text-zinc-900 hover:text-orange-600 dark:text-zinc-50"
+      {orderPlaced && (
+        <p className="rounded-xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
+          {dict.orderPlacedNotice}
+        </p>
+      )}
+
+      {rows.length === 0 ? (
+        <p className="text-zinc-500">
+          {dict.emptyTitle}.{" "}
+          <Link href={`/${locale}/catalog`} className="font-medium text-orange-600 hover:underline">
+            {dict.goToCatalog}
+          </Link>
+        </p>
+      ) : (
+        <>
+          <ul className="flex flex-col gap-4">
+            {rows.map(({ item, product }) => (
+              <li
+                key={item.productId}
+                className="flex items-center gap-4 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
               >
-                {t(product.name, locale)}
-              </Link>
-              {/* Код продукта виден прямо в строке, а не только в карточке:
-                  названия деталей повторяются, и покупатель сверяет заказ
-                  именно по коду. */}
-              {product.productCode && (
-                <span className="font-mono text-xs text-zinc-500 dark:text-zinc-400">
-                  {dict.productCodeLabel}: {product.productCode}
+                <Link
+                  href={`/${locale}/catalog/${product.slug}`}
+                  className="h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800"
+                >
+                  {product.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={productImageUrl(product.image, "thumb")}
+                      alt=""
+                      className="h-full w-full object-fill"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  ) : (
+                    <ProductVisual className="h-full w-full" />
+                  )}
+                </Link>
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <Link
+                    href={`/${locale}/catalog/${product.slug}`}
+                    className="font-semibold text-zinc-900 hover:text-orange-600 dark:text-zinc-50"
+                  >
+                    {t(product.name, locale)}
+                  </Link>
+                  {/* Код продукта виден прямо в строке, а не только в карточке:
+                      названия деталей повторяются, и покупатель сверяет заказ
+                      именно по коду. */}
+                  {product.productCode && (
+                    <span className="font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                      {dict.productCodeLabel}: {product.productCode}
+                    </span>
+                  )}
+                  <span className="text-sm text-zinc-500">{formatGel(product.price, locale)}</span>
+                </div>
+                {/* Потолка здесь нет намеренно: корзина и раньше позволяла заказать
+                    больше, чем лежит на складе — это оптовый магазин, недостающее
+                    довозят. Ограничение появилось бы только из-за поля ввода, а
+                    менять правила заказа ради него незачем. */}
+                <QuantityField
+                  value={item.quantity}
+                  onChange={(next) => setQuantity(item.productId, next)}
+                  labels={{
+                    decreaseAria: dict.decreaseAria,
+                    increaseAria: dict.increaseAria,
+                    inputAria: dict.quantityLabel,
+                  }}
+                />
+                <span className="w-28 text-right font-semibold text-zinc-900 dark:text-zinc-50">
+                  {formatGel(product.price * item.quantity, locale)}
                 </span>
-              )}
-              <span className="text-sm text-zinc-500">{formatGel(product.price, locale)}</span>
+                <button
+                  type="button"
+                  aria-label={dict.removeAria}
+                  onClick={() => handleRemove(product)}
+                  className="text-zinc-400 transition-colors hover:text-red-600"
+                >
+                  ✕
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          <div className="flex flex-col items-end gap-4 border-t border-zinc-200 pt-6 dark:border-zinc-800">
+            <div className="flex items-baseline gap-3 text-lg">
+              <span className="text-zinc-600 dark:text-zinc-400">{dict.total}</span>
+              <span className="font-bold text-zinc-900 dark:text-zinc-50">
+                {formatGel(totalPrice, locale)}
+              </span>
             </div>
-            {/* Потолка здесь нет намеренно: корзина и раньше позволяла заказать
-                больше, чем лежит на складе — это оптовый магазин, недостающее
-                довозят. Ограничение появилось бы только из-за поля ввода, а
-                менять правила заказа ради него незачем. */}
-            <QuantityField
-              value={item.quantity}
-              onChange={(next) => setQuantity(item.productId, next)}
-              labels={{
-                decreaseAria: dict.decreaseAria,
-                increaseAria: dict.increaseAria,
-                inputAria: dict.quantityLabel,
-              }}
-            />
-            <span className="w-28 text-right font-semibold text-zinc-900 dark:text-zinc-50">
-              {formatGel(product.price * item.quantity, locale)}
-            </span>
-            <button
-              type="button"
-              aria-label={dict.removeAria}
-              onClick={() => handleRemove(product)}
-              className="text-zinc-400 transition-colors hover:text-red-600"
-            >
-              ✕
-            </button>
-          </li>
-        ))}
-      </ul>
+            {orderError && <p className="text-sm text-red-600">{orderError}</p>}
 
-      <div className="flex flex-col items-end gap-4 border-t border-zinc-200 pt-6 dark:border-zinc-800">
-        <div className="flex items-baseline gap-3 text-lg">
-          <span className="text-zinc-600 dark:text-zinc-400">{dict.total}</span>
-          <span className="font-bold text-zinc-900 dark:text-zinc-50">
-            {formatGel(totalPrice, locale)}
-          </span>
-        </div>
-        {orderError && <p className="text-sm text-red-600">{orderError}</p>}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={handleClear}
+                className="rounded-full border border-zinc-200 px-5 py-2.5 text-sm font-medium text-zinc-600 transition-colors hover:border-red-400 hover:text-red-600 dark:border-zinc-700 dark:text-zinc-300"
+              >
+                {dict.clear}
+              </button>
+              <button
+                type="button"
+                onClick={handleCheckout}
+                disabled={pending || orderPlaced}
+                className={
+                  orderPlaced
+                    ? "cursor-default rounded-full bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white"
+                    : "rounded-full bg-orange-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-orange-500 disabled:opacity-60"
+                }
+              >
+                {orderPlaced ? dict.orderPlaced : dict.checkout}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
-        <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={handleClear}
-            className="rounded-full border border-zinc-200 px-5 py-2.5 text-sm font-medium text-zinc-600 transition-colors hover:border-red-400 hover:text-red-600 dark:border-zinc-700 dark:text-zinc-300"
-          >
-            {dict.clear}
-          </button>
-          <button
-            type="button"
-            onClick={handleCheckout}
-            disabled={pending || orderPlaced}
-            className={
-              orderPlaced
-                ? "cursor-default rounded-full bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white"
-                : "rounded-full bg-orange-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-orange-500 disabled:opacity-60"
-            }
-          >
-            {orderPlaced ? dict.orderPlaced : dict.checkout}
-          </button>
-        </div>
-      </div>
+      {/* Уже заказанное — 3 дня, потом удаляется само (getCartAction). */}
+      {ordered.length > 0 && (
+        <section className="flex flex-col gap-3 border-t border-zinc-200 pt-6 dark:border-zinc-800">
+          <div className="flex flex-col gap-0.5">
+            <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">{dict.orderedTitle}</h2>
+            <p className="text-sm text-zinc-500">{dict.orderedHint}</p>
+          </div>
+          <ul className="flex flex-col gap-2">
+            {ordered.map((entry) => {
+              const product = products.find((p) => p.id === entry.productId);
+              return (
+                <li
+                  key={entry.id}
+                  className="flex items-center gap-4 rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-900/60"
+                >
+                  <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-zinc-100 opacity-80 dark:bg-zinc-800">
+                    {product?.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={productImageUrl(product.image, "thumb")}
+                        alt=""
+                        className="h-full w-full object-fill"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    ) : (
+                      <ProductVisual className="h-full w-full" />
+                    )}
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <span className="truncate font-medium text-zinc-700 dark:text-zinc-300">
+                      {product ? t(product.name, locale) : "—"}
+                    </span>
+                    <span className="flex flex-wrap gap-x-3 text-xs text-zinc-500">
+                      {product?.productCode && <span className="font-mono">{product.productCode}</span>}
+                      <span>× {entry.quantity}</span>
+                      {entry.orderNumber && (
+                        <span>
+                          {dict.orderNumberLabel}
+                          {entry.orderNumber}
+                        </span>
+                      )}
+                      <span>{new Date(entry.orderedAt).toLocaleDateString(locale)}</span>
+                    </span>
+                  </div>
+                  <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-500">
+                    {dict.orderPlaced}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label={dict.removeAria}
+                    onClick={() => handleRemoveOrdered(entry.id, product)}
+                    className="text-zinc-400 transition-colors hover:text-red-600"
+                  >
+                    ✕
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
     </main>
   );
 }

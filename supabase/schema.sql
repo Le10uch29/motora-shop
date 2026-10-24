@@ -719,3 +719,37 @@ alter table customers alter column id_card_number drop not null;
 -- новых покупателей и менять им пароль. Права проверяет приложение
 -- (requireCustomerManager), в RLS он такой же сотрудник, как продавец.
 alter type staff_role add value if not exists 'senior_seller';
+
+-- Корзина хранится на сервере, а не в браузере: её видно с любого устройства
+-- и из любого браузера, где пользователь вошёл. Строка — один товар.
+--
+-- ordered_at пуст — товар лежит в корзине и уйдёт в следующий заказ.
+-- ordered_at заполнен — товар уже заказан (заказ order_number): он остаётся
+-- в корзине отдельным списком «Заказано» на 3 дня, потом удаляется сам
+-- (приложение чистит при каждом открытии корзины); пользователь может
+-- удалить его и раньше.
+create table if not exists cart_items (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  product_id uuid not null references products(id) on delete cascade,
+  quantity int not null check (quantity > 0),
+  ordered_at timestamptz,
+  order_number int,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+-- Один товар один раз среди ещё не заказанного; заказанные строки могут
+-- повторять товар (заказали, потом положили его снова).
+create unique index if not exists cart_items_active_unique
+  on cart_items (user_id, product_id) where ordered_at is null;
+create index if not exists cart_items_user_idx on cart_items (user_id);
+
+drop trigger if exists cart_items_set_updated_at on cart_items;
+create trigger cart_items_set_updated_at
+  before update on cart_items
+  for each row execute function set_updated_at();
+
+alter table cart_items enable row level security;
+drop policy if exists "own_cart_items" on cart_items;
+create policy "own_cart_items" on cart_items for all to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());

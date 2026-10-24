@@ -27,14 +27,23 @@ function isMissingLineNumber(message: string): boolean {
  * in schema.sql) fills the price/name in from the live product row. This
  * means price integrity holds even against a direct REST call that bypasses
  * this action entirely, not just against a client that happens to behave. */
-export async function placeOrderAction(
-  items: { productId: string; quantity: number }[]
-): Promise<PlaceOrderState> {
-  if (items.length === 0) return { error: "empty_cart" };
-
+export async function placeOrderAction(): Promise<PlaceOrderState> {
   const supabase = await createClient();
   const user = await getAuthUser(supabase);
   if (!user) return { error: "not_authenticated" };
+
+  // Заказывается то, что лежит в корзине на сервере, — а не то, что прислал
+  // браузер: корзину могли поменять на другом устройстве.
+  const { data: cartRows, error: cartError } = await supabase
+    .from("cart_items")
+    .select("id, product_id, quantity")
+    .eq("user_id", user.id)
+    .is("ordered_at", null)
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true });
+  if (cartError) return { error: cartError.message };
+  const items = (cartRows ?? []).map((row) => ({ productId: row.product_id, quantity: row.quantity }));
+  if (items.length === 0) return { error: "empty_cart" };
 
   const productIds = items.map((item) => item.productId);
   // Out of stock counts as not orderable, exactly as it counts as not visible
@@ -64,11 +73,11 @@ export async function placeOrderAction(
 
   if (rows.length === 0) return { error: "products_not_found" };
 
-  const { error } = await supabase.from("orders").insert(rows);
+  let { data: inserted, error } = await supabase.from("orders").insert(rows).select("order_number");
   // Столбца может ещё не быть, если схема не обновлена — заказ важнее порядка
   // строк, поэтому повторяем вставку без него.
   if (error && isMissingLineNumber(error.message)) {
-    const { error: retry } = await supabase
+    ({ data: inserted, error } = await supabase
       .from("orders")
       .insert(
         rows.map((row) => ({
@@ -76,10 +85,20 @@ export async function placeOrderAction(
           product_id: row.product_id,
           quantity: row.quantity,
         }))
-      );
-    return { error: retry ? retry.message : null };
+      )
+      .select("order_number"));
   }
   if (error) return { error: error.message };
+
+  // Заказанное не исчезает из корзины сразу: оно переходит в список
+  // «Заказано» и само удаляется через 3 дня (см. getCartAction). Помечаются
+  // только реально заказанные строки — закончившийся товар остаётся в корзине.
+  await supabase
+    .from("cart_items")
+    .update({ ordered_at: new Date().toISOString(), order_number: inserted?.[0]?.order_number ?? null })
+    .eq("user_id", user.id)
+    .is("ordered_at", null)
+    .in("product_id", rows.map((row) => row.product_id));
 
   return { error: null };
 }
