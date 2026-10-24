@@ -48,7 +48,7 @@ export default async function Header({
     <header className="flame-header sticky top-0 z-30 border-b border-zinc-200 shadow-md shadow-black/5 backdrop-blur dark:border-zinc-800">
       <div className="relative mx-auto flex max-w-[120rem] items-center gap-3 px-4 py-4 sm:gap-4 sm:px-2">
         <Link href={`/${locale}`} className="shrink-0" aria-label="ARAZ-MOTORS 2026">
-          <SiteLogo className="h-9 sm:h-11" sizes="(min-width: 640px) 90px, 74px" />
+          <SiteLogo className="h-[3.125rem] sm:h-[3.7rem]" sizes="(min-width: 640px) 120px, 102px" />
         </Link>
         <div className="min-w-0 flex-1">
           <Suspense fallback={<div className="h-9 w-full rounded-full bg-zinc-100 dark:bg-zinc-800" />}>

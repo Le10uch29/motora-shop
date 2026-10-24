@@ -39,7 +39,7 @@ export default async function AdminDashboardLayout({
     <div className="flex min-h-full flex-1 flex-col">
       <header className="flame-header flex shrink-0 items-center justify-between border-b border-zinc-200 px-2 py-4 shadow-md shadow-black/5 dark:border-zinc-800 print:hidden">
         <Link href={`/${locale}`} aria-label="ARAZ-MOTORS 2026">
-          <SiteLogo className="h-10" sizes="82px" />
+          <SiteLogo className="h-[3.4rem]" sizes="110px" />
         </Link>
         <div className="flex items-center gap-3">
           <Suspense fallback={<div className="h-8 w-[104px]" />}>
