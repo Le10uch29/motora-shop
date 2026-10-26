@@ -50,6 +50,7 @@ export default function ProductFormModal({
   brands,
   categoryTree,
   initialValues,
+  canSetPopular = true,
   onClose,
 }: {
   locale: Locale;
@@ -58,6 +59,8 @@ export default function ProductFormModal({
   brands: { id: string; name: string }[];
   categoryTree: CategoryPickerNode[];
   initialValues?: ProductFormValues;
+  /** Галочка «популярный» — это подборка «Популярное» из «Акций», только админ. */
+  canSetPopular?: boolean;
   onClose: () => void;
 }) {
   const action = mode === "create" ? createProductAction : updateProductAction;
@@ -332,15 +335,17 @@ export default function ProductFormModal({
           </div>
         </div>
 
-        <label className="flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          <input
-            type="checkbox"
-            name="isPopular"
-            defaultChecked={initialValues?.isPopular}
-            className="h-4 w-4 rounded border-zinc-300"
-          />
-          {dict.productPopularLabel}
-        </label>
+        {canSetPopular && (
+          <label className="flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            <input
+              type="checkbox"
+              name="isPopular"
+              defaultChecked={initialValues?.isPopular}
+              className="h-4 w-4 rounded border-zinc-300"
+            />
+            {dict.productPopularLabel}
+          </label>
+        )}
 
         <div className="flex flex-col gap-1.5">
           <span className={labelClass}>{dict.productBadgeSectionLabel}</span>

@@ -21,6 +21,7 @@ import { categoryPicker } from "../categories/options";
 import ProductsListClient from "./ProductsListClient";
 import AdminSearchBox from "@/components/admin/AdminSearchBox";
 import Pagination from "@/components/admin/Pagination";
+import { canEditProducts } from "@/lib/roles";
 
 export default async function AdminProductsPage({
   params,
@@ -78,7 +79,8 @@ export default async function AdminProductsPage({
     getAdminProducts(locale, { query, page, sort, filter }),
     query || filter ? getProductsGrandTotal() : null,
     getBrandOptions(),
-    isAdmin ? getAdminCategoryTree() : [],
+    // Категория нужна форме товара — её открывает и продавец.
+    canEditProducts(staff.role) ? getAdminCategoryTree() : [],
     isAdmin ? getWarehouseOptions() : [],
     isAdmin ? getProductStockMap() : {},
     isAdmin ? getZeroStockProductsCount() : 0,
@@ -91,6 +93,7 @@ export default async function AdminProductsPage({
         locale={locale}
         dict={dict.admin}
         isAdmin={isAdmin}
+        canEdit={canEditProducts(staff.role)}
         rows={rows}
         sort={sort}
         total={grandTotal}

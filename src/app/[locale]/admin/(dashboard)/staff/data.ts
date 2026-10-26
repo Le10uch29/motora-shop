@@ -3,19 +3,25 @@ import { listAllAuthUsers } from "@/lib/supabase/authUsers";
 import { ADMIN_PAGE_SIZE } from "@/components/admin/Pagination";
 import { getWarehouseOptions } from "../warehouses/data";
 import type { StaffRow } from "./StaffListClient";
+import type { StaffRole } from "@/lib/roles";
 
+/** Весь раздел «Администрация» — админы, старшие продавцы и продавцы одним
+ * списком; `role` сужает его до одной роли. Сначала админы, потом старшие
+ * продавцы, потом продавцы, внутри — новые выше. */
 export async function getStaffList(
-  /** «Продавцы» — это и продавцы, и старшие продавцы: один список. */
-  role: "admin" | "seller",
+  role: StaffRole | null,
   options: { query?: string; page?: number } = {}
 ): Promise<{ rows: StaffRow[]; total: number }> {
   const admin = createAdminClient();
 
-  const { data: staffRows } = await admin
+  let request = admin
     .from("staff")
     .select("id, first_name, last_name, phone, role, warehouse_id")
-    .in("role", role === "admin" ? ["admin"] : ["seller", "senior_seller"])
     .order("created_at", { ascending: false });
+  if (role) request = request.eq("role", role);
+  const { data: staffRows } = await request;
+  const rank: Record<string, number> = { admin: 0, senior_seller: 1, seller: 2 };
+  staffRows?.sort((a, b) => (rank[a.role] ?? 9) - (rank[b.role] ?? 9));
 
   const authUsers = await listAllAuthUsers(admin);
   const emailById = new Map(authUsers.map((u) => [u.id, u.email ?? ""]));

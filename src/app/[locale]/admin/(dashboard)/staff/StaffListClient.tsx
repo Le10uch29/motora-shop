@@ -7,7 +7,8 @@ import StaffFormModal, { type StaffFormValues } from "./StaffFormModal";
 import { RowActionLink, RowActionButton, EyeIcon, PencilIcon, XCircleIcon } from "@/components/admin/RowActions";
 import type { Dictionary } from "@/i18n/dictionary";
 import type { Locale } from "@/i18n/locales";
-import { roleLabel, type StaffRole } from "@/lib/roles";
+import { roleLabel, STAFF_ROLES, type StaffRole } from "@/lib/roles";
+import AssignRoleModal from "./AssignRoleModal";
 
 export type StaffRow = {
   id: string;
@@ -27,7 +28,8 @@ export default function StaffListClient({
   currentStaffId,
   staff,
   title,
-  defaultRole,
+  isAdmin,
+  allowedRoles,
   emptyMessage,
   searchSlot,
   warehouses,
@@ -38,7 +40,11 @@ export default function StaffListClient({
   currentStaffId: string;
   staff: StaffRow[];
   title: string;
-  defaultRole: "admin" | "seller";
+  /** Править и увольнять сотрудников может только админ. */
+  isAdmin: boolean;
+  /** Роли, которые этот сотрудник может выдавать (старший продавец — только
+   * «продавец»). Определяет и выбор роли в форме, и в «Назначить роль». */
+  allowedRoles: StaffRole[];
   emptyMessage: string;
   /** Search box rendered by the page above the table. It's built in a Server
    * Component and crosses into this one as a prop, so React re-creates it from
@@ -48,6 +54,7 @@ export default function StaffListClient({
   warehouses: { id: string; name: string }[];
 }) {
   const [modal, setModal] = useState<{ mode: "create" | "edit"; values?: StaffFormValues } | null>(null);
+  const [assignOpen, setAssignOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const confirm = useConfirm();
@@ -67,6 +74,14 @@ export default function StaffListClient({
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">{title}</h1>
+        <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setAssignOpen(true)}
+          className="rounded-full border border-orange-600 px-5 py-2 text-sm font-semibold text-orange-600 transition-colors hover:bg-orange-50 dark:hover:bg-orange-950/40"
+        >
+          {dict.assignRoleButton}
+        </button>
         <button
           type="button"
           onClick={() =>
@@ -78,7 +93,7 @@ export default function StaffListClient({
                 firstName: "",
                 lastName: "",
                 phone: "",
-                role: defaultRole,
+                role: allowedRoles[0] ?? "seller",
                 warehouseId: "",
               },
             })
@@ -87,6 +102,7 @@ export default function StaffListClient({
         >
           {dict.addStaff}
         </button>
+        </div>
       </div>
 
       {searchSlot}
@@ -127,6 +143,7 @@ export default function StaffListClient({
                       <RowActionLink href={`/${locale}/admin/staff/${row.id}`} label={dict.actionDetails}>
                         <EyeIcon />
                       </RowActionLink>
+                      {isAdmin && (
                       <RowActionButton
                         label={dict.actionEdit}
                         onClick={() =>
@@ -146,7 +163,8 @@ export default function StaffListClient({
                       >
                         <PencilIcon />
                       </RowActionButton>
-                      {row.id !== currentStaffId && (
+                      )}
+                      {isAdmin && row.id !== currentStaffId && (
                         <RowActionButton
                           label={dict.actionFire}
                           disabled={pending}
@@ -172,8 +190,19 @@ export default function StaffListClient({
           passwordLabel={passwordLabel}
           mode={modal.mode}
           initialValues={modal.values}
+          roles={modal.mode === "edit" ? STAFF_ROLES : allowedRoles}
           warehouses={warehouses}
           onClose={() => setModal(null)}
+        />
+      )}
+
+      {assignOpen && (
+        <AssignRoleModal
+          locale={locale}
+          dict={dict}
+          roles={allowedRoles}
+          warehouses={warehouses}
+          onClose={() => setAssignOpen(false)}
         />
       )}
     </div>

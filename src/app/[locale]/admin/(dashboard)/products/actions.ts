@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath, updateTag } from "next/cache";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, requireStaff } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAction } from "@/lib/logs";
 import { isLocale, type Locale } from "@/i18n/locales";
@@ -232,7 +232,9 @@ export async function createProductAction(
   formData: FormData
 ): Promise<ProductActionState> {
   const locale = readLocale(formData);
-  const actor = await requireAdmin(locale);
+  // Добавлять товар может любой сотрудник, в том числе продавец.
+  const actor = await requireStaff(locale);
+  const isAdmin = actor.role === "admin";
 
   const fields = readFields(formData);
   if (!fields) return { error: "missing_fields" };
@@ -264,7 +266,8 @@ export async function createProductAction(
       specs: [],
       badge: fields.badge,
       images,
-      is_popular: fields.isPopular,
+      // «Популярное» — подборка из «Акций», её ведёт только админ.
+      is_popular: isAdmin && fields.isPopular,
     })
     .select("id")
     .single();
@@ -278,7 +281,7 @@ export async function createProductAction(
   );
   if (categoryError) return { error: categoryError };
 
-  await syncPopularFromProductFlag(created.id, fields.isPopular);
+  if (isAdmin) await syncPopularFromProductFlag(created.id, fields.isPopular);
   await logAction(actor, "create", "product", fields.name.ru, { entityId: created.id });
   revalidatePath(`/${locale}/admin/products`);
   revalidatePath(`/${locale}/catalog`);
@@ -292,7 +295,9 @@ export async function updateProductAction(
   formData: FormData
 ): Promise<ProductActionState> {
   const locale = readLocale(formData);
-  const actor = await requireAdmin(locale);
+  // Редактировать товар может любой сотрудник, в том числе продавец.
+  const actor = await requireStaff(locale);
+  const isAdmin = actor.role === "admin";
 
   const id = String(formData.get("id") ?? "");
   if (!id) return { error: "missing_fields" };
@@ -331,7 +336,8 @@ export async function updateProductAction(
     name: fields.name,
     description: fields.description,
     badge: fields.badge,
-    is_popular: fields.isPopular,
+    // Не админ галочку «популярный» не видит — у него она не меняется.
+    ...(isAdmin ? { is_popular: fields.isPopular } : {}),
   };
   if (images) updates.images = images;
 
@@ -345,7 +351,7 @@ export async function updateProductAction(
   );
   if (categoryError) return { error: categoryError };
 
-  await syncPopularFromProductFlag(id, fields.isPopular);
+  if (isAdmin) await syncPopularFromProductFlag(id, fields.isPopular);
   await logAction(actor, "update", "product", fields.name.ru, { entityId: id });
   revalidatePath(`/${locale}/admin/products`);
   revalidatePath(`/${locale}/catalog`);

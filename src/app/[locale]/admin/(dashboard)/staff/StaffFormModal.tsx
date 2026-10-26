@@ -4,7 +4,7 @@ import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useActionState, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { createStaffAction, updateStaffAction, type StaffActionState } from "./actions";
-import type { StaffRole } from "@/lib/auth";
+import { roleLabel, STAFF_ROLES, type StaffRole } from "@/lib/roles";
 import type { Dictionary } from "@/i18n/dictionary";
 
 export type StaffFormValues = {
@@ -33,6 +33,7 @@ function errorText(code: string | null, dict: Dictionary["admin"]): string | nul
   if (!code) return null;
   if (code === "cannot_fire_self") return dict.cannotFireSelf;
   if (code === "password_too_short") return dict.passwordTooShort;
+  if (code === "role_not_allowed") return dict.roleNotAllowed;
   return code;
 }
 
@@ -42,6 +43,7 @@ export default function StaffFormModal({
   passwordLabel,
   mode,
   initialValues,
+  roles = STAFF_ROLES,
   warehouses,
   onClose,
 }: {
@@ -50,6 +52,8 @@ export default function StaffFormModal({
   passwordLabel: string;
   mode: "create" | "edit";
   initialValues?: StaffFormValues;
+  /** Роли, доступные в выборе: старший продавец добавляет только продавцов. */
+  roles?: StaffRole[];
   warehouses: { id: string; name: string }[];
   onClose: () => void;
 }) {
@@ -183,9 +187,11 @@ export default function StaffFormModal({
             defaultValue={values.role}
             className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
           >
-            <option value="seller">{dict.roleSeller}</option>
-            <option value="senior_seller">{dict.roleSeniorSeller}</option>
-            <option value="admin">{dict.roleAdmin}</option>
+            {roles.map((role) => (
+              <option key={role} value={role}>
+                {roleLabel(role, dict)}
+              </option>
+            ))}
           </select>
         </div>
 

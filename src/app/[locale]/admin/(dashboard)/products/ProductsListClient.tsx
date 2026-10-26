@@ -88,6 +88,7 @@ export default function ProductsListClient({
   locale,
   dict,
   isAdmin,
+  canEdit,
   rows,
   sort,
   total,
@@ -101,6 +102,9 @@ export default function ProductsListClient({
   locale: Locale;
   dict: Dictionary["admin"];
   isAdmin: boolean;
+  /** Добавлять и редактировать товары — любой сотрудник (и продавец).
+   * Импорт, склады товара, удаление и массовый выбор — только админ. */
+  canEdit: boolean;
   rows: AdminProductRow[];
   /** Текущая сортировка из адреса — применена на сервере ко всему списку. */
   sort: Sort | null;
@@ -236,8 +240,9 @@ export default function ProductsListClient({
         <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
           {dict.productsAdminTitle}
         </h1>
+        <div className="flex items-center gap-2">
         {isAdmin && (
-          <div className="flex items-center gap-2">
+          <>
             <button
               type="button"
               onClick={() => setImportModalOpen(true)}
@@ -259,6 +264,9 @@ export default function ProductsListClient({
             >
               {dict.missingDataButton}
             </button>
+          </>
+        )}
+        {canEdit && (
             <button
               type="button"
               onClick={() => setModal({ mode: "create" })}
@@ -266,8 +274,8 @@ export default function ProductsListClient({
             >
               {dict.addProduct}
             </button>
-          </div>
         )}
+        </div>
       </div>
 
       {isAdmin && total > 0 && (
@@ -412,6 +420,11 @@ export default function ProductsListClient({
                       <RowActionLink href={`/${locale}/admin/products/${row.id}`} label={dict.actionDetails}>
                         <EyeIcon />
                       </RowActionLink>
+                      {canEdit && (
+                        <RowActionButton label={dict.actionEdit} onClick={() => openEdit(row)}>
+                          <PencilIcon />
+                        </RowActionButton>
+                      )}
                       {isAdmin && (
                         <>
                           <RowActionButton
@@ -419,9 +432,6 @@ export default function ProductsListClient({
                             onClick={() => setWarehouseModalRow(row)}
                           >
                             <WarehouseIcon />
-                          </RowActionButton>
-                          <RowActionButton label={dict.actionEdit} onClick={() => openEdit(row)}>
-                            <PencilIcon />
                           </RowActionButton>
                           <RowActionButton
                             label={dict.actionDelete}
@@ -449,7 +459,7 @@ export default function ProductsListClient({
           y={rowMenu.y}
           onClose={closeRowMenu}
           items={[
-            ...(isAdmin
+            ...(canEdit
               ? [{ kind: "button" as const, label: dict.actionEdit, icon: <PencilIcon />, onClick: () => openEdit(rowMenu.row) }]
               : []),
             {
@@ -487,6 +497,7 @@ export default function ProductsListClient({
           mode={modal.mode}
           brands={brands}
           categoryTree={categoryTree}
+          canSetPopular={isAdmin}
           initialValues={modal.values}
           onClose={() => setModal(null)}
         />

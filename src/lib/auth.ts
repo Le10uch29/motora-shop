@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthIdentity } from "@/lib/supabase/authUsers";
 import type { Locale } from "@/i18n/locales";
-import { canManageCustomers, type StaffRole } from "@/lib/roles";
+import { canManageCustomers, canManageStaff, type StaffRole } from "@/lib/roles";
 
 export type { StaffRole };
 
@@ -56,6 +56,14 @@ export async function requireStaff(locale: Locale): Promise<CurrentStaff> {
 export async function requireCustomerManager(locale: Locale): Promise<CurrentStaff> {
   const staff = await requireStaff(locale);
   if (!canManageCustomers(staff.role)) redirect(`/${locale}/admin`);
+  return staff;
+}
+
+/** Админ или старший продавец — раздел «Администрация» (видеть сотрудников,
+ * добавлять продавцов, назначать роль существующему пользователю). */
+export async function requireStaffManager(locale: Locale): Promise<CurrentStaff> {
+  const staff = await requireStaff(locale);
+  if (!canManageStaff(staff.role)) redirect(`/${locale}/admin`);
   return staff;
 }
 

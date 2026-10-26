@@ -46,6 +46,16 @@ export type Dictionary = {
     navCustomers: string;
     navOrders: string;
     navLogs: string;
+    navAdministration: string;
+    staffFilterAll: string;
+    assignRoleButton: string;
+    assignRoleTitle: string;
+    assignRoleHint: string;
+    assignRoleSearchPlaceholder: string;
+    assignRoleChange: string;
+    assignRoleSubmit: string;
+    roleNotAllowed: string;
+    alreadyStaff: string;
     navPromotions: string;
     promotionsTitle: string;
     promotionsHint: string;

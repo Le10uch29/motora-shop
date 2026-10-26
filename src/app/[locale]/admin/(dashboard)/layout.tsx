@@ -8,7 +8,7 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import ThemeToggle from "@/components/ThemeToggle";
 import { signOutAction } from "./actions";
 import SiteLogo from "@/components/SiteLogo";
-import { canManageCustomers, roleLabel } from "@/lib/roles";
+import { canManageCustomers, canManageStaff, roleLabel } from "@/lib/roles";
 
 export default async function AdminDashboardLayout({
   children,
@@ -22,8 +22,8 @@ export default async function AdminDashboardLayout({
 
   const navItems = [
     { href: `/${locale}/admin`, label: dict.admin.navDashboard, show: true },
-    { href: `/${locale}/admin/staff/admins`, label: dict.admin.navStaffAdmins, show: isAdmin },
-    { href: `/${locale}/admin/staff/sellers`, label: dict.admin.navStaffSellers, show: isAdmin },
+    // Админы, старшие продавцы и продавцы — один раздел.
+    { href: `/${locale}/admin/staff`, label: dict.admin.navAdministration, show: canManageStaff(staff.role) },
     // Старший продавец тоже: добавляет покупателей и меняет им пароль.
     { href: `/${locale}/admin/customers`, label: dict.admin.navCustomers, show: canManageCustomers(staff.role) },
     { href: `/${locale}/admin/brands`, label: dict.admin.navBrands, show: isAdmin },

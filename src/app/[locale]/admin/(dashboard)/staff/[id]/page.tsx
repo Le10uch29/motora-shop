@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
-import { requireAdmin } from "@/lib/auth";
+import { requireStaffManager } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthUserById } from "@/lib/supabase/authUsers";
 import { getWarehouseOptions } from "../../warehouses/data";
@@ -16,7 +16,7 @@ export default async function StaffDetailPage({
 }: PageProps<"/[locale]/admin/staff/[id]">) {
   const { locale, id } = await params;
   if (!isLocale(locale)) notFound();
-  await requireAdmin(locale);
+  const current = await requireStaffManager(locale);
   const dict = await getDictionary(locale);
 
   const admin = createAdminClient();
@@ -53,8 +53,8 @@ export default async function StaffDetailPage({
     [dict.admin.tableId, row.id],
   ];
 
-  const backHref = `/${locale}/admin/staff/${row.role === "admin" ? "admins" : "sellers"}`;
-  const backLabel = row.role === "admin" ? dict.admin.navStaffAdmins : dict.admin.navStaffSellers;
+  const backHref = `/${locale}/admin/staff`;
+  const backLabel = dict.admin.navAdministration;
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-2 py-10">
@@ -66,6 +66,7 @@ export default async function StaffDetailPage({
         <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
           {dict.admin.detailsTitle}
         </h1>
+        {current.role === "admin" && (
         <StaffDetailActions
           locale={locale}
           dict={dict.admin}
@@ -81,6 +82,7 @@ export default async function StaffDetailPage({
           }}
           warehouses={warehouses}
         />
+        )}
       </div>
 
       <dl className="grid grid-cols-1 gap-x-6 gap-y-4 rounded-xl border border-zinc-200 p-6 sm:grid-cols-2 dark:border-zinc-800">
