@@ -10,7 +10,8 @@
     "seed": "tsx --env-file=.env.local scripts/seed-supabase.ts",
     "seed:categories": "tsx --env-file=.env.local scripts/seed-categories.ts",
     "create-admin": "tsx --env-file=.env.local scripts/create-first-admin.ts",
-    "optimize-images": "tsx --env-file=.env.local scripts/optimize-product-images.ts"
+    "optimize-images": "tsx --env-file=.env.local scripts/optimize-product-images.ts",
+    "test": "vitest run"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
@@ -31,6 +32,7 @@
     "eslint-config-next": "16.3.1",
     "tailwindcss": "^4",
     "tsx": "^4.23.12",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.12"
   }
 }
