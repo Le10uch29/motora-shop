@@ -1,10 +1,10 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getProductBySlug, getAllProductSlugs, discountPercent, t } from "@/lib/products";
+import { getProductBySlug, discountPercent, t } from "@/lib/products";
 import { formatGel } from "@/lib/currency";
 import { getBrandBySlug } from "@/lib/brands";
 import { primaryCategoryByProduct } from "@/lib/categories";
-import { locales, isLocale } from "@/i18n/locales";
+import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
 import ProductGallery from "@/components/ProductGallery";
 import BrandLogo from "@/components/BrandLogo";
@@ -14,10 +14,8 @@ import Breadcrumbs from "@/components/Breadcrumbs";
 import OemCodeList from "@/components/OemCodeList";
 import { oemCodes, primaryOem } from "@/lib/oem";
 
-export async function generateStaticParams() {
-  const slugs = await getAllProductSlugs();
-  return locales.flatMap((locale) => slugs.map((slug) => ({ locale, slug })));
-}
+// Без generateStaticParams: каталог закрыт, страницу товара нельзя собрать
+// заранее без вошедшего пользователя — она рендерится по запросу.
 
 export async function generateMetadata({
   params,

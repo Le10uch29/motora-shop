@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { createPublicClient } from "@/lib/supabase/public";
+import { createClient } from "@/lib/supabase/server";
 
 export type BrandSlug = string;
 
@@ -34,7 +34,7 @@ function mapRow(row: {
 // cache() dedupes identical calls within a single request — Header and a
 // page component both asking for brands only hit Supabase once.
 export const getBrands = cache(async (): Promise<Brand[]> => {
-  const supabase = createPublicClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("brands")
     .select("slug, name, logo_url, badge_logo_url, initials")
@@ -52,7 +52,7 @@ export const getCatalogBrands = cache(async (): Promise<Brand[]> => {
 });
 
 export const getBrandBySlug = cache(async (slug: string): Promise<Brand | undefined> => {
-  const supabase = createPublicClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("brands")
     .select("slug, name, logo_url, badge_logo_url, initials")

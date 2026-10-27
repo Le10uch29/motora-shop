@@ -1,5 +1,6 @@
 import { unstable_cache } from "next/cache";
-import { createPublicClient } from "@/lib/supabase/public";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { hasCatalogSession } from "@/lib/catalogSession";
 import { fitmentsOf, type Fitment } from "@/lib/fitments";
 
 /** Cache tag for anything derived from the product catalog as a whole.
@@ -25,7 +26,9 @@ export type ProductFilterMeta = { fitments: Fitment[] };
  * components too. */
 const fetchProductFilterMeta = unstable_cache(
   async (): Promise<ProductFilterMeta[]> => {
-    const supabase = createPublicClient();
+    // Внутри кэша cookies недоступны, поэтому серверный ключ; доступ
+    // проверяет getProductFilterMeta перед кэшем (lib/catalogSession.ts).
+    const supabase = createAdminClient();
     const { data } = await supabase
       .from("products")
       // Закончившиеся товары каталог тоже показывает, поэтому и их машины
@@ -39,6 +42,7 @@ const fetchProductFilterMeta = unstable_cache(
   { tags: [PRODUCTS_CACHE_TAG], revalidate: 300 }
 );
 
-export function getProductFilterMeta(): Promise<ProductFilterMeta[]> {
-  return fetchProductFilterMeta();
+/** Марки и модели для фильтра в шапке. Гостю — пусто: каталог закрыт. */
+export async function getProductFilterMeta(): Promise<ProductFilterMeta[]> {
+  return (await hasCatalogSession()) ? fetchProductFilterMeta() : [];
 }

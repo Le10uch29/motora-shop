@@ -1,5 +1,7 @@
 import { unstable_cache } from "next/cache";
-import { createPublicClient } from "@/lib/supabase/public";
+import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { hasCatalogSession } from "@/lib/catalogSession";
 import { readAllPages } from "@/lib/supabase/paginate";
 import { PRODUCTS_CACHE_TAG } from "@/lib/productFilterMeta";
 import type { LocalizedText } from "@/lib/products";
@@ -67,7 +69,9 @@ function mapRow(row: CategoryRow): Category {
  * than fetched per level: the whole table is a few dozen rows. */
 const fetchCategories = unstable_cache(
   async (): Promise<Category[]> => {
-    const supabase = createPublicClient();
+    // Внутри кэша cookies недоступны, поэтому серверный ключ; доступ
+    // проверяет loadCategories перед кэшем (см. lib/catalogSession.ts).
+    const supabase = createAdminClient();
     const { data } = await supabase
       .from("categories")
       .select(SELECT_COLUMNS)
@@ -78,6 +82,11 @@ const fetchCategories = unstable_cache(
   ["categories"],
   { tags: [CATEGORIES_CACHE_TAG], revalidate: 300 }
 );
+
+/** Категории для текущего запроса: гостю — пусто, каталог закрыт. */
+async function loadCategories(): Promise<Category[]> {
+  return (await hasCatalogSession()) ? fetchCategories() : [];
+}
 
 function buildTree(categories: Category[], { activeOnly }: { activeOnly: boolean }): CategoryNode[] {
   const usable = activeOnly ? categories.filter((c) => c.isActive) : categories;
@@ -90,34 +99,34 @@ function buildTree(categories: Category[], { activeOnly }: { activeOnly: boolean
 
 /** Every category, flat, active and inactive alike — for the admin panel. */
 export async function getAllCategories(): Promise<Category[]> {
-  return fetchCategories();
+  return loadCategories();
 }
 
 /** The whole tree, including inactive categories and each category's
  * "Разное" — for the admin panel. */
 export async function getCategoryTree(): Promise<CategoryNode[]> {
-  return buildTree(await fetchCategories(), { activeOnly: false });
+  return buildTree(await loadCategories(), { activeOnly: false });
 }
 
 /** The tree the shop shows: active categories only, and without the technical
  * "Разное" under each of them. Products filed under "Разное" are still part of
  * their parent category — only the subcategory itself is hidden. */
 export async function getPublicCategoryTree(): Promise<CategoryNode[]> {
-  return buildTree(await fetchCategories(), { activeOnly: true }).map((node) => ({
+  return buildTree(await loadCategories(), { activeOnly: true }).map((node) => ({
     ...node,
     children: node.children.filter((child) => !child.isDefault),
   }));
 }
 
 export async function getCategoryBySlug(slug: string): Promise<Category | undefined> {
-  return (await fetchCategories()).find((category) => category.slug === slug);
+  return (await loadCategories()).find((category) => category.slug === slug);
 }
 
 /** A category's own id plus its children's — what "everything in this
  * category" means when filtering, "Разное" included. A subcategory resolves to
  * just itself. */
 export async function categoryIdsWithin(categoryId: string): Promise<string[]> {
-  const categories = await fetchCategories();
+  const categories = await loadCategories();
   return [categoryId, ...categories.filter((c) => c.parentId === categoryId).map((c) => c.id)];
 }
 
@@ -125,7 +134,7 @@ export async function categoryIdsWithin(categoryId: string): Promise<string[]> {
  * category but no subcategory. Undefined for a category that somehow has
  * none (only possible if it was deleted by hand). */
 export async function getDefaultSubcategory(categoryId: string): Promise<Category | undefined> {
-  const categories = await fetchCategories();
+  const categories = await loadCategories();
   return categories.find((c) => c.parentId === categoryId && c.isDefault);
 }
 
@@ -140,7 +149,8 @@ export async function getDefaultSubcategory(categoryId: string): Promise<Categor
  * product's stock or category refreshes the numbers in the sidebar. */
 const fetchCategoryProductCounts = unstable_cache(
   async (): Promise<Record<string, number>> => {
-    const supabase = createPublicClient();
+    // Серверный ключ — как в fetchCategories; доступ проверяется перед кэшем.
+    const supabase = createAdminClient();
     const rows = await readAllPages<{ category_id: string }>((from, to) =>
       supabase.from("product_categories").select("category_id").range(from, to)
     );
@@ -153,8 +163,8 @@ const fetchCategoryProductCounts = unstable_cache(
   { tags: [CATEGORIES_CACHE_TAG, PRODUCTS_CACHE_TAG], revalidate: 300 }
 );
 
-export function getCategoryProductCounts(): Promise<Record<string, number>> {
-  return fetchCategoryProductCounts();
+export async function getCategoryProductCounts(): Promise<Record<string, number>> {
+  return (await hasCatalogSession()) ? fetchCategoryProductCounts() : {};
 }
 
 /** Everything in one category: its own products plus every subcategory's.
@@ -175,7 +185,7 @@ export function categoryProductTotal(
  * otherwise come back twice and be counted twice. */
 export async function productIdsInCategories(categoryIds: string[]): Promise<string[]> {
   if (categoryIds.length === 0) return [];
-  const supabase = createPublicClient();
+  const supabase = await createClient();
   const rows = await readAllPages<{ product_id: string }>((from, to) =>
     supabase
       .from("product_categories")
@@ -192,9 +202,9 @@ export async function primaryCategoryByProduct(
   productIds: string[]
 ): Promise<Record<string, { category: Category; parent: Category | null }>> {
   if (productIds.length === 0) return {};
-  const supabase = createPublicClient();
+  const supabase = await createClient();
   const [categories, rows] = await Promise.all([
-    fetchCategories(),
+    loadCategories(),
     readAllPages<{ product_id: string; category_id: string }>((from, to) =>
       supabase
         .from("product_categories")

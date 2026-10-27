@@ -1,7 +1,7 @@
 import { cache } from "react";
 import type { Locale } from "@/i18n/locales";
 import type { BrandSlug } from "@/lib/brands";
-import { createPublicClient } from "@/lib/supabase/public";
+import { createClient } from "@/lib/supabase/server";
 import { readAllPages } from "@/lib/supabase/paginate";
 import { fitmentsOf, type Fitment } from "@/lib/fitments";
 
@@ -180,7 +180,7 @@ export function discountPercent(product: Product): number | undefined {
 // root layout's Header and a page component both asking for the full
 // product list only hit Supabase once, not twice.
 export const getAllProducts = cache(async (): Promise<Product[]> => {
-  const supabase = createPublicClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("products")
     .select(SELECT_COLUMNS)
@@ -196,7 +196,7 @@ export const getAllProducts = cache(async (): Promise<Product[]> => {
  * itself, not the sum of the categories — products nobody has filed yet
  * belong to it too. */
 export const getShopProductCount = cache(async (): Promise<number> => {
-  const supabase = createPublicClient();
+  const supabase = await createClient();
   const { count } = await supabase.from("products").select("id", { count: "exact", head: true });
   return count ?? 0;
 });
@@ -205,7 +205,7 @@ export const getShopProductCount = cache(async (): Promise<number> => {
  * stock — a sold-out product's card isn't clickable, and its page 404s like
  * any unknown address, so a bookmark can't reach it either. */
 export const getProductBySlug = cache(async (slug: string): Promise<Product | undefined> => {
-  const supabase = createPublicClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("products")
     .select(SELECT_COLUMNS)
@@ -221,7 +221,7 @@ export const getProductBySlug = cache(async (slug: string): Promise<Product | un
  * rows, each with a 3-language name/description and an images array) just
  * to throw away everything but 4 of them client-side. */
 export const getFeaturedProducts = cache(async (limit = 4): Promise<Product[]> => {
-  const supabase = createPublicClient();
+  const supabase = await createClient();
   const { items } = await pageInStockFirst(
     (inStock, from, to) => {
       const query = supabase
@@ -244,7 +244,7 @@ export const getFeaturedProducts = cache(async (limit = 4): Promise<Product[]> =
  * Удалённые товары просто пропускаются. */
 export async function getProductsByIds(ids: string[]): Promise<Product[]> {
   if (ids.length === 0) return [];
-  const supabase = createPublicClient();
+  const supabase = await createClient();
   const { data } = await supabase.from("products").select(SELECT_COLUMNS).in("id", ids);
   const byId = new Map(((data ?? []) as unknown as ProductRow[]).map((row) => [row.id, mapRow(row)]));
   return inStockFirst(ids.map((id) => byId.get(id)).filter((p): p is Product => Boolean(p)));
@@ -258,7 +258,7 @@ const SELECT_COLUMNS_BRAND_FILTER = SELECT_COLUMNS.replace("brands(slug)", "bran
  * page, which otherwise had no reason to pull every other brand's products
  * across the wire just to filter them out client-side. */
 export const getProductsByBrandSlug = cache(async (brandSlug: string): Promise<Product[]> => {
-  const supabase = createPublicClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("products")
     .select(SELECT_COLUMNS_BRAND_FILTER)
@@ -271,7 +271,7 @@ export const getProductsByBrandSlug = cache(async (brandSlug: string): Promise<P
  * the brand join, none of the other ~15 columns) instead of fetching every
  * product's full row for the /brands listing page. */
 export const getProductCountsByBrandSlug = cache(async (): Promise<Record<string, number>> => {
-  const supabase = createPublicClient();
+  const supabase = await createClient();
   const { data } = await supabase.from("products").select("brands(slug)");
   const counts: Record<string, number> = {};
   for (const row of (data ?? []) as { brands: { slug: string } | { slug: string }[] | null }[]) {
@@ -299,7 +299,7 @@ export type CartProductSummary = Pick<Product, "id" | "slug" | "name" | "price" 
  * Paged, because PostgREST caps one response at 1000 rows: without this a
  * cart holding product №1001 would quietly show as empty. */
 export const getProductsForCart = cache(async (): Promise<CartProductSummary[]> => {
-  const supabase = createPublicClient();
+  const supabase = await createClient();
   const rows = await readAllPages<{
     id: string;
     slug: string;
@@ -396,7 +396,7 @@ export async function getCatalogPage(
   page: number,
   pageSize: number
 ): Promise<{ items: Product[]; total: number }> {
-  const supabase = createPublicClient();
+  const supabase = await createClient();
 
   let brandId: string | undefined;
   if (filters.brand) {
@@ -458,15 +458,6 @@ export async function getCatalogPage(
   const { items, total } = await pageInStockFirst(run, (safePage - 1) * pageSize, pageSize);
   return { items: (items as unknown as ProductRow[]).map(mapRow), total };
 }
-
-/** Just the slugs, for generateStaticParams — it builds a route per product
- * per locale and needs nothing but the slug. Out-of-stock products get no
- * prebuilt page; if one is restocked its page is rendered on demand. */
-export const getAllProductSlugs = cache(async (): Promise<string[]> => {
-  const supabase = createPublicClient();
-  const { data } = await supabase.from("products").select("slug").gt("stock", 0);
-  return (data ?? []).map((row) => row.slug);
-});
 
 export type ProductFilters = {
   make?: string;

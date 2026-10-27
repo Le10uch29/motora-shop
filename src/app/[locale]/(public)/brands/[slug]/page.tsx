@@ -8,18 +8,16 @@ import {
   computeCarMakes,
   computeModelsByMake,
 } from "@/lib/products";
-import { getBrands, getBrandBySlug } from "@/lib/brands";
-import { locales, isLocale } from "@/i18n/locales";
+import { getBrandBySlug } from "@/lib/brands";
+import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
 import { single, toNumber } from "@/lib/searchParams";
 import ProductCard from "@/components/ProductCard";
 import BrandSearch from "@/components/BrandSearch";
 import Breadcrumbs from "@/components/Breadcrumbs";
 
-export async function generateStaticParams() {
-  const brands = await getBrands();
-  return locales.flatMap((locale) => brands.map((brand) => ({ locale, slug: brand.slug })));
-}
+// Без generateStaticParams: каталог закрыт, страницу бренда нельзя собрать
+// заранее без вошедшего пользователя — она рендерится по запросу.
 
 export default async function BrandDetailPage({
   params,

@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      # Заглушки: CI не ходит в настоящий Supabase. Сборка с ними проходит —
+      # страницы каталога рендерятся по запросу, а не на этапе сборки.
+      NEXT_PUBLIC_SUPABASE_URL: https://stub.invalid
+      NEXT_PUBLIC_SUPABASE_KEY: stub-anon-key
+      SUPABASE_SECRET_KEY: stub-secret-key
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # Пакет xlsx ставится не из npm, а с cdn.sheetjs.com (так его
+      # распространяет SheetJS) — см. package.json. Если CDN недоступен,
+      # npm ci упадёт на этом шаге.
+      - run: npm ci
+
+      # Типы маршрутов (PageProps, LayoutProps) генерирует Next; без них tsc
+      # не находит их.
+      - run: npx next typegen
+
+      - run: npm run lint
+
+      - run: npx tsc --noEmit
+
+      - run: npm test
+
+      - run: npx next build
