@@ -5,7 +5,9 @@ import { useEffect, useState, useTransition, type ReactNode } from "react";
 import { useCart } from "@/context/CartContext";
 import { useConfirm } from "@/context/ConfirmContext";
 import { placeOrderAction } from "@/app/[locale]/(public)/cart/actions";
-import { t, type CartProductSummary } from "@/lib/products";
+// Только тип: lib/products читает базу сессией пользователя (next/headers),
+// и его функции в браузерный код не попадают.
+import type { CartProductSummary } from "@/lib/products";
 import { formatGel } from "@/lib/currency";
 import { productImageUrl } from "@/lib/productImageUrl";
 import type { Locale } from "@/i18n/locales";
@@ -42,7 +44,7 @@ export default function CartView({
   const confirm = useConfirm();
 
   async function handleRemove(product: CartProductSummary) {
-    const details = [product.productCode, t(product.name, locale)].filter(Boolean).join(" · ");
+    const details = [product.productCode, product.name[locale]].filter(Boolean).join(" · ");
     if (await confirm({ message: dict.confirmRemoveItem, details, irreversible: false })) {
       removeItem(product.id);
     }
@@ -50,7 +52,7 @@ export default function CartView({
 
   async function handleRemoveOrdered(id: string, product: CartProductSummary | undefined) {
     const details = product
-      ? [product.productCode, t(product.name, locale)].filter(Boolean).join(" · ")
+      ? [product.productCode, product.name[locale]].filter(Boolean).join(" · ")
       : undefined;
     if (await confirm({ message: dict.confirmRemoveOrdered, details, irreversible: false })) {
       removeOrdered(id);
@@ -173,7 +175,7 @@ export default function CartView({
                     href={`/${locale}/catalog/${product.slug}`}
                     className="font-semibold text-zinc-900 hover:text-orange-600 dark:text-zinc-50"
                   >
-                    {t(product.name, locale)}
+                    {product.name[locale]}
                   </Link>
                   {/* Код продукта виден прямо в строке, а не только в карточке:
                       названия деталей повторяются, и покупатель сверяет заказ
@@ -278,7 +280,7 @@ export default function CartView({
                   </div>
                   <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <span className="truncate font-medium text-zinc-700 dark:text-zinc-300">
-                      {product ? t(product.name, locale) : "—"}
+                      {product ? product.name[locale] : "—"}
                     </span>
                     <span className="flex flex-wrap gap-x-3 text-xs text-zinc-500">
                       {product?.productCode && <span className="font-mono">{product.productCode}</span>}

@@ -294,9 +294,11 @@ alter table warehouse_stock enable row level security;
 alter table categories enable row level security;
 alter table product_categories enable row level security;
 
--- Каталог (brands/products/pages): читать может кто угодно — витрина сайта
--- работает без входа. Писать — только админ (не продавец: у него только
--- просмотр).
+-- Каталог (brands/products/pages). Писать — только админ (товары продавец
+-- правит через server actions сервисным ключом). Чтение здесь создаётся
+-- публичным по историческим причинам, но в конце файла (блок «Каталог
+-- закрыт», он же supabase/migrations/20261028_close_catalog_reads.sql) эти
+-- политики заменяются чтением только для вошедших — витрина требует входа.
 drop policy if exists "public_read_brands" on brands;
 create policy "public_read_brands" on brands for select using (true);
 drop policy if exists "admin_write_brands" on brands;
@@ -308,8 +310,9 @@ drop policy if exists "admin_write_products" on products;
 create policy "admin_write_products" on products for all to authenticated using (is_admin()) with check (is_admin());
 
 -- Категории и их связь с товарами читает витрина (сайдбар каталога,
--- страницы категорий, счётчики), поэтому чтение публичное; активность
--- категории фильтруется запросами, как и остаток товара.
+-- страницы категорий, счётчики); активность категории фильтруется
+-- запросами, как и остаток товара. Чтение закрывается в конце файла — см.
+-- блок «Каталог закрыт».
 drop policy if exists "public_read_categories" on categories;
 create policy "public_read_categories" on categories for select using (true);
 drop policy if exists "admin_write_categories" on categories;
@@ -753,3 +756,47 @@ alter table cart_items enable row level security;
 drop policy if exists "own_cart_items" on cart_items;
 create policy "own_cart_items" on cart_items for all to authenticated
   using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- Каталог закрыт: товары, бренды, категории и связи товар–категория читают
+-- только вошедшие — сотрудник (is_staff(), в том числе админ) или покупатель
+-- (is_customer()). Раньше чтение было открыто всем, включая анонимный ключ,
+-- который виден в браузере: цены и остатки можно было выгрузить через REST
+-- API, не входя на сайт, хотя сама витрина требует входа (src/proxy.ts).
+--
+-- Таблица pages тоже закрыта: приложение её не читает (тексты страниц живут
+-- в словарях), её пишет только скрипт seed секретным ключом.
+--
+-- Запись не меняется: её по-прежнему разрешают политики admin_write_*.
+-- Фото товаров лежат в публичном бакете product-media и остаются доступны
+-- по прямой ссылке — это не меняется.
+--
+-- Порядок выкатки: СНАЧАЛА деплой кода (он читает каталог сессией
+-- пользователя), ПОТОМ этот SQL. Если сделать наоборот, старый код, который
+-- читает каталог анонимным клиентом, покажет пустую витрину до деплоя.
+--
+-- Идемпотентно: можно запускать повторно.
+
+drop policy if exists "public_read_products" on products;
+drop policy if exists "member_read_products" on products;
+create policy "member_read_products" on products for select to authenticated
+  using (is_staff() or is_customer());
+
+drop policy if exists "public_read_brands" on brands;
+drop policy if exists "member_read_brands" on brands;
+create policy "member_read_brands" on brands for select to authenticated
+  using (is_staff() or is_customer());
+
+drop policy if exists "public_read_categories" on categories;
+drop policy if exists "member_read_categories" on categories;
+create policy "member_read_categories" on categories for select to authenticated
+  using (is_staff() or is_customer());
+
+drop policy if exists "public_read_product_categories" on product_categories;
+drop policy if exists "member_read_product_categories" on product_categories;
+create policy "member_read_product_categories" on product_categories for select to authenticated
+  using (is_staff() or is_customer());
+
+drop policy if exists "public_read_pages" on pages;
+drop policy if exists "member_read_pages" on pages;
+create policy "member_read_pages" on pages for select to authenticated
+  using (is_staff() or is_customer());

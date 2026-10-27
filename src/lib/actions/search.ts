@@ -1,6 +1,6 @@
 "use server";
 
-import { createPublicClient } from "@/lib/supabase/public";
+import { createClient } from "@/lib/supabase/server";
 import { pageInStockFirst } from "@/lib/products";
 import type { Locale } from "@/i18n/locales";
 
@@ -48,7 +48,8 @@ export async function searchProductSuggestionsAction(
   const trimmed = query.trim();
   if (trimmed.length < 2) return { results: [], total: 0 };
 
-  const supabase = createPublicClient();
+  // Сессия пользователя: каталог закрыт, гость получит пустой список (RLS).
+  const supabase = await createClient();
   const safe = sanitizeForFilter(trimmed);
   const orFilter = `name->>${locale}.ilike.%${safe}%,product_code.ilike.%${safe}%,origin_code.ilike.%${safe}%,make.ilike.%${safe}%,model.ilike.%${safe}%`;
 
