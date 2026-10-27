@@ -34,6 +34,13 @@ export async function generateMetadata({
   return {
     title: `${dict.home.brand} — ${dict.home.heroTitle}`,
     description: dict.home.heroSubtitle,
+    // Закрытый магазин не индексируется (см. также src/app/robots.ts).
+    // Страницы каталога задают только title/description, robots наследуют.
+    robots: {
+      index: false,
+      follow: false,
+      googleBot: { index: false, follow: false },
+    },
   };
 }
 
