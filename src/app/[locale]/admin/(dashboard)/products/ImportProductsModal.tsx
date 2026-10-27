@@ -8,8 +8,8 @@ import {
   findProductCodesWithPhotoAction,
   importProductsAction,
   uploadImportPhotosAction,
-  type ImportResult,
-} from "./actions";
+} from "./importActions";
+import type { ImportResult } from "./productTypes";
 import type { ImportRow } from "./importRows";
 import { extractEmbeddedImages, type EmbeddedImage } from "@/lib/xlsxImages";
 import FileDropField from "@/components/admin/FileDropField";

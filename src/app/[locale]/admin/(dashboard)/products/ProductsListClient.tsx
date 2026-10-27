@@ -8,7 +8,7 @@ import {
   deleteProductsAction,
   deleteAllProductsAction,
   deleteZeroStockProductsAction,
-} from "./actions";
+} from "./deleteActions";
 import ProductFormModal, { type ProductFormValues } from "./ProductFormModal";
 import ProductWarehousesModal from "./ProductWarehousesModal";
 import ImportProductsModal from "./ImportProductsModal";

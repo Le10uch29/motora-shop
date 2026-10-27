@@ -4,11 +4,8 @@ import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useEffect, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import {
-  getImportConflictsAction,
-  resolveImportConflictAction,
-  type ImportConflictRow,
-} from "./actions";
+import { getImportConflictsAction, resolveImportConflictAction } from "./importReviewActions";
+import type { ImportConflictRow } from "./productTypes";
 import type { Locale } from "@/i18n/locales";
 import type { Dictionary } from "@/i18n/dictionary";
 

@@ -3,7 +3,8 @@ import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { createProductAction, updateProductAction, type ProductActionState } from "./actions";
+import { createProductAction, updateProductAction } from "./productActions";
+import type { ProductActionState } from "./productTypes";
 import type { LocalizedText } from "@/lib/products";
 import { fitmentsToFields, type Fitment } from "@/lib/fitments";
 import { productImageUrl } from "@/lib/productImageUrl";
