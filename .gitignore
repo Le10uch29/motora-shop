@@ -43,3 +43,6 @@ next-env.d.ts
 
 # backups written by scripts/optimize-product-images.ts
 /scripts/backups/
+
+# MCP Playwright: console logs, screenshots and page snapshots from browser checks
+/.playwright-mcp/
