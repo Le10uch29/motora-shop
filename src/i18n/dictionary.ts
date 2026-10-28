@@ -142,6 +142,12 @@ export type Dictionary = {
     emptyCustomers: string;
     hideDetails: string;
     orderForCustomerButton: string;
+    customerCartButton: string;
+    customerCartTitle: string;
+    customerCartEmpty: string;
+    customerCartActiveTitle: string;
+    customerCartOrderedTitle: string;
+    customerCartLoading: string;
     orderForCustomerTitle: string;
     orderForCustomerSearchPlaceholder: string;
     orderForCustomerSearchHint: string;

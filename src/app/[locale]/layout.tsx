@@ -6,6 +6,7 @@ import { LOCALE_KEY, THEME_KEY } from "@/lib/preferences";
 import "../globals.css";
 import { CartProvider } from "@/context/CartContext";
 import { ConfirmProvider } from "@/context/ConfirmContext";
+import NumberInputGuard from "@/components/NumberInputGuard";
 import { locales, isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
 import { createClient } from "@/lib/supabase/server";
@@ -82,6 +83,7 @@ export default async function LocaleLayout({
         />
       </head>
       <body className="flex min-h-full flex-col bg-zinc-50 dark:bg-black">
+        <NumberInputGuard />
         <ConfirmProvider dict={dict.confirmDialog}>
           <CartProvider userId={user?.id ?? null}>{children}</CartProvider>
         </ConfirmProvider>

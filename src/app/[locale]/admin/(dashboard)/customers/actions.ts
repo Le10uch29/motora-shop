@@ -291,6 +291,70 @@ export async function deleteCustomerAction(
  * пароль возвращается, чтобы показать его и передать покупателю: сам он его
  * не знает. Остальные данные покупателя здесь не меняются — их правит
  * только админ. */
+/** Строка корзины покупателя, как её видит сотрудник. */
+export type CustomerCartLine = {
+  id: string;
+  productId: string;
+  name: string;
+  productCode: string | null;
+  image: string | null;
+  price: number;
+  stock: number;
+  quantity: number;
+  /** null — товар ещё лежит в корзине; дата — уже заказан (список «Заказано»). */
+  orderedAt: string | null;
+  orderNumber: number | null;
+};
+
+/**
+ * Что сейчас лежит в корзине покупателя — для админа и старшего продавца.
+ *
+ * Корзина хранится в cart_items, и политика RLS пускает к строкам только их
+ * владельца, поэтому сотрудник читает её серверным ключом — после проверки
+ * прав (requireCustomerManager). Только чтение: менять чужую корзину отсюда
+ * нельзя. Удалённые из каталога товары в корзине уже не числятся (каскад).
+ */
+export async function getCustomerCartAction(
+  locale: Locale,
+  customerId: string
+): Promise<{ error: string | null; lines: CustomerCartLine[] }> {
+  await requireCustomerManager(locale);
+  const admin = createAdminClient();
+
+  const { data, error } = await admin
+    .from("cart_items")
+    .select("id, product_id, quantity, ordered_at, order_number, products(name, product_code, images, price, stock)")
+    .eq("user_id", customerId)
+    .order("ordered_at", { ascending: true, nullsFirst: true })
+    .order("created_at", { ascending: true });
+  if (error) return { error: error.message, lines: [] };
+
+  type ProductEmbed = {
+    name: Record<string, string> | null;
+    product_code: string | null;
+    images: string[] | null;
+    price: number;
+    stock: number;
+  };
+  const lines = (data ?? []).map((row) => {
+    const embed = row.products as ProductEmbed | ProductEmbed[] | null;
+    const product = Array.isArray(embed) ? embed[0] : embed;
+    return {
+      id: row.id,
+      productId: row.product_id,
+      name: product?.name?.[locale] || product?.name?.ru || "—",
+      productCode: product?.product_code ?? null,
+      image: product?.images?.[0] ?? null,
+      price: Number(product?.price ?? 0),
+      stock: product?.stock ?? 0,
+      quantity: row.quantity,
+      orderedAt: row.ordered_at,
+      orderNumber: row.order_number,
+    };
+  });
+  return { error: null, lines };
+}
+
 export async function changeCustomerPasswordAction(
   locale: Locale,
   id: string,

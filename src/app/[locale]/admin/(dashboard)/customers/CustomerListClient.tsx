@@ -8,6 +8,7 @@ import CustomerFormModal, { type CustomerFormValues } from "./CustomerFormModal"
 import OrderForCustomerModal from "./OrderForCustomerModal";
 import { RowActionLink, RowActionButton, EyeIcon, KeyIcon, PencilIcon, TrashIcon } from "@/components/admin/RowActions";
 import CustomerPasswordModal from "./CustomerPasswordModal";
+import CustomerCartModal from "./CustomerCartModal";
 import type { Dictionary } from "@/i18n/dictionary";
 import type { Locale } from "@/i18n/locales";
 
@@ -45,6 +46,7 @@ export default function CustomerListClient({
   // Покупатель, за которого сейчас собирают заказ.
   const [orderFor, setOrderFor] = useState<CustomerRow | null>(null);
   const [passwordFor, setPasswordFor] = useState<CustomerRow | null>(null);
+  const [cartFor, setCartFor] = useState<CustomerRow | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const confirm = useConfirm();
@@ -102,7 +104,7 @@ export default function CustomerListClient({
           <table className="w-full min-w-[860px] text-left text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
               <tr>
-                {isAdmin && <th className="px-4 py-3 font-medium" />}
+                <th className="px-4 py-3 font-medium" />
                 <th className="px-4 py-3 font-medium">{dict.tableName}</th>
                 <th className="px-4 py-3 font-medium">{dict.tableOrganization}</th>
                 <th className="px-4 py-3 font-medium">{dict.tablePhone}</th>
@@ -113,12 +115,12 @@ export default function CustomerListClient({
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
               {customers.map((row) => (
                 <tr key={row.id}>
-                  {/* На месте бывшего аватара — кнопка «заказать вместо
-                      покупателя». Фотографии покупателей из проекта убраны, и
-                      столбец стоял пустыми кружками; сюда же она и просится,
-                      рядом с именем того, за кого оформляют. */}
-                  {isAdmin && (
+                  {/* На месте бывшего аватара — кнопки рядом с именем:
+                      «заказать вместо покупателя» (только админ) и «товары в
+                      корзине покупателя» (админ и старший продавец). */}
                   <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                    {isAdmin && (
                     <button
                       type="button"
                       title={dict.orderForCustomerButton}
@@ -140,8 +142,31 @@ export default function CustomerListClient({
                         <path d="M3 4h2l2.2 10.4a1.5 1.5 0 0 0 1.5 1.2h7.9a1.5 1.5 0 0 0 1.5-1.2L20 8H6" />
                       </svg>
                     </button>
+                    )}
+                    <button
+                      type="button"
+                      title={dict.customerCartButton}
+                      aria-label={`${dict.customerCartButton}: ${row.firstName} ${row.lastName}`}
+                      onClick={() => setCartFor(row)}
+                      className="flex h-9 w-9 items-center justify-center rounded-full border border-zinc-200 text-zinc-500 transition-colors hover:border-orange-500 hover:text-orange-600 dark:border-zinc-700 dark:text-zinc-400"
+                    >
+                      {/* Сумка с глазом-точкой: «посмотреть», а не «оформить». */}
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={1.6}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="h-4 w-4"
+                      >
+                        <path d="M5 8h14l-1.2 11.2a1.5 1.5 0 0 1-1.5 1.3H7.7a1.5 1.5 0 0 1-1.5-1.3L5 8Z" />
+                        <path d="M9 8V6.5a3 3 0 0 1 6 0V8" />
+                        <circle cx="12" cy="14" r="1.6" />
+                      </svg>
+                    </button>
+                    </div>
                   </td>
-                  )}
                   <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50">
                     {row.firstName} {row.lastName}
                   </td>
@@ -178,6 +203,15 @@ export default function CustomerListClient({
             </tbody>
           </table>
         </div>
+      )}
+
+      {cartFor && (
+        <CustomerCartModal
+          locale={locale}
+          dict={dict}
+          customer={{ id: cartFor.id, name: `${cartFor.firstName} ${cartFor.lastName}`.trim() }}
+          onClose={() => setCartFor(null)}
+        />
       )}
 
       {passwordFor && (
