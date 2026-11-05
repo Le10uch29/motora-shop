@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { logAction } from "@/lib/logs";
 import type { Locale } from "@/i18n/locales";
 import type { ImportConflictRow, ProductCompletenessRow } from "./productTypes";
+import { readAllRows } from "./importSteps";
 
 /* Разбор после импорта: конфликты (разные цены у повторов одного кода) и
  * товары, которым не хватает цены или кодов. */
@@ -64,12 +65,24 @@ export async function getProductsCompletenessAction(locale: Locale): Promise<Pro
   await requireAdmin(locale);
   const admin = createAdminClient();
 
-  const { data } = await admin
-    .from("products")
-    .select("id, product_code, origin_code, price, name")
-    .order("created_at", { ascending: false });
+  // Постранично: за один запрос база отдаёт не больше 1000 строк, а товаров
+  // уже больше — без этого часть товаров в проверку не попадала.
+  const { rows: data } = await readAllRows<{
+    id: string;
+    product_code: string | null;
+    origin_code: string | null;
+    price: number;
+    name: Record<string, string> | null;
+  }>((from, to) =>
+    admin
+      .from("products")
+      .select("id, product_code, origin_code, price, name")
+      .order("created_at", { ascending: false })
+      .order("id")
+      .range(from, to)
+  );
 
-  return (data ?? []).map((p) => ({
+  return data.map((p) => ({
     id: p.id,
     productCode: p.product_code ?? "",
     originCode: p.origin_code ?? "",

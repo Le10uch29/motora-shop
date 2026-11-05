@@ -386,7 +386,7 @@ async function ImportBlock({ locale, d }: { locale: Locale; d: Dash }) {
               <span>
                 {d.importConflictsLabel}: <strong className="tabular-nums">{unresolvedConflicts}</strong>
               </span>
-              <Link href={`/${locale}/admin/products`} className="font-medium hover:underline">
+              <Link href={`/${locale}/admin/products?review=conflicts`} className="font-medium hover:underline">
                 {d.actionCheck}
               </Link>
             </p>

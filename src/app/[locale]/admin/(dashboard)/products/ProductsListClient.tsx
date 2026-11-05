@@ -97,6 +97,7 @@ export default function ProductsListClient({
   warehouses,
   stockByProduct,
   zeroStockCount,
+  initialConflictsOpen = false,
   searchSlot,
 }: {
   locale: Locale;
@@ -115,11 +116,13 @@ export default function ProductsListClient({
   stockByProduct: Record<string, Record<string, number>>;
   /** Products with nothing in stock, across the whole catalog (not just this page). */
   zeroStockCount: number;
+  /** Открыть окно «Требуют проверки» сразу (переход с дашборда). */
+  initialConflictsOpen?: boolean;
   searchSlot?: ReactNode;
 }) {
   const [modal, setModal] = useState<{ mode: "create" | "edit"; values?: ProductFormValues } | null>(null);
   const [importModalOpen, setImportModalOpen] = useState(false);
-  const [conflictsModalOpen, setConflictsModalOpen] = useState(false);
+  const [conflictsModalOpen, setConflictsModalOpen] = useState(initialConflictsOpen);
   const [missingDataModalOpen, setMissingDataModalOpen] = useState(false);
   const [warehouseModalRow, setWarehouseModalRow] = useState<AdminProductRow | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -517,7 +520,16 @@ export default function ProductsListClient({
         <ImportConflictsModal
           locale={locale}
           dict={dict}
-          onClose={() => setConflictsModalOpen(false)}
+          onClose={() => {
+            setConflictsModalOpen(false);
+            // Убираем ?review=conflicts, чтобы окно не открывалось снова при
+            // обновлении страницы.
+            const url = new URL(window.location.href);
+            if (url.searchParams.has("review")) {
+              url.searchParams.delete("review");
+              window.history.replaceState(window.history.state, "", url);
+            }
+          }}
         />
       )}
 

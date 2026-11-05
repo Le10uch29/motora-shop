@@ -67,6 +67,9 @@ export default async function AdminProductsPage({
   // Server Component still reach the browser in the RSC payload whether or
   // not the client actually renders them.
   const isAdmin = staff.role === "admin";
+  // «Проверить» на дашборде (блок импорта) ведёт сюда с ?review=conflicts —
+  // сразу открываем окно «Требуют проверки», а не просто список товаров.
+  const openConflicts = isAdmin && single(sp.review) === "conflicts";
 
   // All independent of each other, so they go together: one wait of ~330ms
   // instead of six.
@@ -101,6 +104,7 @@ export default async function AdminProductsPage({
         sort={sort}
         total={grandTotal}
         zeroStockCount={zeroStockCount}
+        initialConflictsOpen={openConflicts}
         brands={brands}
         categoryTree={categoryPicker(categoryTree, locale)}
         warehouses={warehouses}
