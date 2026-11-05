@@ -1,17 +1,13 @@
 import type { createAdminClient } from "@/lib/supabase/admin";
 import {
-  UNIVERSAL_MAKE,
   fitmentColumns,
   fitmentsFromImport,
   splitModelAndDescription,
   fitmentsOf,
   fitmentsToFields,
-  OPEN_YEAR_FROM,
-  OPEN_YEAR_TO,
   type Fitment,
 } from "@/lib/fitments";
-import { mergeOem, normalizeOem } from "@/lib/oem";
-import { mergeImportedName } from "./importName";
+import { normalizeOem } from "@/lib/oem";
 import { DEFAULT_CATEGORY, slugify } from "./productForm";
 import type { ImportRow, ImportRowConflict } from "./importRows";
 
@@ -31,11 +27,6 @@ import type { ImportRow, ImportRowConflict } from "./importRows";
  */
 
 type AdminClient = ReturnType<typeof createAdminClient>;
-
-/** Так раньше записывался товар, у которого в файле не было года: с 2000 по
- * год импорта. Теперь год просто остаётся пустым, но такие старые товары
- * по-прежнему считаются «без года» — файл может их дополнить. */
-const LEGACY_DEFAULT_YEAR_FROM = 2000;
 
 export function chunk<T>(items: T[], size: number): T[][] {
   const groups: T[][] = [];
@@ -69,6 +60,22 @@ export type ImportContext = {
   resolveWarehouseId: (warehouseName: string | undefined) => string | null;
 };
 
+/** Все строки запроса — постранично, по 1000 (больше PostgREST за раз не
+ * отдаёт). Ошибка любой страницы возвращается, а не проглатывается. */
+export async function readAllRows<T>(
+  read: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>
+): Promise<{ rows: T[]; error: string | null }> {
+  const rows: T[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await read(from, from + 999);
+    if (error) return { rows, error: error.message };
+    if (!data || data.length === 0) break;
+    rows.push(...data);
+    if (data.length < 1000) break;
+  }
+  return { rows, error: null };
+}
+
 /** Шаг 1: всё, что импорту нужно знать о базе, — одним заходом. */
 export async function loadImportContext(
   admin: AdminClient,
@@ -79,23 +86,31 @@ export async function loadImportContext(
   // Fetched unfiltered (not `.in("product_code", codes)`) because that
   // filter is case-sensitive — it would miss e.g. "21202Ap" already in the
   // DB when this file has "21202ap", creating a duplicate instead of
-  // updating it. The table is a few hundred to low thousands of rows, so
-  // fetching all of them here (once per import) is cheap.
-  const [{ data: existingRows, error: fetchError }, { data: slugRows }, { data: warehouseRows }] =
-    await Promise.all([
+  // updating it.
+  //
+  // Постранично: PostgREST отдаёт не больше 1000 строк за запрос. Когда
+  // товаров стало больше тысячи, импорт перестал видеть «лишние» — и при
+  // повторной загрузке того же файла создавал их заново (дубли).
+  const [products, slugs, { data: warehouseRows }] = await Promise.all([
+    readAllRows<ExistingProductRow>((from, to) =>
       admin
         .from("products")
         .select(
           "id, product_code, price, stock, origin_code, make, model, fitments, brand_id, images, name, description, year_from, year_to"
         )
-        .not("product_code", "is", null),
-      admin
-        .from("products")
-        .select("slug")
-        .in("slug", Array.from(new Set(codes.map((c) => slugify(c))))),
-      admin.from("warehouses").select("id, name"),
-    ]);
-  if (fetchError) return { context: null, error: fetchError.message };
+        .not("product_code", "is", null)
+        .order("id")
+        .range(from, to)
+    ),
+    readAllRows<{ slug: string }>((from, to) =>
+      admin.from("products").select("slug").order("id").range(from, to)
+    ),
+    admin.from("warehouses").select("id, name"),
+  ]);
+  if (products.error) return { context: null, error: products.error };
+  const existingRows = products.rows;
+  const wantedSlugs = new Set(codes.map((c) => slugify(c)));
+  const slugRows = slugs.rows.filter((row) => wantedSlugs.has(row.slug));
 
   // Matched case-insensitively — a file's own warehouse column is free text.
   const warehouseIdByName = new Map((warehouseRows ?? []).map((w) => [w.name.trim().toLowerCase(), w.id]));
@@ -131,9 +146,18 @@ export async function loadImportContext(
   return { context: { existingByCode, uniqueSlug, resolveWarehouseId }, error: null };
 }
 
+/** Дополнение существующего товара: что меняем и что было до этого — по
+ * previous откат возвращает товар в прежнее состояние. */
+export type PlannedUpdate = {
+  id: string;
+  code: string;
+  patch: Record<string, unknown>;
+  previous: Record<string, unknown>;
+};
+
 export type ImportPlan = {
   toInsert: Record<string, unknown>[];
-  toUpdate: { id: string; code: string; patch: Record<string, unknown> }[];
+  toUpdate: PlannedUpdate[];
   unchanged: number;
   codeToProductId: Map<string, string>;
   warehouseAssignments: { code: string; warehouseId: string; quantity: number }[];
@@ -143,14 +167,13 @@ export type ImportPlan = {
 export function planImportRows(
   validRows: ImportRow[],
   context: ImportContext,
-  brandId: string,
-  currentYear: number
+  brandId: string
 ): ImportPlan {
   const { existingByCode, uniqueSlug, resolveWarehouseId } = context;
 
   let unchanged = 0;
   const toInsert: Record<string, unknown>[] = [];
-  const toUpdate: { id: string; code: string; patch: Record<string, unknown> }[] = [];
+  const toUpdate: PlannedUpdate[] = [];
   // Maps a product code (lowercased) to the id it ends up as in this run —
   // needed to attach row-conflict log entries to the right product once
   // inserts/updates have actually happened.
@@ -212,78 +235,80 @@ export function planImportRows(
       continue;
     }
 
+    // Правило: поле, которое в файле выбрано (не «не использовать») и
+    // заполнено, перезаписывает значение на сайте, если оно отличается.
+    // Невыбранное поле и пустая ячейка товар не трогают.
     const patch: Record<string, unknown> = {};
-    if ((existing.price === 0 || existing.price == null) && row.price) patch.price = row.price;
-    if ((existing.stock === 0 || existing.stock == null) && row.stock) patch.stock = row.stock;
-    // OEM-коды только дополняются: коды из файла, которых у товара ещё нет,
-    // дописываются в конец, а уже стоящий первым главный код не меняется.
-    if (originCode) {
-      const mergedOem = mergeOem(existing.origin_code, originCode);
-      if (mergedOem !== normalizeOem(existing.origin_code)) patch.origin_code = mergedOem;
+    if (row.price != null && Number(existing.price) !== row.price) patch.price = row.price;
+    if (row.stock != null && existing.stock !== row.stock) patch.stock = row.stock;
+    // OEM-коды — по тому же правилу: коды из файла заменяют коды товара
+    // целиком (первый из файла становится главным), если они отличаются.
+    if (originCode && originCode !== normalizeOem(existing.origin_code)) {
+      patch.origin_code = originCode;
     }
-    // Vehicles follow the same "fill only what's empty" rule, column by column:
-    // the file's makes replace a product without one, its models one without
-    // models, its years one still on the default range. The result is paired
-    // up again as a whole, so the n-th make still meets the n-th model.
-    const fillMake = (!existing.make || existing.make === UNIVERSAL_MAKE) && Boolean(make);
-    const existingFitments = fitmentsOf({
-      ...existing,
-      yearFrom: existing.year_from,
-      yearTo: existing.year_to,
-    });
-    // Двигатели в скобках («F10/GT (4,4-4,8)») дополняют товар, у которого
-    // их ещё нет, — вместе с моделями из той же ячейки.
-    const fillEngines =
-      Boolean(model?.includes("(")) && !existingFitments.some((f) => f.engines && f.engines.length > 0);
-    const fillModel = (!existing.model && Boolean(model)) || fillEngines;
-    const hasNoYears =
-      (existing.year_from === OPEN_YEAR_FROM && existing.year_to === OPEN_YEAR_TO) ||
-      (existing.year_from === LEGACY_DEFAULT_YEAR_FROM && existing.year_to === currentYear);
-    const fillYears = hasNoYears && Boolean(years || yearFrom || yearTo);
-    if (fillMake || fillModel || fillYears) {
+    // Машины: что выбрано и заполнено в файле, то и становится машинами
+    // товара; невыбранная часть (например, годы) берётся у товара как есть.
+    if (make || model || years || yearFrom || yearTo) {
+      const existingFitments = fitmentsOf({
+        ...existing,
+        yearFrom: existing.year_from,
+        yearTo: existing.year_to,
+      });
       const current = fitmentsToFields(existingFitments);
-      // Years the product already has are written back as one range per
-      // vehicle ("2000-2002; 2010-2015"), which reads as the file's own single
-      // year column would; the file's two columns are only consulted when it
-      // actually carries them and its years are the ones being filled in.
-      const keepYears = !fillYears || !(years || yearFrom || yearTo);
-      Object.assign(
-        patch,
-        fitmentColumns(
-          fitmentsFromImport(
-            {
-              make: fillMake ? make : current.make,
-              model: fillModel ? model : current.model,
-              years: keepYears ? current.years : years,
-              yearFrom: keepYears || years ? undefined : yearFrom,
-              yearTo: keepYears || years ? undefined : yearTo,
-            }
-          )
-        )
+      const twoYearColumns = !years && Boolean(yearFrom || yearTo);
+      const fromFile = fitmentColumns(
+        fitmentsFromImport({
+          make: make || current.make,
+          model: model || current.model,
+          years: years || (twoYearColumns ? undefined : current.years),
+          yearFrom: twoYearColumns ? yearFrom : undefined,
+          yearTo: twoYearColumns ? yearTo : undefined,
+        })
       );
+      if (JSON.stringify(fromFile.fitments) !== JSON.stringify(existingFitments)) {
+        Object.assign(patch, fromFile);
+      }
     }
     if (!existing.brand_id && brandId) patch.brand_id = brandId;
-    if ((!existing.images || existing.images.length === 0) && photoUrl) patch.images = [photoUrl];
-
-    if (anyName) {
-      const mergedName = mergeImportedName(
-        existing.name,
-        { ru: nameRu, az: nameAz, ka: nameKa },
-        code
-      );
-      if (mergedName) patch.name = mergedName;
+    // Фото из файла становится главным; остальные фото товара сохраняются.
+    // Картинки, вставленные в сам файл, сюда попадают только для товаров без
+    // фото (модалка не загружает их повторно), поэтому повторный импорт того
+    // же файла фото не меняет.
+    if (photoUrl && (existing.images?.[0] ?? null) !== photoUrl) {
+      patch.images = [photoUrl, ...(existing.images ?? []).filter((url) => url !== photoUrl)].slice(0, 4);
     }
 
-    const descriptionEmpty =
-      !existing.description?.ru?.trim() &&
-      !existing.description?.az?.trim() &&
-      !existing.description?.ka?.trim();
-    if (descriptionEmpty && descriptionText) {
+    if (anyName) {
+      const nextName = {
+        ru: nameRu || existing.name?.ru || anyName,
+        az: nameAz || existing.name?.az || anyName,
+        ka: nameKa || existing.name?.ka || anyName,
+      };
+      if (
+        nextName.ru !== existing.name?.ru ||
+        nextName.az !== existing.name?.az ||
+        nextName.ka !== existing.name?.ka
+      ) {
+        patch.name = nextName;
+      }
+    }
+
+    if (
+      descriptionText &&
+      (existing.description?.ru !== descriptionText ||
+        existing.description?.az !== descriptionText ||
+        existing.description?.ka !== descriptionText)
+    ) {
       patch.description = { ru: descriptionText, az: descriptionText, ka: descriptionText };
     }
 
     if (Object.keys(patch).length > 0) {
-      toUpdate.push({ id: existing.id, code, patch });
+      // Прежние значения ровно тех полей, что меняются, — для отката.
+      const previous: Record<string, unknown> = {};
+      for (const key of Object.keys(patch)) {
+        previous[key] = (existing as Record<string, unknown>)[key] ?? null;
+      }
+      toUpdate.push({ id: existing.id, code, patch, previous });
     } else {
       unchanged += 1;
       codeToProductId.set(code.toLowerCase(), existing.id);
@@ -301,9 +326,17 @@ export async function writeImportedProducts(
   toUpdate: ImportPlan["toUpdate"],
   codeToProductId: Map<string, string>,
   errors: string[]
-): Promise<{ created: number; updated: number }> {
+): Promise<{
+  created: number;
+  updated: number;
+  /** Что реально записалось — для истории импортов. */
+  createdItems: { id: string; code: string }[];
+  updatedItems: PlannedUpdate[];
+}> {
   let created = 0;
   let updated = 0;
+  const createdItems: { id: string; code: string }[] = [];
+  const updatedItems: PlannedUpdate[] = [];
 
   for (const group of chunk(toInsert, 50)) {
     const { data, error } = await admin.from("products").insert(group).select("id, product_code");
@@ -314,31 +347,42 @@ export async function writeImportedProducts(
     created += data?.length ?? 0;
     for (const row of data ?? []) {
       if (row.product_code) codeToProductId.set(row.product_code.toLowerCase(), row.id);
+      createdItems.push({ id: row.id, code: row.product_code ?? "" });
     }
   }
 
   for (const group of chunk(toUpdate, 50)) {
     const results = await Promise.all(
-      group.map(({ id, code, patch }) =>
+      group.map((item) =>
         admin
           .from("products")
-          .update(patch)
-          .eq("id", id)
-          .then((res) => ({ ...res, id, code }))
+          .update(item.patch)
+          .eq("id", item.id)
+          .then((res) => ({ ...res, item }))
       )
     );
-    for (const { error, id, code } of results) {
+    for (const { error, item } of results) {
       if (error) {
         errors.push(error.message);
       } else {
         updated++;
-        codeToProductId.set(code.toLowerCase(), id);
+        codeToProductId.set(item.code.toLowerCase(), item.id);
+        updatedItems.push(item);
       }
     }
   }
 
-  return { created, updated };
+  return { created, updated, createdItems, updatedItems };
 }
+
+/** Остаток на складе, проставленный импортом; previousQuantity — что было до
+ * него (null — строки склада не было). */
+export type AppliedStock = {
+  productId: string;
+  warehouseId: string;
+  quantity: number;
+  previousQuantity: number | null;
+};
 
 /** Шаг 4: остатки на складах — только там, где их ещё нет. */
 export async function applyWarehouseStock(
@@ -346,8 +390,9 @@ export async function applyWarehouseStock(
   warehouseAssignments: ImportPlan["warehouseAssignments"],
   codeToProductId: Map<string, string>,
   errors: string[]
-): Promise<number> {
+): Promise<{ count: number; applied: AppliedStock[] }> {
   let warehouseStockSet = 0;
+  const applied: AppliedStock[] = [];
   if (warehouseAssignments.length > 0) {
     const resolvedAssignments = warehouseAssignments
       .map((a) => {
@@ -358,9 +403,8 @@ export async function applyWarehouseStock(
       .filter((a): a is NonNullable<typeof a> => a !== null);
 
     if (resolvedAssignments.length > 0) {
-      // "Fill only if currently empty" — same rule as every other field this
-      // import can touch: an existing non-zero warehouse_stock row (set
-      // manually, or by an earlier import) is left alone, not overwritten.
+      // Количество из файла перезаписывает остаток на складе, если отличается
+      // (то же правило, что и для остальных выбранных полей).
       const { data: existingStock } = await admin
         .from("warehouse_stock")
         .select("product_id, warehouse_id, quantity")
@@ -371,20 +415,32 @@ export async function applyWarehouseStock(
       );
 
       const toUpsertStock = resolvedAssignments
-        .filter((a) => (existingQuantity.get(`${a.productId}:${a.warehouseId}`) ?? 0) === 0)
+        .filter((a) => existingQuantity.get(`${a.productId}:${a.warehouseId}`) !== a.quantity)
         .map((a) => ({ product_id: a.productId, warehouse_id: a.warehouseId, quantity: a.quantity }));
 
       for (const group of chunk(toUpsertStock, 50)) {
         const { error } = await admin
           .from("warehouse_stock")
           .upsert(group, { onConflict: "warehouse_id,product_id" });
-        if (error) errors.push(error.message);
-        else warehouseStockSet += group.length;
+        if (error) {
+          errors.push(error.message);
+          continue;
+        }
+        warehouseStockSet += group.length;
+        for (const row of group) {
+          const key = `${row.product_id}:${row.warehouse_id}`;
+          applied.push({
+            productId: row.product_id,
+            warehouseId: row.warehouse_id,
+            quantity: row.quantity,
+            previousQuantity: existingQuantity.has(key) ? existingQuantity.get(key)! : null,
+          });
+        }
       }
     }
   }
 
-  return warehouseStockSet;
+  return { count: warehouseStockSet, applied };
 }
 
 /** Шаг 5: расхождения цен у повторов одного кода — в «Конфликты импорта». */

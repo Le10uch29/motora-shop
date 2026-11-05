@@ -37,6 +37,9 @@ export default async function AdminProductsPage({
   const page = Number(single(sp.page)) || 1;
   const sort = parseProductSort(single(sp.sort), single(sp.dir));
   const filter = parseProductFilter(single(sp.filter));
+  // Товары одного Excel-импорта — ссылка «Товары» из «Истории импортов».
+  const importParam = single(sp.import) ?? "";
+  const importRunId = /^[0-9a-f-]{36}$/i.test(importParam) ? importParam : null;
   const d = dict.dashboard;
   const filterLabels: Record<ProductFilter, string> = {
     in_stock: d.kpiInStock,
@@ -76,8 +79,8 @@ export default async function AdminProductsPage({
     stockByProduct,
     zeroStockCount,
   ] = await Promise.all([
-    getAdminProducts(locale, { query, page, sort, filter }),
-    query || filter ? getProductsGrandTotal() : null,
+    getAdminProducts(locale, { query, page, sort, filter, importRunId }),
+    query || filter || importRunId ? getProductsGrandTotal() : null,
     getBrandOptions(),
     // Категория нужна форме товара — её открывает и продавец.
     canEditProducts(staff.role) ? getAdminCategoryTree() : [],
@@ -108,9 +111,30 @@ export default async function AdminProductsPage({
               <AdminSearchBox defaultValue={query} placeholder={dict.admin.searchPlaceholder} />
               {/* Поиск не сбрасывает выбранный фильтр и сортировку. */}
               {filter && <input type="hidden" name="filter" value={filter} />}
+              {importRunId && <input type="hidden" name="import" value={importRunId} />}
               {sort && <input type="hidden" name="sort" value={sort.key} />}
               {sort && <input type="hidden" name="dir" value={sort.dir} />}
             </form>
+            {(isAdmin || importRunId) && (
+              <div className="flex flex-wrap items-center gap-2">
+                {importRunId && (
+                  <Link
+                    href={`/${locale}/admin/products`}
+                    className="rounded-full bg-orange-600 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-orange-500"
+                  >
+                    {dict.admin.importFilterChip} · {total} ✕
+                  </Link>
+                )}
+                {isAdmin && (
+                  <Link
+                    href={`/${locale}/admin/products/imports`}
+                    className="rounded-full border border-zinc-200 px-3 py-1 text-xs font-medium text-zinc-600 transition-colors hover:border-orange-500 hover:text-orange-600 dark:border-zinc-700 dark:text-zinc-300"
+                  >
+                    {dict.admin.importHistoryButton}
+                  </Link>
+                )}
+              </div>
+            )}
             <div className="flex flex-wrap items-center gap-2">
               {([null, ...PRODUCT_FILTERS] as (ProductFilter | null)[]).map((option) => {
                 const active = option === filter;
@@ -144,6 +168,7 @@ export default async function AdminProductsPage({
           sort: sort?.key,
           dir: sort?.dir,
           filter: filter ?? undefined,
+          import: importRunId ?? undefined,
         }}
       />
     </main>
