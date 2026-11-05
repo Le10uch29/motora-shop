@@ -2,11 +2,14 @@
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 import { useMemo, useState, useTransition } from "react";
+import Link from "next/link";
+import { useConfirm } from "@/context/ConfirmContext";
 import { createPortal } from "react-dom";
 import * as XLSX from "xlsx";
 import {
   findProductCodesWithPhotoAction,
   importProductsAction,
+  previewImportAction,
   uploadImportPhotosAction,
 } from "./importActions";
 import type { ImportResult } from "./productTypes";
@@ -177,6 +180,10 @@ export default function ImportProductsModal({
   const [warehouseId, setWarehouseId] = useState<string>("");
   const [parseError, setParseError] = useState<string | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
+  /** Имя файла — уходит в «Историю импортов». */
+  const [fileName, setFileName] = useState("");
+  const [previewing, setPreviewing] = useState(false);
+  const confirm = useConfirm();
   const [pending, startTransition] = useTransition();
 
   const inputClass =
@@ -219,6 +226,7 @@ export default function ImportProductsModal({
     if (!file) return;
     setParseError(null);
     setResult(null);
+    setFileName(file.name);
     try {
       const buf = await file.arrayBuffer();
       const workbook = XLSX.read(buf, { type: "array" });
@@ -294,16 +302,66 @@ export default function ImportProductsModal({
       }))
       .filter((r) => r.productCode);
 
+    const useFilePhotos = mapping.photoUrl != null;
+
     startTransition(async () => {
       setUploadedPhotos(0);
       setSkippedPhotos([]);
+
+      // Страховка до записи в базу: что именно произойдёт и в какой бренд.
+      // Те же шаги, что у импорта, но без записи. Фото, вшитые в файл, ещё не
+      // загружены — помечаем такие строки, чтобы цифры совпали с настоящим
+      // запуском.
+      setPreviewing(true);
+      let preview: Awaited<ReturnType<typeof previewImportAction>>;
+      try {
+        preview = await previewImportAction(
+          locale,
+          brandId,
+          importRows.map((row) =>
+            useFilePhotos && !row.photoUrl && embeddedPhotos.has(row.rowIndex) ? { ...row, photoUrl: "embedded" } : row
+          ),
+          warehouseId || undefined
+        );
+      } finally {
+        setPreviewing(false);
+      }
+      if (preview.error) {
+        setResult({
+          created: 0, updated: 0, skipped: 0, conflicts: 0,
+          warehouseStockSet: 0, unchanged: 0, error: preview.error,
+        });
+        return;
+      }
+      const suspicious = preview.otherBrandMatches.length > 0;
+      const ok = await confirm({
+        title: dict.importPreviewTitle,
+        message: [
+          `${dict.importPreviewBrand}: ${preview.brandName}`,
+          `${dict.importPreviewCreate}: ${preview.create}`,
+          `${dict.importPreviewUpdate}: ${preview.update}`,
+          `${dict.importPreviewUnchanged}: ${preview.unchanged}`,
+          ...(suspicious
+            ? [
+                "",
+                dict.importPreviewOtherBrands,
+                ...preview.otherBrandMatches.map((match) => `• ${match.brandName} — ${match.count}`),
+              ]
+            : []),
+        ].join("\n"),
+        // Коды из файла уже есть у другого бренда — подсвечиваем красным.
+        tone: suspicious ? "danger" : "default",
+        irreversible: false,
+        confirmLabel: dict.importPreviewConfirm,
+      });
+      if (!ok) return;
 
       // Pictures that live inside the spreadsheet are uploaded first and turn
       // into URLs, so the import itself sees them exactly as it sees a photo
       // column full of links. A row that has both keeps the link it was given.
       // Products that already have a picture keep it, so theirs isn't sent up.
       const alreadyPhotographed = new Set(
-        embeddedPhotos.size > 0
+        useFilePhotos && embeddedPhotos.size > 0
           ? await findProductCodesWithPhotoAction(
               locale,
               brandId,
@@ -311,8 +369,11 @@ export default function ImportProductsModal({
             )
           : []
       );
+      // «Фото: не использовать» — картинки, вставленные в файл, тоже не
+      // трогаем: раньше они загружались независимо от этого выбора.
       const withPhoto = importRows.filter(
         (row) =>
+          useFilePhotos &&
           !row.photoUrl &&
           embeddedPhotos.has(row.rowIndex) &&
           !alreadyPhotographed.has(row.productCode.trim().toLowerCase())
@@ -390,7 +451,13 @@ export default function ImportProductsModal({
         );
       }
 
-      const res = await importProductsAction(locale, brandId, importRows, warehouseId || undefined);
+      const res = await importProductsAction(
+        locale,
+        brandId,
+        importRows,
+        warehouseId || undefined,
+        fileName
+      );
       setResult(res);
     });
   }
@@ -482,6 +549,17 @@ export default function ImportProductsModal({
               </p>
             )}
             {result.error && <p className="text-sm text-red-600">{result.error}</p>}
+            {result.historyWarning && (
+              <p className="text-sm text-amber-600">{dict.importHistoryWarning}</p>
+            )}
+            {result.runId && (
+              <Link
+                href={`/${locale}/admin/products/imports`}
+                className="text-sm font-medium text-orange-600 hover:underline"
+              >
+                {dict.importOpenHistory} →
+              </Link>
+            )}
             <div className="flex items-center gap-3">
               <button
                 type="button"
@@ -589,7 +667,9 @@ export default function ImportProductsModal({
                 onClick={handleSubmit}
                 className="flex-1 rounded-full bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-orange-500 disabled:opacity-60"
               >
-                {pending && photosToUpload > 0 && uploadedPhotos < photosToUpload
+                {previewing
+                  ? dict.importPreviewing
+                  : pending && photosToUpload > 0 && uploadedPhotos < photosToUpload
                   ? `${dict.importPhotosUploadingLabel} ${uploadedPhotos}/${photosToUpload}`
                   : dict.importSubmitButton}
               </button>

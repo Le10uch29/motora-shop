@@ -14,6 +14,57 @@ export type ImportResult = {
    * reads as "already up to date" instead of an unexplained 0 / 0. */
   unchanged: number;
   error: string | null;
+  /** Запись в «Истории импортов» — по ней импорт можно откатить. */
+  runId?: string | null;
+  /** История не записалась (например, SQL с таблицами истории ещё не
+   * выполнен) — сам импорт при этом прошёл. */
+  historyWarning?: string | null;
+};
+
+/** Что сделает импорт, если его запустить, — без записи в базу. */
+export type ImportPreview = {
+  brandName: string;
+  create: number;
+  update: number;
+  unchanged: number;
+  skipped: number;
+  /** Коды из файла, которые уже есть у ДРУГИХ брендов: признак того, что
+   * для импорта, возможно, выбран не тот бренд. */
+  otherBrandMatches: { brandName: string; count: number }[];
+  error: string | null;
+};
+
+/** Один запуск импорта в «Истории импортов». */
+export type ImportRunRow = {
+  id: string;
+  createdAt: string;
+  staffName: string;
+  fileName: string | null;
+  brandName: string;
+  warehouseName: string | null;
+  created: number;
+  updated: number;
+  unchanged: number;
+  skipped: number;
+  conflicts: number;
+  stock: number;
+  status: "done" | "rolled_back";
+  rolledBackAt: string | null;
+  rolledBackBy: string | null;
+  movedToBrandName: string | null;
+  movedAt: string | null;
+};
+
+/** Итог отката или переноса на другой бренд: что сделано и что пропущено. */
+export type ImportRunActionResult = {
+  error: string | null;
+  done: number;
+  restored: number;
+  stockRestored: number;
+  skipped: { code: string; reason: "edited" | "in_orders" | "deleted" | "duplicate" }[];
+  /** Перенос на бренд: сколько СУЩЕСТВУЮЩИХ товаров этот импорт только
+   * дополнил — они не переносятся (они и были у того бренда). */
+  leftUpdated?: number;
 };
 
 export type ImportConflictRow = {

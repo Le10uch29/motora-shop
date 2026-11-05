@@ -174,6 +174,8 @@ export async function getAdminProducts(
     page?: number;
     sort?: ProductSort | null;
     filter?: ProductFilter | null;
+    /** Только товары одного Excel-импорта (из «Истории импортов»). */
+    importRunId?: string | null;
   } = {}
 ): Promise<{ rows: AdminProductRow[]; total: number }> {
   const supabase = await createClient();
@@ -185,9 +187,14 @@ export async function getAdminProducts(
   let query = supabase
     .from("products")
     .select(
-      "id, slug, make, model, fitments, brand_id, year_from, year_to, price, old_price, stock, origin_code, product_code, name, description, specs, badge, images, is_popular, brands(name)",
+      // Товары одного импорта: inner-связь с import_run_items оставляет только
+      // те, что этот импорт создал или дополнил (по строке на товар — без дублей).
+      options.importRunId
+        ? "id, slug, make, model, fitments, brand_id, year_from, year_to, price, old_price, stock, origin_code, product_code, name, description, specs, badge, images, is_popular, brands(name), import_run_items!inner(run_id)"
+        : "id, slug, make, model, fitments, brand_id, year_from, year_to, price, old_price, stock, origin_code, product_code, name, description, specs, badge, images, is_popular, brands(name)",
       { count: "exact" }
     );
+  if (options.importRunId) query = query.eq("import_run_items.run_id", options.importRunId);
 
   for (const word of words) {
     const brandIds = brands.filter((b) => b.name.toLowerCase().includes(word)).map((b) => b.id);
