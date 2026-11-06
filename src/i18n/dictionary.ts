@@ -217,6 +217,9 @@ export type Dictionary = {
     invoiceColQuantityShort: string;
     ordererOrdersTitle: string;
     orderLinesTitle: string;
+    orderLinesSearchPlaceholder: string;
+    orderLinesFound: string;
+    orderLinesNothingFound: string;
     orderColumnLines: string;
     orderMixedStatuses: string;
     orderQuantityInvalid: string;

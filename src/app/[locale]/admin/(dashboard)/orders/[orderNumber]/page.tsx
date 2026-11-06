@@ -15,6 +15,7 @@ import Pagination from "@/components/admin/Pagination";
 import { single } from "@/lib/searchParams";
 import { ORDER_LINES_PAGE_SIZE } from "../data";
 import { productImageUrl } from "@/lib/productImageUrl";
+import AdminSearchBox from "@/components/admin/AdminSearchBox";
 
 export default async function OrderPage({
   params,
@@ -43,7 +44,23 @@ export default async function OrderPage({
 
   const sp = await searchParams;
   const page = Math.max(1, Number(single(sp.page)) || 1);
-  const pageLines = lines.slice((page - 1) * ORDER_LINES_PAGE_SIZE, page * ORDER_LINES_PAGE_SIZE);
+
+  // Поиск по позициям заказа: есть ли в нём нужный товар, без ручного
+  // просмотра всех страниц. Ищет по коду, OEM и названию; регистр, пробелы,
+  // точки, дефисы и слеши не важны («010370» найдёт «010.370»).
+  const query = (single(sp.q) ?? "").trim();
+  const squash = (value: string | null | undefined) =>
+    (value ?? "").toLowerCase().replace(/[\s.\-/_]+/g, "");
+  const needle = squash(query);
+  const foundLines = needle
+    ? lines.filter(
+        (line) =>
+          squash(line.productCode).includes(needle) ||
+          squash(line.originCode).includes(needle) ||
+          squash(line.productName).includes(needle)
+      )
+    : lines;
+  const pageLines = foundLines.slice((page - 1) * ORDER_LINES_PAGE_SIZE, page * ORDER_LINES_PAGE_SIZE);
 
   const ordererName = `${orderer.firstName} ${orderer.lastName}`;
 
@@ -129,6 +146,28 @@ export default async function OrderPage({
             />
           )}
         </div>
+        <form className="flex flex-wrap items-center gap-3">
+          <AdminSearchBox defaultValue={query} placeholder={dict.admin.orderLinesSearchPlaceholder} />
+          {query && (
+            <>
+              <span className="text-sm text-zinc-500">
+                {dict.admin.orderLinesFound}: <strong className="tabular-nums">{foundLines.length}</strong> /{" "}
+                {lines.length}
+              </span>
+              <Link
+                href={`/${locale}/admin/orders/${orderNumber}`}
+                className="text-sm text-zinc-500 hover:text-orange-600"
+              >
+                ✕
+              </Link>
+            </>
+          )}
+        </form>
+        {query && foundLines.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-zinc-300 p-6 text-center text-sm text-zinc-500 dark:border-zinc-700">
+            {dict.admin.orderLinesNothingFound}
+          </p>
+        ) : (
         <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
           <table className="w-full min-w-[880px] text-left text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
@@ -211,14 +250,15 @@ export default async function OrderPage({
             </tbody>
           </table>
         </div>
+        )}
       </div>
 
       <Pagination
         basePath={`/${locale}/admin/orders/${orderNumber}`}
         currentPage={page}
-        total={lines.length}
+        total={foundLines.length}
         pageSize={ORDER_LINES_PAGE_SIZE}
-        searchParams={{}}
+        searchParams={{ q: query || undefined }}
       />
 
       <div className="flex items-center justify-between border-t border-zinc-200 pt-6 dark:border-zinc-800">
