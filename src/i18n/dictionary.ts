@@ -718,5 +718,16 @@ export type Dictionary = {
     orderError: string;
     productCodeLabel: string;
     quantityLabel: string;
+    historyTitle: string;
+    historyEmpty: string;
+    historyItems: string;
+    historyDetails: string;
+    historyCollapse: string;
+    historyDelete: string;
+    historyDeleteAll: string;
+    historyStatusMixed: string;
+    historyConfirmDelete: string;
+    historyConfirmDeleteAll: string;
+    historyDeleteNote: string;
   };
 };

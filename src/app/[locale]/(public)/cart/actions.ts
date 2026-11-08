@@ -1,6 +1,8 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthUser } from "@/lib/supabase/authUsers";
 
 export type PlaceOrderState = { error: string | null };
@@ -100,5 +102,38 @@ export async function placeOrderAction(): Promise<PlaceOrderState> {
     .is("ordered_at", null)
     .in("product_id", rows.map((row) => row.product_id));
 
+  return { error: null };
+}
+
+/**
+ * Убирает заказ (или все заказы, если orderNumber = null) из истории
+ * покупателя в корзине.
+ *
+ * Заказ из базы НЕ удаляется: ставится orders.hidden_by_customer_at, и
+ * история его больше не показывает. В админке, аналитике и графиках заказ
+ * остаётся как был. Своей сессией покупатель строки заказов менять не может
+ * (grant update на orders — только служебные столбцы), поэтому запись идёт
+ * серверным ключом — строго по заказам вошедшего пользователя.
+ */
+export async function hideOrderHistoryAction(
+  locale: string,
+  orderNumber: number | null
+): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const user = await getAuthUser(supabase);
+  if (!user) return { error: "not_authenticated" };
+  if (orderNumber !== null && !Number.isInteger(orderNumber)) return { error: "bad_order" };
+
+  const admin = createAdminClient();
+  let query = admin
+    .from("orders")
+    .update({ hidden_by_customer_at: new Date().toISOString() })
+    .eq("customer_id", user.id)
+    .is("hidden_by_customer_at", null);
+  if (orderNumber !== null) query = query.eq("order_number", orderNumber);
+  const { error } = await query;
+  if (error) return { error: error.message };
+
+  revalidatePath(`/${locale}/cart`);
   return { error: null };
 }

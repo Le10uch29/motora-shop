@@ -714,6 +714,17 @@ const ru: Dictionary = {
     orderError: "Не удалось оформить заказ. Попробуйте ещё раз.",
     productCodeLabel: "Код продукта",
     quantityLabel: "Количество",
+    historyTitle: "История заказов",
+    historyEmpty: "Заказов пока нет",
+    historyItems: "Позиций",
+    historyDetails: "Подробнее",
+    historyCollapse: "Свернуть",
+    historyDelete: "Удалить",
+    historyDeleteAll: "Очистить историю",
+    historyStatusMixed: "Разные статусы",
+    historyConfirmDelete: "Удалить этот заказ из истории?",
+    historyConfirmDeleteAll: "Удалить всю историю заказов?",
+    historyDeleteNote: "Заказ пропадёт только из вашей истории — у магазина он останется и будет выполнен.",
   },
 };
 

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition, type ReactNode } from "react";
 import { useCart } from "@/context/CartContext";
 import { useConfirm } from "@/context/ConfirmContext";
@@ -42,6 +43,7 @@ export default function CartView({
   const [orderError, setOrderError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const confirm = useConfirm();
+  const router = useRouter();
 
   async function handleRemove(product: CartProductSummary) {
     const details = [product.productCode, product.name[locale]].filter(Boolean).join(" · ");
@@ -95,6 +97,8 @@ export default function CartView({
         return;
       }
       markOrdered();
+      // Новый заказ сразу появляется в «Истории заказов» под корзиной.
+      router.refresh();
     });
   }
 

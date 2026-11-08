@@ -705,6 +705,17 @@ const az: Dictionary = {
     orderError: "Sifarişi rəsmiləşdirmək mümkün olmadı. Yenidən cəhd edin.",
     productCodeLabel: "Məhsul kodu",
     quantityLabel: "Miqdar",
+    historyTitle: "Sifariş tarixçəsi",
+    historyEmpty: "Hələ sifariş yoxdur",
+    historyItems: "Mövqe",
+    historyDetails: "Ətraflı",
+    historyCollapse: "Bağla",
+    historyDelete: "Sil",
+    historyDeleteAll: "Tarixçəni təmizlə",
+    historyStatusMixed: "Müxtəlif statuslar",
+    historyConfirmDelete: "Bu sifariş tarixçədən silinsin?",
+    historyConfirmDeleteAll: "Bütün sifariş tarixçəsi silinsin?",
+    historyDeleteNote: "Sifariş yalnız sizin tarixçənizdən silinəcək — mağazada qalacaq və icra olunacaq.",
   },
 };
 

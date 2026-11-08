@@ -705,6 +705,17 @@ const ka: Dictionary = {
     orderError: "შეკვეთის გაფორმება ვერ მოხერხდა. სცადეთ თავიდან.",
     productCodeLabel: "პროდუქტის კოდი",
     quantityLabel: "რაოდენობა",
+    historyTitle: "შეკვეთების ისტორია",
+    historyEmpty: "შეკვეთები ჯერ არ არის",
+    historyItems: "პოზიცია",
+    historyDetails: "დეტალურად",
+    historyCollapse: "აკეცვა",
+    historyDelete: "წაშლა",
+    historyDeleteAll: "ისტორიის გასუფთავება",
+    historyStatusMixed: "სხვადასხვა სტატუსი",
+    historyConfirmDelete: "წაიშალოს ეს შეკვეთა ისტორიიდან?",
+    historyConfirmDeleteAll: "წაიშალოს შეკვეთების მთელი ისტორია?",
+    historyDeleteNote: "შეკვეთა წაიშლება მხოლოდ თქვენი ისტორიიდან — მაღაზიაში დარჩება და შესრულდება.",
   },
 };
 
