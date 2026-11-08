@@ -19,6 +19,7 @@ import { getWarehouseOptions, getProductStockMap } from "../warehouses/data";
 import { getAdminCategoryTree } from "../categories/data";
 import { categoryPicker } from "../categories/options";
 import ProductsListClient from "./ProductsListClient";
+import BrandFilterSelect from "./BrandFilterSelect";
 import AdminSearchBox from "@/components/admin/AdminSearchBox";
 import Pagination from "@/components/admin/Pagination";
 import { canEditProducts } from "@/lib/roles";
@@ -40,6 +41,9 @@ export default async function AdminProductsPage({
   // Товары одного Excel-импорта — ссылка «Товары» из «Истории импортов».
   const importParam = single(sp.import) ?? "";
   const importRunId = /^[0-9a-f-]{36}$/i.test(importParam) ? importParam : null;
+  // Фильтр «Бренд» — id бренда из таблицы brands.
+  const brandParam = single(sp.brand) ?? "";
+  const brandId = /^[0-9a-f-]{36}$/i.test(brandParam) ? brandParam : null;
   const d = dict.dashboard;
   const filterLabels: Record<ProductFilter, string> = {
     in_stock: d.kpiInStock,
@@ -58,6 +62,7 @@ export default async function AdminProductsPage({
       params.set("dir", sort.dir);
     }
     if (next) params.set("filter", next);
+    if (brandId) params.set("brand", brandId);
     const qs = params.toString();
     return `/${locale}/admin/products${qs ? `?${qs}` : ""}`;
   };
@@ -82,8 +87,8 @@ export default async function AdminProductsPage({
     stockByProduct,
     zeroStockCount,
   ] = await Promise.all([
-    getAdminProducts(locale, { query, page, sort, filter, importRunId }),
-    query || filter || importRunId ? getProductsGrandTotal() : null,
+    getAdminProducts(locale, { query, page, sort, filter, importRunId, brandId }),
+    query || filter || importRunId || brandId ? getProductsGrandTotal() : null,
     getBrandOptions(),
     // Категория нужна форме товара — её открывает и продавец.
     canEditProducts(staff.role) ? getAdminCategoryTree() : [],
@@ -106,6 +111,7 @@ export default async function AdminProductsPage({
         zeroStockCount={zeroStockCount}
         initialConflictsOpen={openConflicts}
         brands={brands}
+        brandId={brandId}
         categoryTree={categoryPicker(categoryTree, locale)}
         warehouses={warehouses}
         stockByProduct={stockByProduct}
@@ -116,6 +122,7 @@ export default async function AdminProductsPage({
               {/* Поиск не сбрасывает выбранный фильтр и сортировку. */}
               {filter && <input type="hidden" name="filter" value={filter} />}
               {importRunId && <input type="hidden" name="import" value={importRunId} />}
+              {brandId && <input type="hidden" name="brand" value={brandId} />}
               {sort && <input type="hidden" name="sort" value={sort.key} />}
               {sort && <input type="hidden" name="dir" value={sort.dir} />}
             </form>
@@ -139,6 +146,19 @@ export default async function AdminProductsPage({
                 )}
               </div>
             )}
+            <div className="flex flex-wrap items-center gap-2">
+              <BrandFilterSelect
+                brands={brands}
+                value={brandId}
+                label={dict.admin.brandFilterLabel}
+                allLabel={dict.admin.brandFilterAll}
+              />
+              {brandId && (
+                <span className="text-xs text-zinc-500">
+                  {dict.admin.brandFilterFound} {total}
+                </span>
+              )}
+            </div>
             <div className="flex flex-wrap items-center gap-2">
               {([null, ...PRODUCT_FILTERS] as (ProductFilter | null)[]).map((option) => {
                 const active = option === filter;
@@ -173,6 +193,7 @@ export default async function AdminProductsPage({
           dir: sort?.dir,
           filter: filter ?? undefined,
           import: importRunId ?? undefined,
+          brand: brandId ?? undefined,
         }}
       />
     </main>

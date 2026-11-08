@@ -14,6 +14,7 @@ import ProductWarehousesModal from "./ProductWarehousesModal";
 import ImportProductsModal from "./ImportProductsModal";
 import ImportConflictsModal from "./ImportConflictsModal";
 import MissingDataModal from "./MissingDataModal";
+import StockExportModal from "./StockExportModal";
 import { RowActionLink, RowActionButton, EyeIcon, PencilIcon, TrashIcon } from "@/components/admin/RowActions";
 import RowMenu, { isInteractiveTarget } from "@/components/admin/RowMenu";
 import type { AdminProductRow, ProductSort, ProductSortKey } from "./data";
@@ -93,6 +94,7 @@ export default function ProductsListClient({
   sort,
   total,
   brands,
+  brandId = null,
   categoryTree,
   warehouses,
   stockByProduct,
@@ -111,6 +113,8 @@ export default function ProductsListClient({
   sort: Sort | null;
   total: number;
   brands: { id: string; name: string }[];
+  /** Бренд, выбранный в фильтре списка, — по умолчанию и для экспорта. */
+  brandId?: string | null;
   categoryTree: CategoryPickerNode[];
   warehouses: { id: string; name: string }[];
   stockByProduct: Record<string, Record<string, number>>;
@@ -124,6 +128,7 @@ export default function ProductsListClient({
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [conflictsModalOpen, setConflictsModalOpen] = useState(initialConflictsOpen);
   const [missingDataModalOpen, setMissingDataModalOpen] = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
   const [warehouseModalRow, setWarehouseModalRow] = useState<AdminProductRow | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -243,7 +248,7 @@ export default function ProductsListClient({
         <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
           {dict.productsAdminTitle}
         </h1>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
         {isAdmin && (
           <>
             <button
@@ -266,6 +271,13 @@ export default function ProductsListClient({
               className="rounded-full border border-zinc-300 px-5 py-2 text-sm font-semibold text-zinc-700 transition-colors hover:border-orange-500 hover:text-orange-600 dark:border-zinc-700 dark:text-zinc-300"
             >
               {dict.missingDataButton}
+            </button>
+            <button
+              type="button"
+              onClick={() => setExportModalOpen(true)}
+              className="rounded-full border border-emerald-600 px-5 py-2 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
+            >
+              {dict.stockExportButton}
             </button>
           </>
         )}
@@ -538,6 +550,16 @@ export default function ProductsListClient({
           locale={locale}
           dict={dict}
           onClose={() => setMissingDataModalOpen(false)}
+        />
+      )}
+
+      {exportModalOpen && (
+        <StockExportModal
+          locale={locale}
+          dict={dict}
+          brands={brands}
+          initialBrandId={brandId}
+          onClose={() => setExportModalOpen(false)}
         />
       )}
 

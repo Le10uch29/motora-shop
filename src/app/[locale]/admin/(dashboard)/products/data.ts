@@ -176,6 +176,8 @@ export async function getAdminProducts(
     filter?: ProductFilter | null;
     /** Только товары одного Excel-импорта (из «Истории импортов»). */
     importRunId?: string | null;
+    /** Только товары одного бренда (фильтр «Бренд»). */
+    brandId?: string | null;
   } = {}
 ): Promise<{ rows: AdminProductRow[]; total: number }> {
   const supabase = await createClient();
@@ -195,6 +197,7 @@ export async function getAdminProducts(
       { count: "exact" }
     );
   if (options.importRunId) query = query.eq("import_run_items.run_id", options.importRunId);
+  if (options.brandId) query = query.eq("brand_id", options.brandId);
 
   for (const word of words) {
     const brandIds = brands.filter((b) => b.name.toLowerCase().includes(word)).map((b) => b.id);
