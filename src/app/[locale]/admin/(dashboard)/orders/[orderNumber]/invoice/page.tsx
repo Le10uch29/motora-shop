@@ -27,7 +27,12 @@ export default async function InvoicePage({
   const { orderer, lines, total, warehouseName, warehouseAddress, createdAt } = result;
 
   const ordererName = `${orderer.firstName} ${orderer.lastName}`;
-  const activeLines = lines.filter((line) => line.status !== "cancelled");
+  // Инвойс — за то, что у покупателя осталось: возвращённое из количества
+  // вычитается, а позиция, возвращённая целиком, в него не попадает.
+  const activeLines = lines
+    .filter((line) => line.status !== "cancelled")
+    .map((line) => ({ ...line, quantity: line.quantity - line.returnedQuantity }))
+    .filter((line) => line.quantity > 0);
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-2 py-10 print:max-w-none print:gap-6 print:px-0 print:py-0">

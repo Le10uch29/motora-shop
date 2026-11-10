@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { readAllPages } from "@/lib/supabase/paginate";
+import { readReturnedQuantities, withoutReturned } from "@/lib/orderReturns";
 import { makeLabel } from "@/lib/products";
 import { LOW_STOCK_THRESHOLD, bucketOf, periodBounds, type DashboardPeriod } from "@/lib/adminConfig";
 import { STATS_SINCE_KEY } from "@/lib/dashboardSettings";
@@ -181,6 +182,7 @@ export const getAttentionCounts = cache(async (): Promise<AttentionCounts> => {
 // ─── 3. График продаж ────────────────────────────────────────────────────────
 
 type OrderRow = {
+  id: string;
   created_at: string;
   status: string;
   price_at_order: number;
@@ -228,15 +230,21 @@ async function fetchOrders(fromIso: string, toIso?: string): Promise<OrderRow[]>
     : fromIso;
   if (toIso && new Date(start) >= new Date(toIso)) return [];
 
-  return readAllPages<OrderRow>((from, to) => {
-    let query = supabase
-      .from("orders")
-      .select("created_at, status, price_at_order, discounted_price, quantity, product_id")
-      .neq("status", "cancelled")
-      .gte("created_at", start);
-    if (toIso) query = query.lt("created_at", toIso);
-    return query.range(from, to);
-  });
+  const [rows, returned] = await Promise.all([
+    readAllPages<OrderRow>((from, to) => {
+      let query = supabase
+        .from("orders")
+        .select("id, created_at, status, price_at_order, discounted_price, quantity, product_id")
+        .neq("status", "cancelled")
+        .gte("created_at", start);
+      if (toIso) query = query.lt("created_at", toIso);
+      return query.range(from, to);
+    }),
+    readReturnedQuantities(supabase),
+  ]);
+  // Возвращённое не продано: выручка и штуки — за вычетом возврата, а строка,
+  // возвращённая целиком, не считается и заказом.
+  return withoutReturned(rows, returned);
 }
 
 export type SalesPoint = { label: string; revenue: number; orders: number; units: number };
@@ -518,15 +526,19 @@ export async function getGeography(period: DashboardPeriod): Promise<CitySales[]
   const { from } = periodBounds(period);
   const windowStart = await effectiveFrom(from);
 
-  const orders = await readAllPages<{ customer_id: string; price_at_order: number; discounted_price: number | null; quantity: number }>(
-    (fromRow, toRow) =>
-      supabase
-        .from("orders")
-        .select("customer_id, price_at_order, discounted_price, quantity")
-        .neq("status", "cancelled")
-        .gte("created_at", windowStart)
-        .range(fromRow, toRow)
-  );
+  const [allOrders, returned] = await Promise.all([
+    readAllPages<{ id: string; customer_id: string; price_at_order: number; discounted_price: number | null; quantity: number }>(
+      (fromRow, toRow) =>
+        supabase
+          .from("orders")
+          .select("id, customer_id, price_at_order, discounted_price, quantity")
+          .neq("status", "cancelled")
+          .gte("created_at", windowStart)
+          .range(fromRow, toRow)
+    ),
+    readReturnedQuantities(supabase),
+  ]);
+  const orders = withoutReturned(allOrders, returned);
   if (orders.length === 0) return [];
 
   const { data: customers } = await supabase

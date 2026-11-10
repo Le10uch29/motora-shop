@@ -128,14 +128,18 @@ export async function getOrdersList(
   options: { query?: string; page?: number } = {}
 ): Promise<{ rows: OrderSummaryRow[]; total: number }> {
   const admin = createAdminClient();
-  const { data } = await admin
-    .from("orders")
-    .select(
-      "customer_id, order_number, quantity, price_at_order, discounted_price, status, created_at, updated_at, warehouse_id"
-    )
-    .order("created_at", { ascending: false });
+  const [{ data }, returns] = await Promise.all([
+    admin
+      .from("orders")
+      .select(
+        "id, customer_id, order_number, quantity, price_at_order, discounted_price, status, created_at, updated_at, warehouse_id"
+      )
+      .order("created_at", { ascending: false }),
+    // Только строки, по которым что-то вернули, — их немного.
+    readReturnInfo(admin, null),
+  ]);
 
-  const baseRows = (data ?? []) as (Omit<OrderBaseRow, "id" | "product_name"> & { created_at: string })[];
+  const baseRows = (data ?? []) as (Omit<OrderBaseRow, "product_name"> & { created_at: string })[];
 
   type Group = {
     orderNumber: number;
@@ -167,8 +171,10 @@ export async function getOrdersList(
     // но порядок возврата строк это не гарантирует.
     if (row.created_at < group.createdAt) group.createdAt = row.created_at;
     // Отменённые позиции в сумму не идут — заказ на них уже не выставляется.
+    // Возвращённое тоже не идёт: его покупатель отдал обратно.
     if (row.status !== "cancelled") {
-      group.total += effectivePrice(Number(row.price_at_order), row.discounted_price) * row.quantity;
+      const kept = row.quantity - (returns.byId.get(row.id)?.returned ?? 0);
+      group.total += effectivePrice(Number(row.price_at_order), row.discounted_price) * kept;
     }
     if (row.warehouse_id && row.updated_at > group.warehouseUpdatedAt) {
       group.warehouseId = row.warehouse_id;
@@ -253,7 +259,70 @@ export type OrdererOrderLine = {
   discountedPrice: number | null;
   status: OrderStatus;
   createdAt: string;
+  /** Сколько штук этой позиции уже вернули (0, если SQL возвратов ещё не
+   * выполнен). Сумма заказа считается за вычетом возвращённого. */
+  returnedQuantity: number;
+  /** Позиция списана со склада (заказ отправлен) — только такую можно вернуть. */
+  stockDeducted: boolean;
 };
+
+/** Одна запись истории возвратов заказа. */
+export type OrderReturnRow = {
+  id: string;
+  orderId: string;
+  productName: string;
+  quantity: number;
+  reason: string | null;
+  staffName: string | null;
+  createdAt: string;
+};
+
+/** Возвраты по заказам: сколько штук вернули по каждой строке. Отдельным
+ * запросом и без ошибки наружу: если SQL возвратов ещё не выполнен, колонки
+ * нет — тогда возвратов просто нет, а страницы работают как раньше. */
+async function readReturnInfo(
+  admin: ReturnType<typeof createAdminClient>,
+  filter: { orderNumber: number } | null
+): Promise<{
+  installed: boolean;
+  byId: Map<string, { returned: number; deducted: boolean }>;
+}> {
+  let query = admin.from("orders").select("id, returned_quantity, stock_deducted_at");
+  if (filter) query = query.eq("order_number", filter.orderNumber);
+  else query = query.gt("returned_quantity", 0);
+  const { data, error } = await query;
+  const byId = new Map<string, { returned: number; deducted: boolean }>();
+  if (error) return { installed: false, byId };
+  for (const row of data ?? []) {
+    byId.set(row.id, { returned: row.returned_quantity ?? 0, deducted: Boolean(row.stock_deducted_at) });
+  }
+  return { installed: true, byId };
+}
+
+/** История возвратов одного заказа — новые сверху. */
+export async function getOrderReturns(orderNumber: number, locale: Locale): Promise<OrderReturnRow[]> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("order_returns")
+    .select("id, order_id, quantity, reason, staff_name, created_at, orders(product_name)")
+    .eq("order_number", orderNumber)
+    .order("created_at", { ascending: false });
+  if (error) return [];
+  return (data ?? []).map((row) => {
+    const order = (Array.isArray(row.orders) ? row.orders[0] : row.orders) as
+      | { product_name: Record<string, string> | null }
+      | null;
+    return {
+      id: row.id,
+      orderId: row.order_id,
+      productName: order?.product_name?.[locale] ?? order?.product_name?.ru ?? "",
+      quantity: row.quantity,
+      reason: row.reason,
+      staffName: row.staff_name,
+      createdAt: row.created_at,
+    };
+  });
+}
 
 export type OrdererProfile =
   | {
@@ -280,6 +349,8 @@ export async function getOrderByNumber(
   total: number;
   warehouseName: string | null;
   warehouseAddress: string | null;
+  /** SQL возвратов выполнен — можно показывать возврат. */
+  returnsInstalled: boolean;
 } | null> {
   const admin = createAdminClient();
 
@@ -304,7 +375,10 @@ export async function getOrderByNumber(
   if (baseRows.length === 0) return null;
 
   const customerId = baseRows[0].customer_id;
-  const orderers = await resolveOrderers(admin, [customerId]);
+  const [orderers, returns] = await Promise.all([
+    resolveOrderers(admin, [customerId]),
+    readReturnInfo(admin, { orderNumber }),
+  ]);
   const orderer = orderers.get(customerId);
   if (!orderer) return null;
 
@@ -362,11 +436,17 @@ export async function getOrderByNumber(
     discountedPrice: row.discounted_price != null ? Number(row.discounted_price) : null,
     status: row.status,
     createdAt: row.created_at,
+    returnedQuantity: returns.byId.get(row.id)?.returned ?? 0,
+    stockDeducted: returns.byId.get(row.id)?.deducted ?? false,
   }));
 
   const total = lines
     .filter((line) => line.status !== "cancelled")
-    .reduce((sum, line) => sum + effectivePrice(line.priceAtOrder, line.discountedPrice) * line.quantity, 0);
+    .reduce(
+      (sum, line) =>
+        sum + effectivePrice(line.priceAtOrder, line.discountedPrice) * (line.quantity - line.returnedQuantity),
+      0
+    );
 
   return {
     orderNumber,
@@ -380,6 +460,7 @@ export async function getOrderByNumber(
     total,
     warehouseName,
     warehouseAddress,
+    returnsInstalled: returns.installed,
   };
 }
 

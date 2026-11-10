@@ -7,6 +7,7 @@ import { updateOrderStatusByNumberAction, deleteOrderByNumberAction } from "./ac
 import { orderStatusLabel, PROGRESSABLE_STATUSES } from "./statusStyles";
 import type { OrderStatus } from "./data";
 import { RowActionLink, RowActionButton, EyeIcon, TrashIcon } from "@/components/admin/RowActions";
+import CancelOrderButton from "./CancelOrderButton";
 import type { Dictionary } from "@/i18n/dictionary";
 import type { Locale } from "@/i18n/locales";
 
@@ -16,12 +17,15 @@ export default function OrderRowActions({
   orderNumber,
   label,
   isAdmin,
+  status = null,
 }: {
   locale: Locale;
   dict: Dictionary["admin"];
   orderNumber: number;
   label: string;
   isAdmin: boolean;
+  /** Статус заказа; у отменённого целиком кнопки «Отменить» нет. */
+  status?: OrderStatus | null;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -75,6 +79,9 @@ export default function OrderRowActions({
         <RowActionLink href={`/${locale}/admin/orders/${orderNumber}`} label={dict.actionDetails}>
           <EyeIcon />
         </RowActionLink>
+        {isAdmin && status !== "cancelled" && (
+          <CancelOrderButton locale={locale} dict={dict} orderNumber={orderNumber} variant="icon" />
+        )}
         {isAdmin && (
           <RowActionButton label={dict.actionDelete} disabled={pending} danger onClick={handleBulkDelete}>
             <TrashIcon />

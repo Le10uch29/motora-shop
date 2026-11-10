@@ -106,6 +106,7 @@ export default function OrdersListClient({
                       orderNumber={row.orderNumber}
                       label={`№${row.orderNumber} — ${row.name}`}
                       isAdmin={isAdmin}
+                      status={row.status}
                     />
                   </td>
                 </tr>

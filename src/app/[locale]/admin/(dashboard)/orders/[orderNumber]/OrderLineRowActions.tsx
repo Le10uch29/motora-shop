@@ -42,7 +42,9 @@ export default function OrderLineRowActions({
     }
     startTransition(async () => {
       const result = await cancelOrderAction(locale, orderId, orderNumber, label);
-      if (result.error) setError(result.error);
+      if (result.error) {
+        setError(result.error === "returns_not_installed" ? dict.returnErrorNotInstalled : result.error);
+      }
       else router.refresh();
     });
   }

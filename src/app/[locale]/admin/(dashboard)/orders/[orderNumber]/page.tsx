@@ -3,7 +3,9 @@ import { notFound } from "next/navigation";
 import { isLocale } from "@/i18n/locales";
 import { getDictionary } from "@/i18n/getDictionary";
 import { requireStaff } from "@/lib/auth";
-import { getOrderByNumber } from "../data";
+import { getOrderByNumber, getOrderReturns } from "../data";
+import ReturnOrderButton, { type ReturnableLine } from "./ReturnOrderButton";
+import CancelOrderButton from "../CancelOrderButton";
 import { formatGel } from "@/lib/currency";
 import OrderLineRowActions from "./OrderLineRowActions";
 import OrderDiscountInput from "./OrderDiscountInput";
@@ -30,9 +32,28 @@ export default async function OrderPage({
   const orderNumber = Number(orderNumberParam);
   if (!Number.isInteger(orderNumber)) notFound();
 
-  const result = await getOrderByNumber(orderNumber, locale);
+  const isAdmin = staff.role === "admin";
+  const [result, returns] = await Promise.all([
+    getOrderByNumber(orderNumber, locale),
+    isAdmin ? getOrderReturns(orderNumber, locale) : [],
+  ]);
   if (!result) notFound();
   const { orderer, lines, total, createdAt, customerId } = result;
+
+  // Вернуть можно только отправленное (уже списанное со склада) и ещё не
+  // возвращённое целиком. Возврат — только админ.
+  const returnableLines: ReturnableLine[] =
+    isAdmin && result.returnsInstalled
+      ? lines
+          .filter((line) => line.status !== "cancelled" && line.stockDeducted && line.quantity > line.returnedQuantity)
+          .map((line) => ({
+            id: line.id,
+            productName: line.productName,
+            productCode: line.productCode,
+            productImage: line.productImage,
+            remaining: line.quantity - line.returnedQuantity,
+          }))
+      : [];
 
   // Позиций в заказе бывает за сотню — страница с ними всеми и грузится
   // дольше, и читается хуже. Общая сумма считается по всему заказу, а не по
@@ -132,6 +153,16 @@ export default async function OrderPage({
           </h2>
           {/* Дописать забытый товар можно, пока заказ не отправлен: после этого
               склад уже списан. */}
+          <div className="flex flex-wrap items-center gap-2">
+          {isAdmin && activeLines.length > 0 && (
+            <CancelOrderButton locale={locale} dict={dict.admin} orderNumber={orderNumber} />
+          )}
+          <ReturnOrderButton
+            locale={locale}
+            dict={dict.admin}
+            orderNumber={orderNumber}
+            lines={returnableLines}
+          />
           {canAddItems && (
             <AddItemsToOrderButton
               locale={locale}
@@ -145,6 +176,7 @@ export default async function OrderPage({
               }}
             />
           )}
+          </div>
         </div>
         <form className="flex flex-wrap items-center gap-3">
           <AdminSearchBox defaultValue={query} placeholder={dict.admin.orderLinesSearchPlaceholder} />
@@ -214,6 +246,11 @@ export default async function OrderPage({
                         label={`${line.productName} — ${ordererName}`}
                         quantity={line.quantity}
                       />
+                      {line.returnedQuantity > 0 && (
+                        <span className="mt-1 inline-block rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-800 dark:bg-sky-900/40 dark:text-sky-200">
+                          {dict.admin.returnReturnedBadge} {line.returnedQuantity}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <OrderDiscountInput
@@ -227,7 +264,7 @@ export default async function OrderPage({
                       />
                     </td>
                     <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                      {formatGel(effectivePrice * line.quantity, locale)}
+                      {formatGel(effectivePrice * (line.quantity - line.returnedQuantity), locale)}
                     </td>
                     <td className="px-4 py-3 text-xs text-zinc-400">
                       {new Date(line.createdAt).toLocaleString(locale)}
@@ -239,7 +276,7 @@ export default async function OrderPage({
                         orderNumber={orderNumber}
                         orderId={line.id}
                         label={`${line.productName} — ${ordererName}`}
-                        isAdmin={staff.role === "admin"}
+                        isAdmin={isAdmin}
                         isCancellable={line.status !== "cancelled"}
                         currentStatus={line.status}
                       />
@@ -260,6 +297,28 @@ export default async function OrderPage({
         pageSize={ORDER_LINES_PAGE_SIZE}
         searchParams={{ q: query || undefined }}
       />
+
+      {returns.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
+            {dict.admin.returnHistoryTitle} · {returns.length}
+          </h2>
+          <ul className="flex flex-col divide-y divide-zinc-200 rounded-xl border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+            {returns.map((entry) => (
+              <li key={entry.id} className="flex flex-wrap items-baseline justify-between gap-2 px-4 py-2.5 text-sm">
+                <span className="font-medium text-zinc-900 dark:text-zinc-50">
+                  {entry.productName} — {entry.quantity} {dict.admin.returnUnitsShort}
+                </span>
+                <span className="text-xs text-zinc-500">
+                  {new Date(entry.createdAt).toLocaleString(locale)}
+                  {entry.staffName ? ` · ${entry.staffName}` : ""}
+                  {entry.reason ? ` · ${entry.reason}` : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <div className="flex items-center justify-between border-t border-zinc-200 pt-6 dark:border-zinc-800">
         <div className="flex items-baseline gap-3 text-lg">

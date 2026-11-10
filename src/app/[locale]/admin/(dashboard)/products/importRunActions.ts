@@ -90,14 +90,39 @@ export async function rollbackImportAction(
   const actor = await requireAdmin(locale);
   const admin = createAdminClient();
 
-  const { data: run } = await admin
+  type RunRow = {
+    id: string;
+    status: string;
+    created_at: string;
+    moved_at: string | null;
+    merged_at?: string | null;
+    brand_name: string;
+    file_name: string | null;
+  };
+  // merged_at может ещё не быть (SQL шага «заменить / прибавить» не выполнен).
+  const withMerge = await admin
     .from("import_runs")
-    .select("id, status, created_at, moved_at, brand_name, file_name")
+    .select("id, status, created_at, moved_at, merged_at, brand_name, file_name")
     .eq("id", runId)
     .maybeSingle();
+  const { data: run } = (
+    withMerge.error
+      ? await admin
+          .from("import_runs")
+          .select("id, status, created_at, moved_at, brand_name, file_name")
+          .eq("id", runId)
+          .maybeSingle()
+      : withMerge
+  ) as { data: RunRow | null };
   if (!run) return { ...emptyResult, error: "not_found" };
   if (run.status === "rolled_back") return { ...emptyResult, error: "already_rolled_back" };
-  const boundary = new Date(run.moved_at ?? run.created_at).getTime();
+  // Граница «правили после импорта» — самое позднее из: запись импорта,
+  // перенос на бренд, шаг «заменить / прибавить» (всё это — сам импорт).
+  const boundary = Math.max(
+    ...[run.created_at, run.moved_at, run.merged_at]
+      .filter((value): value is string => Boolean(value))
+      .map((value) => new Date(value).getTime())
+  );
 
   const items = await readRunItems(admin, runId);
   const products = await readProducts(

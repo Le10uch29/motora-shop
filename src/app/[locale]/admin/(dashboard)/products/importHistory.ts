@@ -93,3 +93,70 @@ export async function recordImportRun(
 
   return { runId, error: null };
 }
+
+/**
+ * Дописывает в запуск импорта изменения шага «заменить / прибавить»: товары и
+ * склады с прежними значениями (для отката), счётчики и merged_at.
+ *
+ * merged_at — время базы (updated_at самих товаров, как и при переносе на
+ * бренд): откат считает товар правленым вручную, если он изменён позже этой
+ * границы, а изменения этого шага — часть импорта.
+ */
+export async function appendMergeToImportRun(
+  admin: AdminClient,
+  runId: string,
+  updatedItems: PlannedUpdate[],
+  appliedStock: AppliedStock[]
+): Promise<{ error: string | null }> {
+  const items = updatedItems.map((item) => ({
+    run_id: runId,
+    product_id: item.id,
+    product_code: item.code,
+    action: "updated",
+    previous: item.previous,
+  }));
+  for (const group of chunk(items, 500)) {
+    const { error } = await admin.from("import_run_items").insert(group);
+    if (error) return { error: error.message };
+  }
+
+  const stockRows = appliedStock.map((row) => ({
+    run_id: runId,
+    product_id: row.productId,
+    warehouse_id: row.warehouseId,
+    quantity: row.quantity,
+    previous_quantity: row.previousQuantity,
+  }));
+  for (const group of chunk(stockRows, 500)) {
+    const { error } = await admin.from("import_run_stock").insert(group);
+    if (error) return { error: error.message };
+  }
+
+  let mergedAt: string | null = null;
+  for (const group of chunk(updatedItems.map((item) => item.id), 200)) {
+    const { data } = await admin.from("products").select("updated_at").in("id", group);
+    for (const row of data ?? []) if (!mergedAt || row.updated_at > mergedAt) mergedAt = row.updated_at;
+  }
+
+  const { data: run } = await admin
+    .from("import_runs")
+    .select("updated_count, stock_count")
+    .eq("id", runId)
+    .maybeSingle();
+  const counts = {
+    updated_count: (run?.updated_count ?? 0) + updatedItems.length,
+    stock_count: (run?.stock_count ?? 0) + appliedStock.length,
+  };
+  const { error } = await admin
+    .from("import_runs")
+    // Даже если товары не менялись (только склады), шаг отмечаем — чтобы его
+    // нельзя было применить второй раз.
+    .update({ ...counts, merged_at: mergedAt ?? new Date().toISOString() })
+    .eq("id", runId);
+  // Колонки merged_at нет (SQL не выполнен) — сохраняем хотя бы счётчики.
+  if (error && /merged_at/.test(error.message)) {
+    const retry = await admin.from("import_runs").update(counts).eq("id", runId);
+    return { error: retry.error?.message ?? null };
+  }
+  return { error: error?.message ?? null };
+}

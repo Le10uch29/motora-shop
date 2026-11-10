@@ -10,14 +10,27 @@ import type { Locale } from "@/i18n/locales";
 import { mergeDuplicateImportRows, type ImportRow } from "./importRows";
 import {
   applyWarehouseStock,
+  chunk,
   loadImportContext,
   logImportConflicts,
   planImportRows,
   readAllRows,
   writeImportedProducts,
+  type AppliedStock,
+  type PlannedUpdate,
 } from "./importSteps";
 import type { ImportPreview, ImportResult } from "./productTypes";
-import { recordImportRun } from "./importHistory";
+import { appendMergeToImportRun, recordImportRun } from "./importHistory";
+import {
+  applyDecision,
+  describeChanges,
+  mergeWarehouseQuantity,
+  MERGE_FIELDS,
+  type ImportPendingUpdate,
+  type MergeDecision,
+  type MergeField,
+  type StockMode,
+} from "./importMerge";
 
 /** Uploads pictures that were embedded in the imported spreadsheet and hands
  * back their public URLs, in the same order the files came in.
@@ -141,20 +154,41 @@ export async function importProductsAction(
     brandId
   );
 
+  // Существующие товары, которые в файле отличаются, здесь НЕ меняются: их
+  // список уходит в шаг «заменить / прибавить» (applyImportMergeAction), где
+  // админ решает, что с ними делать. Их остатки на складах — тоже там.
+  const rowByCode = new Map(validRows.map((row) => [row.productCode.toLowerCase(), row]));
+  const pending: ImportPendingUpdate[] = toUpdate.map((item) => {
+    const existing = loaded.context.existingByCode.get(item.code.toLowerCase())!;
+    const fileStock = rowByCode.get(item.code.toLowerCase())?.stock;
+    return {
+      productId: item.id,
+      code: item.code,
+      name: existing.name?.[locale] || existing.name?.ru || item.code,
+      image: existing.images?.[0] ?? null,
+      currentStock: existing.stock ?? 0,
+      fileStock: fileStock ?? null,
+      changes: describeChanges(item, existing),
+    };
+  });
+
   const errors: string[] = [];
   const { created, updated, createdItems, updatedItems } = await writeImportedProducts(
     admin,
     toInsert,
-    toUpdate,
+    [],
     codeToProductId,
     errors
   );
+  // В codeToProductId отложенных товаров ещё нет — их склады не трогаются.
   const { count: warehouseStockSet, applied: appliedStock } = await applyWarehouseStock(
     admin,
     warehouseAssignments,
     codeToProductId,
     errors
   );
+  // Расхождения цен у повторов кода фиксируем и для отложенных товаров.
+  for (const item of toUpdate) codeToProductId.set(item.code.toLowerCase(), item.id);
   const conflictsLogged = await logImportConflicts(admin, rowConflicts, codeToProductId, errors);
 
   // Шаг 6: запись в «Историю импортов» — по ней импорт можно откатить или
@@ -192,7 +226,7 @@ export async function importProductsAction(
     actor,
     "create",
     "product",
-    `Импорт Excel: ${created} новых, ${updated} обновлено, ${unchanged} без изменений, ${skipped} пропущено, ${conflictsLogged} конфликтов, склад проставлен для ${warehouseStockSet}`,
+    `Импорт Excel: ${created} новых, ${pending.length} ждут решения «заменить / прибавить», ${unchanged} без изменений, ${skipped} пропущено, ${conflictsLogged} конфликтов, склад проставлен для ${warehouseStockSet}`,
     {}
   );
   revalidatePath(`/${locale}/admin/products`);
@@ -211,6 +245,148 @@ export async function importProductsAction(
     error: errors.length > 0 ? errors.join("; ") : null,
     runId: history.runId,
     historyWarning: history.error,
+    pending,
+  };
+}
+
+/**
+ * Шаг «заменить / прибавить»: что сделать с существующими товарами, которые
+ * импорт отложил (importProductsAction → pending).
+ *
+ * По каждому товару — решение: какие поля заменить данными из файла и что с
+ * остатком (заменить, прибавить к имеющемуся, не трогать). Тот же файл
+ * планируется заново по свежим данным базы, поэтому «прибавить» считает от
+ * остатка на момент применения, а не на момент импорта.
+ *
+ * Изменения дописываются в тот же запуск «Истории импортов»: откат импорта
+ * откатит и их. Применить шаг к одному запуску можно один раз — повторное
+ * «прибавить» удвоило бы остаток.
+ */
+export async function applyImportMergeAction(
+  locale: Locale,
+  runId: string | null,
+  brandId: string,
+  rows: ImportRow[],
+  fallbackWarehouseId: string | undefined,
+  decisions: MergeDecision[]
+): Promise<{ updated: number; warehouseStockSet: number; error: string | null }> {
+  const actor = await requireAdmin(locale);
+  const admin = createAdminClient();
+
+  const byCode = new Map<string, MergeDecision>();
+  for (const decision of Array.isArray(decisions) ? decisions : []) {
+    const code = typeof decision?.code === "string" ? decision.code.trim().toLowerCase() : "";
+    if (!code) continue;
+    const stockMode: StockMode = ["replace", "add", "skip"].includes(decision.stockMode)
+      ? decision.stockMode
+      : "skip";
+    const fields = (Array.isArray(decision.fields) ? decision.fields : []).filter((field): field is MergeField =>
+      (MERGE_FIELDS as readonly string[]).includes(field)
+    );
+    byCode.set(code, { code, fields, stockMode });
+  }
+  if (byCode.size === 0) return { updated: 0, warehouseStockSet: 0, error: null };
+
+  const validRunId = runId && /^[0-9a-f-]{36}$/i.test(runId) ? runId : null;
+  if (validRunId) {
+    const { data: run } = await admin.from("import_runs").select("status, merged_at").eq("id", validRunId).maybeSingle();
+    if (run?.status === "rolled_back") return { updated: 0, warehouseStockSet: 0, error: "already_rolled_back" };
+    if (run?.merged_at) return { updated: 0, warehouseStockSet: 0, error: "already_merged" };
+  }
+
+  const relevant = rows.filter((row) => byCode.has(row.productCode.trim().toLowerCase()));
+  const { rows: validRows } = mergeDuplicateImportRows(relevant);
+  const loaded = await loadImportContext(
+    admin,
+    brandId,
+    validRows.map((row) => row.productCode),
+    fallbackWarehouseId
+  );
+  if (loaded.error !== null) return { updated: 0, warehouseStockSet: 0, error: loaded.error };
+
+  const plan = planImportRows(validRows, loaded.context, brandId);
+  const rowByCode = new Map(validRows.map((row) => [row.productCode.toLowerCase(), row]));
+
+  // Патчи по решениям. Товар, который с тех пор сравнялся с файлом, в плане
+  // уже «без изменений» — с ним остаётся только «прибавить».
+  const finalUpdates: PlannedUpdate[] = [];
+  const productIdByCode = new Map<string, string>();
+  for (const row of validRows) {
+    const key = row.productCode.toLowerCase();
+    const decision = byCode.get(key)!;
+    const existing = loaded.context.existingByCode.get(key);
+    if (!existing) continue;
+    productIdByCode.set(key, existing.id);
+    const planned = plan.toUpdate.find((item) => item.code.toLowerCase() === key) ?? {
+      id: existing.id,
+      code: row.productCode,
+      patch: {},
+      previous: {},
+    };
+    const merged = applyDecision(planned, existing, rowByCode.get(key)?.stock, decision);
+    if (merged) finalUpdates.push(merged);
+  }
+
+  const errors: string[] = [];
+  const codeToProductId = new Map<string, string>();
+  const { updated, updatedItems } = await writeImportedProducts(admin, [], finalUpdates, codeToProductId, errors);
+
+  // Склады: заменить, прибавить или не трогать — по решению товара.
+  const assignments = plan.warehouseAssignments
+    .map((a) => ({ ...a, productId: productIdByCode.get(a.code), stockMode: byCode.get(a.code)?.stockMode ?? "skip" }))
+    .filter((a): a is typeof a & { productId: string } => Boolean(a.productId) && a.stockMode !== "skip");
+  const appliedStock: AppliedStock[] = [];
+  if (assignments.length > 0) {
+    const current = new Map<string, number>();
+    for (const group of chunk([...new Set(assignments.map((a) => a.productId))], 200)) {
+      const { data } = await admin
+        .from("warehouse_stock")
+        .select("product_id, warehouse_id, quantity")
+        .in("product_id", group);
+      for (const row of data ?? []) current.set(`${row.product_id}:${row.warehouse_id}`, row.quantity);
+    }
+    const toUpsert: { product_id: string; warehouse_id: string; quantity: number }[] = [];
+    for (const a of assignments) {
+      const key = `${a.productId}:${a.warehouseId}`;
+      const previous = current.has(key) ? current.get(key)! : null;
+      const next = mergeWarehouseQuantity(previous, a.quantity, a.stockMode);
+      if (next === null) continue;
+      toUpsert.push({ product_id: a.productId, warehouse_id: a.warehouseId, quantity: next });
+      appliedStock.push({ productId: a.productId, warehouseId: a.warehouseId, quantity: next, previousQuantity: previous });
+      // Один товар может прийти в файле на один склад дважды — второй раз
+      // считаем уже от нового значения.
+      current.set(key, next);
+    }
+    for (const group of chunk(toUpsert, 50)) {
+      const { error } = await admin.from("warehouse_stock").upsert(group, { onConflict: "warehouse_id,product_id" });
+      if (error) errors.push(error.message);
+    }
+  }
+
+  if (validRunId) {
+    const history = await appendMergeToImportRun(admin, validRunId, updatedItems, appliedStock);
+    if (history.error) errors.push(history.error);
+  }
+
+  const added = [...byCode.values()].filter((decision) => decision.stockMode === "add").length;
+  await logAction(
+    actor,
+    "update",
+    "product",
+    `Импорт Excel — заменить / прибавить: обновлено ${updated} (остаток прибавлен у ${added}), склад изменён для ${appliedStock.length}`,
+    validRunId ? { entityId: validRunId } : {}
+  );
+  revalidatePath(`/${locale}/admin/products`);
+  revalidatePath(`/${locale}/admin/products/imports`);
+  revalidatePath(`/${locale}/catalog`);
+  updateTag(PRODUCTS_CACHE_TAG);
+  revalidatePath(`/${locale}`);
+  revalidatePath(`/${locale}/admin/warehouses`);
+
+  return {
+    updated,
+    warehouseStockSet: appliedStock.length,
+    error: errors.length > 0 ? errors.join("; ") : null,
   };
 }
 

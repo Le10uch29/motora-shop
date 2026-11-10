@@ -16,6 +16,7 @@ import type { ImportResult } from "./productTypes";
 import type { ImportRow } from "./importRows";
 import { extractEmbeddedImages, type EmbeddedImage } from "@/lib/xlsxImages";
 import FileDropField from "@/components/admin/FileDropField";
+import ImportMergeStep from "./ImportMergeStep";
 import type { Locale } from "@/i18n/locales";
 import type { Dictionary } from "@/i18n/dictionary";
 
@@ -180,6 +181,8 @@ export default function ImportProductsModal({
   const [warehouseId, setWarehouseId] = useState<string>("");
   const [parseError, setParseError] = useState<string | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
+  /** Строки, ушедшие в импорт, — по ним применяется «заменить / прибавить». */
+  const [submittedRows, setSubmittedRows] = useState<ImportRow[]>([]);
   /** Имя файла — уходит в «Историю импортов». */
   const [fileName, setFileName] = useState("");
   const [previewing, setPreviewing] = useState(false);
@@ -458,6 +461,8 @@ export default function ImportProductsModal({
         warehouseId || undefined,
         fileName
       );
+      // Строки (уже с загруженными фото) нужны шагу «заменить / прибавить».
+      setSubmittedRows(importRows);
       setResult(res);
     });
   }
@@ -549,6 +554,17 @@ export default function ImportProductsModal({
               </p>
             )}
             {result.error && <p className="text-sm text-red-600">{result.error}</p>}
+            {result.pending && result.pending.length > 0 && (
+              <ImportMergeStep
+                locale={locale}
+                dict={dict}
+                pending={result.pending}
+                runId={result.runId ?? null}
+                brandId={brandId}
+                warehouseId={warehouseId}
+                rows={submittedRows}
+              />
+            )}
             {result.historyWarning && (
               <p className="text-sm text-amber-600">{dict.importHistoryWarning}</p>
             )}

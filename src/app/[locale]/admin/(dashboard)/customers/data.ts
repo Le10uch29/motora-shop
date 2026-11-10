@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { listAllAuthUsers } from "@/lib/supabase/authUsers";
+import { readReturnedQuantities, withoutReturned } from "@/lib/orderReturns";
 import { isPhoneAliasEmail } from "@/lib/phoneLogin";
 import { ADMIN_PAGE_SIZE } from "@/components/admin/Pagination";
 import type { Locale } from "@/i18n/locales";
@@ -115,7 +116,11 @@ export async function getCustomerPurchaseOrders(
 
   const byOrder = new Map<number, PurchaseOrder>();
 
-  for (const row of data ?? []) {
+  // Возвращённое из покупок убирается: количество и сумма — за вычетом
+  // возврата, а позиция, возвращённая целиком, не показывается.
+  const returned = await readReturnedQuantities(admin, { customerId });
+
+  for (const row of withoutReturned(data ?? [], returned)) {
     const product = Array.isArray(row.products) ? row.products[0] : row.products;
     // Цена со скидкой перекрывает обычную — так же, как в самом разделе заказов.
     const unitPrice = Number(row.discounted_price ?? row.price_at_order);

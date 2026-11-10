@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getAuthIdentity } from "@/lib/supabase/authUsers";
+import { readReturnedQuantities, withoutReturned } from "@/lib/orderReturns";
 import type { Locale } from "@/i18n/locales";
 
 /**
@@ -90,9 +91,15 @@ export async function getMyOrderHistory(locale: Locale): Promise<OrderHistory> {
   }
   if (result.error) return { orders: [], canDelete: false };
 
+  // Возвращённое из истории покупок убирается: количество и сумма — за
+  // вычетом возврата, позиция, возвращённая целиком, не показывается, а
+  // заказ, возвращённый полностью, пропадает из истории совсем.
+  const returned = await readReturnedQuantities(supabase, { customerId: userId });
+  const rows = withoutReturned(result.rows, returned);
+
   type Group = OrderHistoryEntry & { statuses: Set<string>; position: Map<string, number> };
   const byNumber = new Map<number, Group>();
-  for (const row of result.rows) {
+  for (const row of rows) {
     let entry = byNumber.get(row.order_number);
     if (!entry) {
       entry = {

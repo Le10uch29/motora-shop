@@ -1,6 +1,8 @@
 /** Типы результатов server actions раздела «Товары». Отдельным модулем: файл с
  * "use server" может экспортировать только async-функции. */
 
+import type { ImportPendingUpdate } from "./importMerge";
+
 export type ProductActionState = { error: string | null };
 
 export type ImportResult = {
@@ -19,6 +21,9 @@ export type ImportResult = {
   /** История не записалась (например, SQL с таблицами истории ещё не
    * выполнен) — сам импорт при этом прошёл. */
   historyWarning?: string | null;
+  /** Существующие товары, которые в файле отличаются: импорт их не менял и
+   * ждёт решения «заменить / прибавить» (applyImportMergeAction). */
+  pending?: ImportPendingUpdate[];
 };
 
 /** Что сделает импорт, если его запустить, — без записи в базу. */
