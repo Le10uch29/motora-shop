@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { pageInStockFirst } from "@/lib/products";
+import { withAvailableStock } from "@/lib/stockReservation";
 import type { Locale } from "@/i18n/locales";
 
 export type SearchSuggestion = {
@@ -108,5 +109,6 @@ export async function searchProductSuggestionsAction(
     stock: row.stock,
   }));
 
-  return { results, total };
+  // Сколько можно заказать — без того, что занято неотправленными заказами.
+  return { results: await withAvailableStock(results), total };
 }

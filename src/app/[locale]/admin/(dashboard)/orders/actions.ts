@@ -274,7 +274,12 @@ export async function updateOrderQuantityAction(
 
   const { error } = await admin.from("orders").update({ quantity: next }).eq("id", id);
   // Меньше, чем уже вернули, поставить нельзя — это проверяет база.
-  if (error) return { error: error.message.includes("orders_returned_quantity_check") ? "quantity_below_returned" : error.message };
+  if (error) {
+    if (error.message.includes("orders_returned_quantity_check")) return { error: "quantity_below_returned" };
+    // Больше доступного — остаток минус занятое другими неотправленными заказами.
+    if (error.message.includes("insufficient_stock")) return { error: "insufficient_stock" };
+    return { error: error.message };
+  }
 
   await logAction(actor, "update", "order", label, {
     entityId: id,
@@ -405,7 +410,12 @@ export async function addItemsToOrderAction(
     ...(rows.length > 0 ? [admin.from("orders").insert(rows)] : []),
   ]);
   const failed = results.find((result) => result.error);
-  if (failed?.error) return { error: failed.error.message, orderNumber: null };
+  if (failed?.error) {
+    // Больше доступного (остаток минус занятое неотправленными заказами)
+    // база добавить не даёт.
+    const message = failed.error.message;
+    return { error: message.includes("insufficient_stock") ? "insufficient_stock" : message, orderNumber: null };
+  }
 
   await logAction(actor, "update", "order", `№${orderNumber} + ${wanted.size}`, {
     details: {

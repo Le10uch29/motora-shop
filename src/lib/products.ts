@@ -3,6 +3,7 @@ import type { Locale } from "@/i18n/locales";
 import type { BrandSlug } from "@/lib/brands";
 import { createClient } from "@/lib/supabase/server";
 import { readAllPages } from "@/lib/supabase/paginate";
+import { withAvailableStock } from "@/lib/stockReservation";
 import { fitmentsOf, type Fitment } from "@/lib/fitments";
 
 export type LocalizedText = Record<Locale, string>;
@@ -186,7 +187,7 @@ export const getAllProducts = cache(async (): Promise<Product[]> => {
     .select(SELECT_COLUMNS)
     .gt("stock", 0)
     .order("created_at", { ascending: false });
-  return ((data ?? []) as unknown as ProductRow[]).map(mapRow);
+  return withAvailableStock(((data ?? []) as unknown as ProductRow[]).map(mapRow));
 });
 
 /** How many products the shop lists, over the whole catalog — закончившиеся
@@ -212,7 +213,11 @@ export const getProductBySlug = cache(async (slug: string): Promise<Product | un
     .eq("slug", slug)
     .gt("stock", 0)
     .maybeSingle();
-  return data ? mapRow(data as unknown as ProductRow) : undefined;
+  if (!data) return undefined;
+  // Страница товара остаётся (остаток есть), но заказать можно только
+  // доступное — что не занято неотправленными заказами.
+  const [product] = await withAvailableStock([mapRow(data as unknown as ProductRow)]);
+  return product;
 });
 
 /** Up to `limit` products flagged "popular" — for the home page's featured
@@ -236,7 +241,7 @@ export const getFeaturedProducts = cache(async (limit = 4): Promise<Product[]> =
     0,
     limit
   );
-  return (items as unknown as ProductRow[]).map(mapRow);
+  return withAvailableStock((items as unknown as ProductRow[]).map(mapRow));
 });
 
 /** Товары по списку id — в порядке списка (так их расставил админ в
@@ -246,7 +251,8 @@ export async function getProductsByIds(ids: string[]): Promise<Product[]> {
   if (ids.length === 0) return [];
   const supabase = await createClient();
   const { data } = await supabase.from("products").select(SELECT_COLUMNS).in("id", ids);
-  const byId = new Map(((data ?? []) as unknown as ProductRow[]).map((row) => [row.id, mapRow(row)]));
+  const products = await withAvailableStock(((data ?? []) as unknown as ProductRow[]).map(mapRow));
+  const byId = new Map(products.map((product) => [product.id, product]));
   return inStockFirst(ids.map((id) => byId.get(id)).filter((p): p is Product => Boolean(p)));
 }
 
@@ -264,7 +270,7 @@ export const getProductsByBrandSlug = cache(async (brandSlug: string): Promise<P
     .select(SELECT_COLUMNS_BRAND_FILTER)
     .eq("brands.slug", brandSlug)
     .order("created_at", { ascending: false });
-  return inStockFirst(((data ?? []) as unknown as ProductRow[]).map(mapRow));
+  return inStockFirst(await withAvailableStock(((data ?? []) as unknown as ProductRow[]).map(mapRow)));
 });
 
 /** Product count per brand slug, computed from a single skinny query (just
@@ -314,15 +320,17 @@ export const getProductsForCart = cache(async (): Promise<CartProductSummary[]> 
       .select("id, slug, name, price, stock, product_code, images")
       .range(from, to)
   );
-  return rows.map((row) => ({
-    id: row.id,
-    slug: row.slug,
-    name: row.name,
-    price: Number(row.price),
-    stock: row.stock,
-    productCode: row.product_code ?? null,
-    image: row.images?.[0] ?? null,
-  }));
+  return withAvailableStock(
+    rows.map((row) => ({
+      id: row.id,
+      slug: row.slug,
+      name: row.name,
+      price: Number(row.price),
+      stock: row.stock,
+      productCode: row.product_code ?? null,
+      image: row.images?.[0] ?? null,
+    }))
+  );
 });
 
 /** Whether one of a product's vehicles matches the wanted make and/or model —
@@ -456,7 +464,7 @@ export async function getCatalogPage(
 
   const safePage = page > 0 ? page : 1;
   const { items, total } = await pageInStockFirst(run, (safePage - 1) * pageSize, pageSize);
-  return { items: (items as unknown as ProductRow[]).map(mapRow), total };
+  return { items: await withAvailableStock((items as unknown as ProductRow[]).map(mapRow)), total };
 }
 
 export type ProductFilters = {

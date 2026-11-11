@@ -39,6 +39,8 @@ type CartContextValue = {
   clear: () => void;
   /** Вызывается после успешного оформления: перечитывает корзину. */
   markOrdered: () => void;
+  /** Перечитать корзину с сервера (например, когда сервер её поправил). */
+  reload: () => void;
   totalItems: number;
 };
 
@@ -108,12 +110,14 @@ export function CartProvider({
   }, [userId]);
 
   const enqueue = useCallback(
-    (run: () => Promise<{ error: string | null }>) => {
+    (run: () => Promise<{ error: string | null; limited?: boolean }>) => {
       versionRef.current++;
       queueRef.current = queueRef.current
         .then(run)
         .then((result) => {
-          if (result.error) refresh();
+          // limited — сервер уменьшил количество до доступного (остальное
+          // занято чужими неотправленными заказами): показываем, что лежит.
+          if (result.error || result.limited) refresh();
         })
         .catch(() => refresh());
     },
@@ -228,9 +232,10 @@ export function CartProvider({
       removeOrdered,
       clear,
       markOrdered,
+      reload: refresh,
       totalItems,
     }),
-    [snapshot, loaded, orderPlaced, addItem, removeItem, setQuantity, removeOrdered, clear, markOrdered, totalItems]
+    [snapshot, loaded, orderPlaced, addItem, removeItem, setQuantity, removeOrdered, clear, markOrdered, refresh, totalItems]
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

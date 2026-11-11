@@ -23,10 +23,15 @@ export default function AddToCartButton({
   };
 }) {
   const { addItem, items, orderPlaced } = useCart();
-  const maxQuantity = inStock ? Math.max(stock, 1) : 99;
   // Оформленный заказ считается пустой корзиной — товар снова можно добавить.
   const inCart = orderPlaced ? 0 : items.find((item) => item.productId === productId)?.quantity ?? 0;
-  const [quantity, setQuantity] = useState(1);
+  // stock — уже доступное количество (без занятого чужими заказами); то, что
+  // лежит в корзине, тоже из него.
+  const remaining = Math.max(0, stock - inCart);
+  const canAdd = inStock && remaining > 0;
+  const maxQuantity = inStock ? Math.max(remaining, 1) : 99;
+  const [chosen, setQuantity] = useState(1);
+  const quantity = Math.min(chosen, maxQuantity);
 
   return (
     <div className="flex flex-col gap-3">
@@ -46,7 +51,7 @@ export default function AddToCartButton({
 
       <button
         type="button"
-        disabled={!inStock}
+        disabled={!canAdd}
         onClick={() => addItem(productId, quantity)}
         className={`w-fit rounded-full px-6 py-3 text-sm font-semibold text-white transition-colors disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-500 dark:disabled:bg-zinc-800 dark:disabled:text-zinc-500 ${
           inCart > 0 ? "bg-emerald-600 hover:bg-emerald-500" : "bg-orange-600 hover:bg-orange-500"

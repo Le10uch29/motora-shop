@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthUser } from "@/lib/supabase/authUsers";
+import { availableStock, readReservedStock } from "@/lib/stockReservation";
 
 export type PlaceOrderState = { error: string | null };
 
@@ -51,14 +52,31 @@ export async function placeOrderAction(): Promise<PlaceOrderState> {
   // Out of stock counts as not orderable, exactly as it counts as not visible
   // in the shop: a line that sold out between adding it and checking out is
   // dropped here rather than ordered.
-  const { data: products } = await supabase
-    .from("products")
-    .select("id")
-    .in("id", productIds)
-    .gt("stock", 0);
+  const [{ data: products }, reserved] = await Promise.all([
+    supabase.from("products").select("id, stock").in("id", productIds).gt("stock", 0),
+    readReservedStock(supabase),
+  ]);
 
   if (!products || products.length === 0) return { error: "products_not_found" };
   const validProductIds = new Set(products.map((p) => p.id));
+
+  // Больше доступного не заказать: доступно = остаток минус то, что занято
+  // неотправленными заказами (на складе 25, кто-то заказал 20 — здесь не
+  // больше 5). Если в корзине больше, корзина уменьшается до доступного, и
+  // покупатель видит это до того, как заказ уйдёт, — молча урезать заказ
+  // было бы хуже.
+  const stockById = new Map(products.map((p) => [p.id, p.stock as number]));
+  let changed = false;
+  for (const row of cartRows ?? []) {
+    const stock = stockById.get(row.product_id);
+    if (stock === undefined) continue;
+    const available = availableStock(row.product_id, stock, reserved);
+    if (row.quantity <= available) continue;
+    changed = true;
+    if (available > 0) await supabase.from("cart_items").update({ quantity: available }).eq("id", row.id);
+    else await supabase.from("cart_items").delete().eq("id", row.id);
+  }
+  if (changed) return { error: "stock_changed" };
 
   const rows = items
     .filter((item) => validProductIds.has(item.productId))
@@ -90,6 +108,9 @@ export async function placeOrderAction(): Promise<PlaceOrderState> {
       )
       .select("order_number"));
   }
+  // Кто-то оформил тот же товар секундой раньше — база (триггер резерва) не
+  // дала заказать больше доступного. Корзина покажет новое доступное.
+  if (error && error.message.includes("insufficient_stock")) return { error: "stock_changed" };
   if (error) return { error: error.message };
 
   // Заказанное не исчезает из корзины сразу: оно переходит в список

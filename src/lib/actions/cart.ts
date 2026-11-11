@@ -3,6 +3,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthIdentity } from "@/lib/supabase/authUsers";
+import { availableStock, readReservedStock } from "@/lib/stockReservation";
 
 /**
  * Корзина на сервере (таблица cart_items).
@@ -87,29 +88,44 @@ export async function setCartItemAction(
   productId: string,
   quantity: number,
   add = false
-): Promise<{ error: string | null }> {
+): Promise<{ error: string | null; limited?: boolean }> {
   const s = await session();
   if (!s) return { error: "not_authenticated" };
   const amount = cleanQuantity(quantity);
 
-  const { data: existing } = await s.supabase
-    .from("cart_items")
-    .select("id, quantity")
-    .eq("user_id", s.userId)
-    .eq("product_id", productId)
-    .is("ordered_at", null)
-    .maybeSingle();
+  const [{ data: existing }, { data: product }, reserved] = await Promise.all([
+    s.supabase
+      .from("cart_items")
+      .select("id, quantity")
+      .eq("user_id", s.userId)
+      .eq("product_id", productId)
+      .is("ordered_at", null)
+      .maybeSingle(),
+    s.supabase.from("products").select("stock").eq("id", productId).maybeSingle(),
+    readReservedStock(s.supabase),
+  ]);
 
-  const next = Math.min(MAX_QUANTITY, add ? (existing?.quantity ?? 0) + amount : amount);
+  let next = Math.min(MAX_QUANTITY, add ? (existing?.quantity ?? 0) + amount : amount);
+  // Больше, чем доступно (остаток минус то, что занято неотправленными
+  // заказами), в корзину не положить: на складе 25, кто-то заказал 20 — сюда
+  // войдёт не больше 5. Сам остаток при этом не меняется.
+  let limited = false;
+  if (product && next > 0) {
+    const available = availableStock(productId, product.stock, reserved);
+    if (next > available) {
+      next = available;
+      limited = true;
+    }
+  }
   if (next <= 0) {
-    if (!existing) return { error: null };
+    if (!existing) return { error: null, limited };
     const { error } = await s.supabase.from("cart_items").delete().eq("id", existing.id);
-    return { error: error?.message ?? null };
+    return { error: error?.message ?? null, limited };
   }
   const { error } = existing
     ? await s.supabase.from("cart_items").update({ quantity: next }).eq("id", existing.id)
     : await s.supabase.from("cart_items").insert({ user_id: s.userId, product_id: productId, quantity: next });
-  return { error: error?.message ?? null };
+  return { error: error?.message ?? null, limited };
 }
 
 /** Убирает уже заказанный товар из списка «Заказано» — не дожидаясь 3 дней. */

@@ -32,6 +32,7 @@ function errorText(code: string, dict: Dictionary["admin"]): string {
   if (code === "customer_not_found") return dict.orderForCustomerNotFound;
   if (code === "products_not_found") return dict.orderForCustomerNoProducts;
   if (code === "order_already_shipped") return dict.orderAddItemsShipped;
+  if (code === "insufficient_stock") return dict.insufficientStock;
   return code;
 }
 

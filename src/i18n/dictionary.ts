@@ -518,6 +518,7 @@ export type Dictionary = {
     orderCancelAllConfirm: string;
     orderCancelAllShippedNote: string;
     orderCancelAllWorking: string;
+    insufficientStock: string;
     // Категории запчастей.
     categoriesTitle: string;
     addCategory: string;
@@ -786,6 +787,8 @@ export type Dictionary = {
     checkout: string;
     orderPlaced: string;
     orderError: string;
+    availableOnly: string;
+    stockChanged: string;
     productCodeLabel: string;
     quantityLabel: string;
     historyTitle: string;

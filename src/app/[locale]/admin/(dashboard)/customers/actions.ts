@@ -455,7 +455,11 @@ export async function placeOrderForCustomerAction(
       )
       .select("order_number"));
   }
-  if (error) return { error: error.message, orderNumber: null };
+  // Больше доступного (остаток минус занятое неотправленными заказами) база
+  // заказать не даёт — см. миграцию 20261111_stock_reservation.sql.
+  if (error) {
+    return { error: error.message.includes("insufficient_stock") ? "insufficient_stock" : error.message, orderNumber: null };
+  }
 
   const orderNumber = inserted?.[0]?.order_number ?? null;
   const customerName = `${customer.first_name} ${customer.last_name}`.trim();

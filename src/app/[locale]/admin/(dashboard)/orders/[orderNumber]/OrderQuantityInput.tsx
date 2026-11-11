@@ -41,7 +41,10 @@ export default function OrderQuantityInput({
 
     startTransition(async () => {
       const result = await updateOrderQuantityAction(locale, orderId, orderNumber, parsed, label);
-      if (result.error) setError(result.error);
+      if (result.error) {
+        setError(result.error === "insufficient_stock" ? dict.insufficientStock : result.error);
+        setValue(String(quantity));
+      }
       else router.refresh();
     });
   }

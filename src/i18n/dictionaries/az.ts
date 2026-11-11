@@ -522,6 +522,8 @@ const az: Dictionary = {
     orderCancelAllShippedNote:
       "Artıq göndərilmiş mövqelər anbara qayıdacaq — sayları qalıqlara əlavə olunacaq. Sifariş artıq gəlirə düşməyəcək.",
     orderCancelAllWorking: "Ləğv olunur…",
+    insufficientStock:
+      "Bu qədər yoxdur: qalığın bir hissəsi hələ göndərilməmiş başqa sifarişlərlə tutulub. Sayı azaldın.",
     categoriesTitle: "Kateqoriyalar",
     addCategory: "Kateqoriya yarat",
     editCategory: "Kateqoriyanı dəyiş",
@@ -778,6 +780,9 @@ const az: Dictionary = {
     checkout: "Sifarişi rəsmiləşdir",
     orderPlaced: "Sifariş edildi ✓",
     orderError: "Sifarişi rəsmiləşdirmək mümkün olmadı. Yenidən cəhd edin.",
+    availableOnly: "Yalnız mövcuddur:",
+    stockChanged:
+      "Məhsulun bir hissəsini artıq başqa alıcılar sifariş edib. Səbətdəki say mövcud qədər azaldıldı — yoxlayın və sifarişi yenidən rəsmiləşdirin.",
     productCodeLabel: "Məhsul kodu",
     quantityLabel: "Miqdar",
     historyTitle: "Sifariş tarixçəsi",

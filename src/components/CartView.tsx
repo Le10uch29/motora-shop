@@ -21,6 +21,7 @@ const ORDER_ERROR_CODES = new Set(["empty_cart", "not_authenticated", "products_
 // Known error codes get the friendly translated message; anything else is a
 // raw DB error message, shown as-is so it's actually diagnosable.
 function orderErrorText(code: string, dict: Dictionary["cart"]): string {
+  if (code === "stock_changed") return dict.stockChanged;
   return ORDER_ERROR_CODES.has(code) ? dict.orderError : code;
 }
 
@@ -38,7 +39,7 @@ export default function CartView({
    * переживают границу сервер→клиент. */
   breadcrumbs?: ReactNode;
 }) {
-  const { items, ordered, loaded, setQuantity, removeItem, removeOrdered, clear, orderPlaced, markOrdered } =
+  const { items, ordered, loaded, setQuantity, removeItem, removeOrdered, clear, orderPlaced, markOrdered, reload } =
     useCart();
   const [orderError, setOrderError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -94,6 +95,11 @@ export default function CartView({
       const result = await placeOrderAction();
       if (result.error) {
         setOrderError(orderErrorText(result.error, dict));
+        // Количество в корзине уменьшено до доступного — показываем новое.
+        if (result.error === "stock_changed") {
+          reload();
+          router.refresh();
+        }
         return;
       }
       markOrdered();
@@ -195,15 +201,25 @@ export default function CartView({
                     больше, чем лежит на складе — это оптовый магазин, недостающее
                     довозят. Ограничение появилось бы только из-за поля ввода, а
                     менять правила заказа ради него незачем. */}
-                <QuantityField
-                  value={item.quantity}
-                  onChange={(next) => setQuantity(item.productId, next)}
-                  labels={{
-                    decreaseAria: dict.decreaseAria,
-                    increaseAria: dict.increaseAria,
-                    inputAria: dict.quantityLabel,
-                  }}
-                />
+                <div className="flex flex-col items-center gap-1">
+                  <QuantityField
+                    value={item.quantity}
+                    onChange={(next) => setQuantity(item.productId, next)}
+                    // product.stock — уже доступное: остаток минус то, что
+                    // занято чужими неотправленными заказами.
+                    max={Math.max(product.stock, 1)}
+                    labels={{
+                      decreaseAria: dict.decreaseAria,
+                      increaseAria: dict.increaseAria,
+                      inputAria: dict.quantityLabel,
+                    }}
+                  />
+                  {item.quantity > product.stock && (
+                    <span className="text-xs text-amber-600">
+                      {dict.availableOnly} {product.stock}
+                    </span>
+                  )}
+                </div>
                 <span className="w-28 text-right font-semibold text-zinc-900 dark:text-zinc-50">
                   {formatGel(product.price * item.quantity, locale)}
                 </span>

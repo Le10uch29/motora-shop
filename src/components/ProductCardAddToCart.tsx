@@ -25,14 +25,18 @@ export default function ProductCardAddToCart({
   labels: Labels;
 }) {
   const { addItem, items, orderPlaced } = useCart();
-  const [quantity, setQuantity] = useState(1);
-  const maxQuantity = Math.max(stock, 1);
+  const [chosen, setQuantity] = useState(1);
 
   // Галочка отражает корзину, а не факт нажатия. Оформленный заказ считается
   // пустой корзиной: позиции в ней остаются только ради экрана подтверждения,
   // и товар снова можно добавить. Убрали товар из корзины — галочка пропадёт
   // сама, состояние тут не хранится.
   const inCart = orderPlaced ? 0 : items.find((item) => item.productId === productId)?.quantity ?? 0;
+  // stock — уже доступное количество (без занятого чужими заказами); то, что
+  // лежит в корзине, тоже из него.
+  const remaining = Math.max(0, stock - inCart);
+  const maxQuantity = Math.max(remaining, 1);
+  const quantity = Math.min(chosen, maxQuantity);
 
   return (
     <div className="flex items-center gap-2">
@@ -49,10 +53,11 @@ export default function ProductCardAddToCart({
       />
       <button
         type="button"
+        disabled={remaining === 0}
         onClick={() => addItem(productId, quantity)}
         title={inCart > 0 ? `${labels.added} · ${inCart}` : labels.addToCart}
         aria-label={inCart > 0 ? `${labels.added} · ${inCart}` : labels.addToCart}
-        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white transition-colors ${
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
           inCart > 0 ? "bg-emerald-600 hover:bg-emerald-500" : "bg-orange-600 hover:bg-orange-500"
         }`}
       >
