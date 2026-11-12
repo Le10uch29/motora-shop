@@ -154,7 +154,9 @@ export default async function OrderPage({
           {/* Дописать забытый товар можно, пока заказ не отправлен: после этого
               склад уже списан. */}
           <div className="flex flex-wrap items-center gap-2">
-          {isAdmin && activeLines.length > 0 && (
+          {/* Отменить — пока товар на складе (заказ не отправлен); после
+              отправки вместо отмены — «Возврат». */}
+          {isAdmin && canAddItems && (
             <CancelOrderButton locale={locale} dict={dict.admin} orderNumber={orderNumber} />
           )}
           <ReturnOrderButton
@@ -277,7 +279,11 @@ export default async function OrderPage({
                         orderId={line.id}
                         label={`${line.productName} — ${ordererName}`}
                         isAdmin={isAdmin}
-                        isCancellable={line.status !== "cancelled"}
+                        isCancellable={
+                          line.status !== "cancelled" &&
+                          !line.stockDeducted &&
+                          !isStatusAtOrPast(line.status, STOCK_DEDUCTION_STATUS)
+                        }
                         currentStatus={line.status}
                       />
                     </td>

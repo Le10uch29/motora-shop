@@ -10,6 +10,7 @@ import {
   isStatusAtOrPast,
 } from "./statusStyles";
 import type { Locale } from "@/i18n/locales";
+import type { OrderStatus } from "./data";
 
 /** Страницы заказа адресуются его номером, а не заказчиком: один заказ —
  * одна страница и один инвойс. */
@@ -531,80 +532,51 @@ export async function returnOrderLinesAction(
   return { error: null, returned };
 }
 
+/** Позиция уже ушла со склада: статус «отправлен» или дальше, либо списание
+ * уже было. Такую не отменяют, а оформляют возврат. */
+function isShippedLine(line: { status: OrderStatus; stock_deducted_at: string | null }): boolean {
+  return Boolean(line.stock_deducted_at) || isStatusAtOrPast(line.status, STOCK_DEDUCTION_STATUS);
+}
+
 /**
- * Отменяет весь заказ разом — только админ.
+ * Отменяет весь заказ разом — только админ и только пока он не отправлен.
  *
- * Все активные позиции получают статус «отменён». Позиции, которые уже
- * отправлены (списаны со склада), сначала возвращаются на склад — тем же
- * возвратом, что и кнопка «Возврат» (return_order_lines): количество
- * прибавляется к остатку товара и склада, а в истории возвратов остаётся
- * запись «Отмена заказа». Без этого отмена отправленного заказа молча
- * теряла бы его товары из остатков.
- *
- * Если отправленные позиции есть, а SQL возвратов ещё не выполнен, отмена не
- * делается: иначе остаток потерялся бы.
+ * Отмена — для заказа, товар которого ещё на складе (новый, собирается):
+ * остаток не списывался, возвращать нечего, заказ просто снимается и его
+ * резерв освобождается. Уже отправленный заказ отменить нельзя — для него
+ * «Возврат», который вернёт товар на склад.
  */
 export async function cancelOrderByNumberAction(
   locale: Locale,
   orderNumber: number
-): Promise<{ error: string | null; cancelled: number; restocked: number }> {
+): Promise<{ error: string | null; cancelled: number }> {
   const actor = await requireAdmin(locale);
-  if (!Number.isInteger(orderNumber)) return { error: "not_found", cancelled: 0, restocked: 0 };
+  if (!Number.isInteger(orderNumber)) return { error: "not_found", cancelled: 0 };
   const admin = createAdminClient();
 
-  const withReturns = await admin
+  const { data: lines } = await admin
     .from("orders")
-    .select("id, quantity, stock_deducted_at, returned_quantity")
+    .select("id, status, stock_deducted_at")
     .eq("order_number", orderNumber)
     .neq("status", "cancelled");
-  const returnsInstalled = !withReturns.error;
-  const { data: lines } = returnsInstalled
-    ? withReturns
-    : await admin
-        .from("orders")
-        .select("id, quantity, stock_deducted_at")
-        .eq("order_number", orderNumber)
-        .neq("status", "cancelled");
-  if (!lines || lines.length === 0) return { error: "not_found", cancelled: 0, restocked: 0 };
-
-  const toReturn = lines
-    .filter((line) => line.stock_deducted_at)
-    .map((line) => ({
-      order_id: line.id,
-      quantity: line.quantity - ((line as { returned_quantity?: number }).returned_quantity ?? 0),
-    }))
-    .filter((item) => item.quantity > 0);
-
-  let restocked = 0;
-  if (toReturn.length > 0) {
-    if (!returnsInstalled) return { error: "returns_not_installed", cancelled: 0, restocked: 0 };
-    const { data, error } = await admin.rpc("return_order_lines", {
-      p_items: toReturn,
-      p_reason: "Отмена заказа",
-      p_staff_id: actor.id,
-      p_staff_name: `${actor.firstName} ${actor.lastName}`.trim(),
-    });
-    if (error) return { error: error.message, cancelled: 0, restocked: 0 };
-    restocked = Number(data) || 0;
-  }
+  if (!lines || lines.length === 0) return { error: "not_found", cancelled: 0 };
+  if (lines.some((line) => isShippedLine(line))) return { error: "already_shipped", cancelled: 0 };
 
   const { error } = await admin
     .from("orders")
     .update({ status: "cancelled", cancelled_at: new Date().toISOString() })
     .eq("order_number", orderNumber)
-    .neq("status", "cancelled");
-  if (error) return { error: error.message, cancelled: 0, restocked };
+    .neq("status", "cancelled")
+    // Страховка от гонки: если заказ успели отправить, пока жали «Отменить».
+    .is("stock_deducted_at", null);
+  if (error) return { error: error.message, cancelled: 0 };
 
   await logAction(actor, "delete", "order", `Отмена заказа №${orderNumber}`, {
-    details: { cancelledLines: String(lines.length), restockedUnits: String(restocked) },
+    details: { cancelledLines: String(lines.length) },
   });
   revalidateOrderPaths(locale, orderNumber);
-  if (restocked > 0) {
-    revalidatePath(`/${locale}/admin/products`);
-    revalidatePath(`/${locale}/admin/warehouses`);
-  }
   revalidatePath(`/${locale}/admin`);
-  return { error: null, cancelled: lines.length, restocked };
+  return { error: null, cancelled: lines.length };
 }
 
 export async function cancelOrderAction(
@@ -617,48 +589,26 @@ export async function cancelOrderAction(
 
   const admin = createAdminClient();
 
-  // Уже отправленная позиция сначала возвращается на склад — как при отмене
-  // всего заказа (cancelOrderByNumberAction): иначе её товар пропал бы из
-  // остатков.
-  const withReturns = await admin
+  // Отменить можно только то, что ещё на складе. Отправленную позицию не
+  // отменяют — для неё «Возврат», который вернёт товар в остаток.
+  const { data: line } = await admin
     .from("orders")
-    .select("quantity, stock_deducted_at, returned_quantity, status")
+    .select("status, stock_deducted_at")
     .eq("id", id)
     .maybeSingle();
-  const line = withReturns.error
-    ? (await admin.from("orders").select("quantity, stock_deducted_at, status").eq("id", id).maybeSingle()).data
-    : withReturns.data;
   if (!line) return { error: "not_found" };
-  const remaining = line.quantity - ((line as { returned_quantity?: number }).returned_quantity ?? 0);
-  let restocked = 0;
-  if (line.status !== "cancelled" && line.stock_deducted_at && remaining > 0) {
-    if (withReturns.error) return { error: "returns_not_installed" };
-    const { data, error: returnError } = await admin.rpc("return_order_lines", {
-      p_items: [{ order_id: id, quantity: remaining }],
-      p_reason: "Отмена позиции",
-      p_staff_id: actor.id,
-      p_staff_name: `${actor.firstName} ${actor.lastName}`.trim(),
-    });
-    if (returnError) return { error: returnError.message };
-    restocked = Number(data) || 0;
-  }
+  if (line.status !== "cancelled" && isShippedLine(line)) return { error: "already_shipped" };
 
   const { error } = await admin
     .from("orders")
     .update({ status: "cancelled", cancelled_at: new Date().toISOString() })
     .eq("id", id)
-    .neq("status", "cancelled");
+    .neq("status", "cancelled")
+    .is("stock_deducted_at", null);
 
   if (error) return { error: error.message };
 
-  await logAction(actor, "delete", "order", label, {
-    entityId: id,
-    ...(restocked > 0 ? { details: { restockedUnits: String(restocked) } } : {}),
-  });
+  await logAction(actor, "delete", "order", label, { entityId: id });
   revalidateOrderPaths(locale, orderNumber, id);
-  if (restocked > 0) {
-    revalidatePath(`/${locale}/admin/products`);
-    revalidatePath(`/${locale}/admin/warehouses`);
-  }
   return { error: null };
 }

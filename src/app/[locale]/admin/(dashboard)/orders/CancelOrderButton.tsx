@@ -37,7 +37,7 @@ export default function CancelOrderButton({
     startTransition(async () => {
       const result = await cancelOrderByNumberAction(locale, orderNumber);
       if (result.error) {
-        setError(result.error === "returns_not_installed" ? dict.returnErrorNotInstalled : result.error);
+        setError(result.error === "already_shipped" ? dict.orderCancelShippedError : result.error);
         return;
       }
       router.refresh();

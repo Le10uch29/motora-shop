@@ -43,7 +43,7 @@ export default function OrderLineRowActions({
     startTransition(async () => {
       const result = await cancelOrderAction(locale, orderId, orderNumber, label);
       if (result.error) {
-        setError(result.error === "returns_not_installed" ? dict.returnErrorNotInstalled : result.error);
+        setError(result.error === "already_shipped" ? dict.orderCancelShippedError : result.error);
       }
       else router.refresh();
     });

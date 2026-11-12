@@ -5,6 +5,7 @@ import { useConfirm } from "@/context/ConfirmContext";
 import { useRouter } from "next/navigation";
 import { cancelOrderAction, deleteOrderAction } from "../../actions";
 import type { OrderStatus } from "../../data";
+import { isStatusAtOrPast, STOCK_DEDUCTION_STATUS } from "../../statusStyles";
 import type { Dictionary } from "@/i18n/dictionary";
 import type { Locale } from "@/i18n/locales";
 
@@ -28,7 +29,9 @@ export default function OrderDetailActions({
   const [pending, startTransition] = useTransition();
   const confirm = useConfirm();
 
-  const isCancellable = status !== "cancelled";
+  // Отменить — только пока товар на складе; отправленную позицию возвращают
+  // через «Возврат» на странице заказа.
+  const isCancellable = status !== "cancelled" && !isStatusAtOrPast(status, STOCK_DEDUCTION_STATUS);
 
   async function handleCancel() {
     if (
@@ -38,7 +41,7 @@ export default function OrderDetailActions({
     }
     startTransition(async () => {
       const result = await cancelOrderAction(locale, id, orderNumber, label);
-      if (result.error) setError(result.error);
+      if (result.error) setError(result.error === "already_shipped" ? dict.orderCancelShippedError : result.error);
       else router.refresh();
     });
   }

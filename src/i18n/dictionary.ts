@@ -518,6 +518,7 @@ export type Dictionary = {
     orderCancelAllConfirm: string;
     orderCancelAllShippedNote: string;
     orderCancelAllWorking: string;
+    orderCancelShippedError: string;
     insufficientStock: string;
     // Категории запчастей.
     categoriesTitle: string;

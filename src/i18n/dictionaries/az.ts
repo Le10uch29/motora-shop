@@ -520,8 +520,9 @@ const az: Dictionary = {
     orderCancelAllTitle: "Sifarişin ləğvi",
     orderCancelAllConfirm: "Sifarişin bütün mövqelərini ləğv et",
     orderCancelAllShippedNote:
-      "Artıq göndərilmiş mövqelər anbara qayıdacaq — sayları qalıqlara əlavə olunacaq. Sifariş artıq gəlirə düşməyəcək.",
+      "Sifariş hələ göndərilməyib, məhsul anbardadır: qalıq dəyişmir, sifarişin tutduğu say yenidən alıcılar üçün mövcud olacaq.",
     orderCancelAllWorking: "Ləğv olunur…",
+    orderCancelShippedError: "Sifariş artıq göndərilib — ləğv etmək olmaz. Qaytarma rəsmiləşdirin.",
     insufficientStock:
       "Bu qədər yoxdur: qalığın bir hissəsi hələ göndərilməmiş başqa sifarişlərlə tutulub. Sayı azaldın.",
     categoriesTitle: "Kateqoriyalar",

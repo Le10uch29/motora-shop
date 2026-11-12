@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useConfirm } from "@/context/ConfirmContext";
 import { useRouter } from "next/navigation";
 import { updateOrderStatusByNumberAction, deleteOrderByNumberAction } from "./actions";
-import { orderStatusLabel, PROGRESSABLE_STATUSES } from "./statusStyles";
+import { isStatusAtOrPast, orderStatusLabel, PROGRESSABLE_STATUSES, STOCK_DEDUCTION_STATUS } from "./statusStyles";
 import type { OrderStatus } from "./data";
 import { RowActionLink, RowActionButton, EyeIcon, TrashIcon } from "@/components/admin/RowActions";
 import CancelOrderButton from "./CancelOrderButton";
@@ -79,7 +79,8 @@ export default function OrderRowActions({
         <RowActionLink href={`/${locale}/admin/orders/${orderNumber}`} label={dict.actionDetails}>
           <EyeIcon />
         </RowActionLink>
-        {isAdmin && status !== "cancelled" && (
+        {/* Отменить — только пока заказ не отправлен; отправленный — через «Возврат». */}
+        {isAdmin && status !== "cancelled" && !(status && isStatusAtOrPast(status, STOCK_DEDUCTION_STATUS)) && (
           <CancelOrderButton locale={locale} dict={dict} orderNumber={orderNumber} variant="icon" />
         )}
         {isAdmin && (
