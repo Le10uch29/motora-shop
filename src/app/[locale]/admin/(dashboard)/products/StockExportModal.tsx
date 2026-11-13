@@ -124,6 +124,7 @@ export default function StockExportModal({
               <option value="all">{dict.stockExportScopeAll}</option>
               <option value="in_stock">{dict.stockExportInStock}</option>
               <option value="out_of_stock">{dict.stockExportOutOfStock}</option>
+              <option value="low_stock">{dict.stockExportLowStock}</option>
             </select>
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">

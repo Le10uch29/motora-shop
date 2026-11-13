@@ -467,6 +467,7 @@ const ru: Dictionary = {
     stockExportScopeAll: "Все товары",
     stockExportInStock: "В наличии",
     stockExportOutOfStock: "Закончились",
+    stockExportLowStock: "Заканчиваются (осталось 1–5 шт.)",
     stockExportColumns: "Колонки в файле:",
     stockExportRequired: "всегда",
     stockExportColMake: "Марка",

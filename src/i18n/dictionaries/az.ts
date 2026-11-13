@@ -458,6 +458,7 @@ const az: Dictionary = {
     stockExportScopeAll: "Bütün məhsullar",
     stockExportInStock: "Stokda var",
     stockExportOutOfStock: "Bitib",
+    stockExportLowStock: "Bitmək üzrədir (1–5 əd. qalıb)",
     stockExportColumns: "Fayldakı sütunlar:",
     stockExportRequired: "həmişə",
     stockExportColMake: "Marka",

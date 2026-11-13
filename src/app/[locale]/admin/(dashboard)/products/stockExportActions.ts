@@ -7,6 +7,7 @@ import { getDictionary } from "@/i18n/getDictionary";
 import type { Locale } from "@/i18n/locales";
 import { fitmentsOf, fitmentsToFields, UNIVERSAL_MAKE, type Fitment } from "@/lib/fitments";
 import type { LocalizedText } from "@/lib/products";
+import { LOW_STOCK_THRESHOLD } from "@/lib/adminConfig";
 import {
   buildStockCsv,
   parseScope,
@@ -62,6 +63,7 @@ export async function exportStockCsvAction(
         );
       if (brandId) query = query.eq("brand_id", brandId);
       if (scope === "in_stock") query = query.gt("stock", 0);
+      if (scope === "low_stock") query = query.gt("stock", 0).lte("stock", LOW_STOCK_THRESHOLD);
       if (scope === "out_of_stock") query = query.lte("stock", 0);
       // Порядок нужен только для постраничного чтения без пропусков —
       // итоговый порядок строк задаёт orderForExport.

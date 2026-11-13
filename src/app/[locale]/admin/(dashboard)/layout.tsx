@@ -8,6 +8,7 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import ThemeToggle from "@/components/ThemeToggle";
 import { signOutAction } from "./actions";
 import SiteLogo from "@/components/SiteLogo";
+import AdminMobileNav from "@/components/admin/AdminMobileNav";
 import { canManageCustomers, canManageStaff, roleLabel } from "@/lib/roles";
 
 export default async function AdminDashboardLayout({
@@ -35,13 +36,55 @@ export default async function AdminDashboardLayout({
     { href: `/${locale}/admin/logs`, label: dict.admin.navLogs, show: isAdmin },
   ];
 
+  // Ссылки разделов и блок «кто вошёл» — одни и те же для колонки слева
+  // (широкий экран) и для выезжающего меню (телефон).
+  const sidebarContent = (
+    <>
+      <nav className="flex flex-col gap-1 text-sm font-medium text-zinc-600 dark:text-zinc-400">
+        {navItems
+          .filter((item) => item.show)
+          .map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="rounded-lg px-3 py-2 transition-colors hover:bg-zinc-100 hover:text-orange-600 dark:hover:bg-zinc-900"
+            >
+              {item.label}
+            </Link>
+          ))}
+      </nav>
+
+      <div className="mt-auto flex flex-col gap-1 border-t border-zinc-200 pt-4 text-sm dark:border-zinc-800">
+        <span className="px-3 pb-1 text-xs text-zinc-500">
+          {staff.firstName} {staff.lastName} ·{" "}
+          {roleLabel(staff.role, dict.admin)}
+        </span>
+        <Link
+          href={`/${locale}/admin/account`}
+          className="rounded-lg px-3 py-2 text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-orange-600 dark:text-zinc-400 dark:hover:bg-zinc-900"
+        >
+          {dict.admin.navChangePassword}
+        </Link>
+      </div>
+    </>
+  );
+
   return (
     <div className="flex min-h-full flex-1 flex-col">
-      <header className="flame-header flex shrink-0 items-center justify-between border-b border-zinc-200 px-2 py-4 shadow-md shadow-black/5 dark:border-zinc-800 print:hidden">
-        <Link href={`/${locale}`} aria-label="ARAZ-MOTORS 2026">
-          <SiteLogo className="h-[3.4rem]" sizes="110px" />
-        </Link>
-        <div className="flex items-center gap-3">
+      <header className="flame-header flex shrink-0 items-center justify-between gap-2 border-b border-zinc-200 px-2 py-4 shadow-md shadow-black/5 dark:border-zinc-800 print:hidden">
+        <div className="flex items-center gap-2">
+          {/* Телефон: меню разделов прячется за бургер и выезжает слева. */}
+          <AdminMobileNav
+            openLabel={dict.header.menuAriaLabel}
+            closeLabel={dict.header.closeMenuAriaLabel}
+          >
+            {sidebarContent}
+          </AdminMobileNav>
+          <Link href={`/${locale}`} aria-label="ARAZ-MOTORS 2026">
+            <SiteLogo className="h-[3.4rem]" sizes="110px" />
+          </Link>
+        </div>
+        <div className="flex items-center gap-2 sm:gap-3">
           <Suspense fallback={<div className="h-8 w-[104px]" />}>
             <LanguageSwitcher locale={locale} ariaLabel={dict.header.languageSwitcherAriaLabel} />
           </Suspense>
@@ -59,33 +102,9 @@ export default async function AdminDashboardLayout({
       </header>
 
       <div className="flex flex-1">
-        <aside className="flame-sidebar flex w-56 shrink-0 flex-col gap-6 border-r border-zinc-200 px-4 py-6 dark:border-zinc-800 print:hidden">
-          <nav className="flex flex-col gap-1 text-sm font-medium text-zinc-600 dark:text-zinc-400">
-            {navItems
-              .filter((item) => item.show)
-              .map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="rounded-lg px-3 py-2 transition-colors hover:bg-zinc-100 hover:text-orange-600 dark:hover:bg-zinc-900"
-                >
-                  {item.label}
-                </Link>
-              ))}
-          </nav>
-
-          <div className="mt-auto flex flex-col gap-1 border-t border-zinc-200 pt-4 text-sm dark:border-zinc-800">
-            <span className="px-3 pb-1 text-xs text-zinc-500">
-              {staff.firstName} {staff.lastName} ·{" "}
-              {roleLabel(staff.role, dict.admin)}
-            </span>
-            <Link
-              href={`/${locale}/admin/account`}
-              className="rounded-lg px-3 py-2 text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-orange-600 dark:text-zinc-400 dark:hover:bg-zinc-900"
-            >
-              {dict.admin.navChangePassword}
-            </Link>
-          </div>
+        {/* Широкий экран: меню — постоянная колонка слева. */}
+        <aside className="flame-sidebar hidden w-56 shrink-0 flex-col gap-6 border-r border-zinc-200 px-4 py-6 md:flex dark:border-zinc-800 print:hidden">
+          {sidebarContent}
         </aside>
 
         <div className="min-w-0 flex-1">{children}</div>

@@ -31,7 +31,11 @@ export const STOCK_EXPORT_OPTIONAL: readonly StockExportColumn[] = STOCK_EXPORT_
   (column) => !STOCK_EXPORT_REQUIRED.includes(column)
 );
 
-export const STOCK_EXPORT_SCOPES = ["all", "in_stock", "out_of_stock"] as const;
+/** Какие товары выгружать: все, в наличии (остаток больше 0), закончившиеся
+ * (остаток 0) или заканчивающиеся (остаток от 1 до LOW_STOCK_THRESHOLD — тот
+ * же порог, что у фильтра «Заканчиваются» в списке товаров и на главной
+ * админки). */
+export const STOCK_EXPORT_SCOPES = ["all", "in_stock", "out_of_stock", "low_stock"] as const;
 export type StockExportScope = (typeof STOCK_EXPORT_SCOPES)[number];
 
 export type StockExportProduct = {

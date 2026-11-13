@@ -458,6 +458,7 @@ const ka: Dictionary = {
     stockExportScopeAll: "ყველა პროდუქტი",
     stockExportInStock: "მარაგშია",
     stockExportOutOfStock: "ამოიწურა",
+    stockExportLowStock: "იწურება (დარჩა 1–5 ც.)",
     stockExportColumns: "სვეტები ფაილში:",
     stockExportRequired: "ყოველთვის",
     stockExportColMake: "მარკა",

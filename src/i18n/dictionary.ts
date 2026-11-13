@@ -458,6 +458,7 @@ export type Dictionary = {
     stockExportScopeAll: string;
     stockExportInStock: string;
     stockExportOutOfStock: string;
+    stockExportLowStock: string;
     stockExportColumns: string;
     stockExportRequired: string;
     stockExportColMake: string;
