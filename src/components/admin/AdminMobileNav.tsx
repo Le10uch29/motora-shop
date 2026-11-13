@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, type MouseEvent, type ReactNode } from "react";
+import { useState, useSyncExternalStore, type MouseEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 
@@ -27,6 +28,9 @@ export default function AdminMobileNav({
 }) {
   const [open, setOpen] = useState(false);
   useEscapeKey(() => setOpen(false), open);
+  // document есть только в браузере: на сервере портала нет, панель
+  // появляется после загрузки страницы (закрытой её всё равно не видно).
+  const mounted = useSyncExternalStore(subscribeNothing, () => true, () => false);
 
   // Перешли на другую страницу — меню закрывается.
   const pathname = usePathname();
@@ -56,7 +60,12 @@ export default function AdminMobileNav({
         </svg>
       </button>
 
-      <div className={`fixed inset-0 z-50 ${open ? "" : "pointer-events-none"}`}>
+      {/* Панель уходит порталом в body. Внутри шапки ей нельзя: у шапки
+          анимирован filter (flame-pulse), а элемент с filter становится
+          рамкой для потомков с position: fixed — панель растягивалась на
+          шапку, а не на экран, и оказывалась под содержимым страницы. */}
+      {mounted && createPortal(
+      <div className={`fixed inset-0 z-[60] md:hidden ${open ? "" : "pointer-events-none"}`}>
         <div
           className={`absolute inset-0 bg-black/40 transition-opacity duration-200 ${open ? "opacity-100" : "opacity-0"}`}
           onClick={() => setOpen(false)}
@@ -87,7 +96,11 @@ export default function AdminMobileNav({
           </div>
           {children}
         </aside>
-      </div>
+      </div>,
+      document.body
+      )}
     </div>
   );
 }
+
+const subscribeNothing = () => () => {};
