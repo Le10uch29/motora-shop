@@ -340,7 +340,7 @@ async function AttentionBlock({
               <span className="min-w-0 flex-1 text-sm text-zinc-700 dark:text-zinc-300">
                 {row.label}
                 {row.label === d.attentionLowStock && (
-                  <span className="text-zinc-400"> (≤ {LOW_STOCK_THRESHOLD})</span>
+                  <span className="text-zinc-400"> (&lt; {LOW_STOCK_THRESHOLD})</span>
                 )}
               </span>
               <Link
@@ -555,7 +555,7 @@ async function TopProductsBlock({
                 const status =
                   product.stock <= 0
                     ? { label: d.statusOut, tone: "text-red-600 dark:text-red-500" }
-                    : product.stock <= LOW_STOCK_THRESHOLD
+                    : product.stock < LOW_STOCK_THRESHOLD
                       ? { label: d.statusLow, tone: "text-amber-600 dark:text-amber-500" }
                       : { label: d.statusOk, tone: "text-emerald-600 dark:text-emerald-500" };
                 return (

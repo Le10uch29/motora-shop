@@ -215,7 +215,7 @@ export async function getAdminProducts(
       query = query.lte("stock", 0);
       break;
     case "low_stock":
-      query = query.gt("stock", 0).lte("stock", LOW_STOCK_THRESHOLD);
+      query = query.gt("stock", 0).lt("stock", LOW_STOCK_THRESHOLD);
       break;
     case "no_photo":
       query = query.eq("images", "{}");

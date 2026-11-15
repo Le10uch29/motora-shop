@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { getCustomerCartAction, type CustomerCartLine } from "./actions";
+import { getCustomerCartAction, getCustomerOrderHistoryAction, type CustomerCartLine } from "./actions";
+import OrderHistory from "@/components/OrderHistory";
+import type { OrderHistory as OrderHistoryData } from "@/lib/orderHistory";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { formatGel } from "@/lib/currency";
 import { productImageUrl } from "@/lib/productImageUrl";
@@ -18,17 +20,46 @@ import type { Locale } from "@/i18n/locales";
 export default function CustomerCartModal({
   locale,
   dict,
+  cartDict,
   customer,
   onClose,
 }: {
   locale: Locale;
   dict: Dictionary["admin"];
+  cartDict: Dictionary["cart"];
   customer: { id: string; name: string };
   onClose: () => void;
 }) {
   const [lines, setLines] = useState<CustomerCartLine[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // История заказов покупателя (его «Мои заказы»). Удалять из неё может
+  // только сотрудник — здесь, а не сам покупатель.
+  const [history, setHistory] = useState<OrderHistoryData | null>(null);
+  const [historyVersion, setHistoryVersion] = useState(0);
   useEscapeKey(onClose);
+
+  useEffect(() => {
+    let cancelled = false;
+    getCustomerOrderHistoryAction(locale, customer.id)
+      .then((result) => {
+        if (!cancelled) setHistory(result.history);
+      })
+      .catch(() => {
+        if (!cancelled) setHistory({ orders: [], canDelete: false });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [locale, customer.id, historyVersion]);
+
+  const statusLabels: Record<string, string> = {
+    new: dict.orderStatusNew,
+    gathering: dict.orderStatusGathering,
+    gathered: dict.orderStatusGathered,
+    shipped: dict.orderStatusShipped,
+    delivered: dict.orderStatusDelivered,
+    cancelled: dict.orderStatusCancelled,
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -112,6 +143,23 @@ export default function CustomerCartModal({
             )}
           </>
         )}
+
+        {/* История заказов покупателя: очистить её (всю или по заказу) может
+            только сотрудник — у самого покупателя кнопок удаления нет. */}
+        <div className="border-t border-zinc-200 pt-4 dark:border-zinc-800">
+          {history === null ? (
+            <p className="py-2 text-sm text-zinc-500">{dict.customerCartLoading}</p>
+          ) : (
+            <OrderHistory
+              locale={locale}
+              dict={cartDict}
+              history={history}
+              statusLabels={statusLabels}
+              embedded
+              manage={{ customerId: customer.id, onChanged: () => setHistoryVersion((v) => v + 1) }}
+            />
+          )}
+        </div>
       </div>
     </div>,
     document.body

@@ -24,14 +24,13 @@ export default function ProductCardAddToCart({
   stock: number;
   labels: Labels;
 }) {
-  const { addItem, items, orderPlaced } = useCart();
+  const { addItem, items } = useCart();
   const [chosen, setQuantity] = useState(1);
 
-  // Галочка отражает корзину, а не факт нажатия. Оформленный заказ считается
-  // пустой корзиной: позиции в ней остаются только ради экрана подтверждения,
-  // и товар снова можно добавить. Убрали товар из корзины — галочка пропадёт
-  // сама, состояние тут не хранится.
-  const inCart = orderPlaced ? 0 : items.find((item) => item.productId === productId)?.quantity ?? 0;
+  // Галочка отражает корзину, а не факт нажатия. После оформления корзина
+  // перечитывается с сервера: заказанное уходит, неоформленное остаётся.
+  // Убрали товар из корзины — галочка пропадёт сама, состояние тут не хранится.
+  const inCart = items.find((item) => item.productId === productId)?.quantity ?? 0;
   // stock — уже доступное количество (без занятого чужими заказами); то, что
   // лежит в корзине, тоже из него.
   const remaining = Math.max(0, stock - inCart);

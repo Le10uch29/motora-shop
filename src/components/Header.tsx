@@ -79,6 +79,8 @@ export default async function Header({
             logoutLabel={dict.auth.logoutLabel}
             accountHref={customer ? `/${locale}/account` : undefined}
             accountLabel={dict.admin.myAccountTitle}
+            ordersHref={isLoggedIn ? `/${locale}/orders` : undefined}
+            ordersLabel={dict.header.myOrders}
             adminPanelHref={staff ? `/${locale}/admin` : undefined}
             adminPanelLabel={dict.admin.dashboardTitle}
             themeToggleAriaLabel={dict.header.themeToggleAriaLabel}

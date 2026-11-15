@@ -22,9 +22,10 @@ export default function AddToCartButton({
     quantityIncreaseAria: string;
   };
 }) {
-  const { addItem, items, orderPlaced } = useCart();
-  // Оформленный заказ считается пустой корзиной — товар снова можно добавить.
-  const inCart = orderPlaced ? 0 : items.find((item) => item.productId === productId)?.quantity ?? 0;
+  const { addItem, items } = useCart();
+  // После оформления корзина перечитывается с сервера: заказанное из неё
+  // уходит, а неоформленное (снятые галочки) остаётся и считается здесь.
+  const inCart = items.find((item) => item.productId === productId)?.quantity ?? 0;
   // stock — уже доступное количество (без занятого чужими заказами); то, что
   // лежит в корзине, тоже из него.
   const remaining = Math.max(0, stock - inCart);

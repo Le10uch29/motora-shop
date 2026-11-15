@@ -63,7 +63,7 @@ export async function exportStockCsvAction(
         );
       if (brandId) query = query.eq("brand_id", brandId);
       if (scope === "in_stock") query = query.gt("stock", 0);
-      if (scope === "low_stock") query = query.gt("stock", 0).lte("stock", LOW_STOCK_THRESHOLD);
+      if (scope === "low_stock") query = query.gt("stock", 0).lt("stock", LOW_STOCK_THRESHOLD);
       if (scope === "out_of_stock") query = query.lte("stock", 0);
       // Порядок нужен только для постраничного чтения без пропусков —
       // итоговый порядок строк задаёт orderForExport.

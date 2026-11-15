@@ -1,8 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthUser } from "@/lib/supabase/authUsers";
 import { availableStock, readReservedStock } from "@/lib/stockReservation";
 
@@ -30,14 +28,23 @@ function isMissingLineNumber(message: string): boolean {
  * in schema.sql) fills the price/name in from the live product row. This
  * means price integrity holds even against a direct REST call that bypasses
  * this action entirely, not just against a client that happens to behave. */
-export async function placeOrderAction(): Promise<PlaceOrderState> {
+export async function placeOrderAction(
+  /** Отмеченные в корзине товары: оформляются только они, остальные
+   * остаются лежать в корзине до следующего раза. Не передан — вся корзина. */
+  selectedProductIds?: string[]
+): Promise<PlaceOrderState> {
   const supabase = await createClient();
   const user = await getAuthUser(supabase);
   if (!user) return { error: "not_authenticated" };
+  const selected = Array.isArray(selectedProductIds)
+    ? new Set(selectedProductIds.filter((id) => typeof id === "string"))
+    : null;
+  if (selected && selected.size === 0) return { error: "nothing_selected" };
 
   // Заказывается то, что лежит в корзине на сервере, — а не то, что прислал
-  // браузер: корзину могли поменять на другом устройстве.
-  const { data: cartRows, error: cartError } = await supabase
+  // браузер: корзину могли поменять на другом устройстве. Из браузера
+  // приходит только выбор — какие из этих товаров оформить сейчас.
+  const { data: allCartRows, error: cartError } = await supabase
     .from("cart_items")
     .select("id, product_id, quantity")
     .eq("user_id", user.id)
@@ -45,6 +52,9 @@ export async function placeOrderAction(): Promise<PlaceOrderState> {
     .order("created_at", { ascending: true })
     .order("id", { ascending: true });
   if (cartError) return { error: cartError.message };
+  const cartRows = selected
+    ? (allCartRows ?? []).filter((row) => selected.has(row.product_id))
+    : allCartRows ?? [];
   const items = (cartRows ?? []).map((row) => ({ productId: row.product_id, quantity: row.quantity }));
   if (items.length === 0) return { error: "empty_cart" };
 
@@ -126,35 +136,6 @@ export async function placeOrderAction(): Promise<PlaceOrderState> {
   return { error: null };
 }
 
-/**
- * Убирает заказ (или все заказы, если orderNumber = null) из истории
- * покупателя в корзине.
- *
- * Заказ из базы НЕ удаляется: ставится orders.hidden_by_customer_at, и
- * история его больше не показывает. В админке, аналитике и графиках заказ
- * остаётся как был. Своей сессией покупатель строки заказов менять не может
- * (grant update на orders — только служебные столбцы), поэтому запись идёт
- * серверным ключом — строго по заказам вошедшего пользователя.
- */
-export async function hideOrderHistoryAction(
-  locale: string,
-  orderNumber: number | null
-): Promise<{ error: string | null }> {
-  const supabase = await createClient();
-  const user = await getAuthUser(supabase);
-  if (!user) return { error: "not_authenticated" };
-  if (orderNumber !== null && !Number.isInteger(orderNumber)) return { error: "bad_order" };
-
-  const admin = createAdminClient();
-  let query = admin
-    .from("orders")
-    .update({ hidden_by_customer_at: new Date().toISOString() })
-    .eq("customer_id", user.id)
-    .is("hidden_by_customer_at", null);
-  if (orderNumber !== null) query = query.eq("order_number", orderNumber);
-  const { error } = await query;
-  if (error) return { error: error.message };
-
-  revalidatePath(`/${locale}/cart`);
-  return { error: null };
-}
+// Удалять заказы из своей истории покупатель не может — это делает админ или
+// старший продавец из окна «Корзина покупателя»
+// (hideCustomerOrderHistoryAction в admin/customers/actions.ts).

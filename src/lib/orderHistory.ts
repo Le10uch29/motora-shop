@@ -1,15 +1,18 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthIdentity } from "@/lib/supabase/authUsers";
 import { readReturnedQuantities, withoutReturned } from "@/lib/orderReturns";
 import type { Locale } from "@/i18n/locales";
 
 /**
- * История заказов покупателя (страница корзины).
+ * История заказов покупателя (страница «Мои заказы»).
  *
- * Читается его собственной сессией — политика orderer_read_own_orders пускает
- * только к своим заказам. «Удалённые» из истории заказы не удаляются из базы:
- * у них стоит orders.hidden_by_customer_at, и здесь они просто не показываются.
- * В админке, аналитике и графиках такие заказы остаются как были.
+ * Покупатель читает её своей сессией — политика orderer_read_own_orders
+ * пускает только к своим заказам — и удалять из неё ничего не может. Убрать
+ * заказы из истории может админ или старший продавец (окно «Корзина
+ * покупателя»): заказ при этом не удаляется из базы, у него ставится
+ * orders.hidden_by_customer_at, и здесь он просто не показывается. В
+ * админке, аналитике и графиках такие заказы остаются как были.
  */
 
 export type OrderHistoryLine = {
@@ -60,12 +63,29 @@ const SELECT =
 
 export const HIDDEN_COLUMN = "hidden_by_customer_at";
 
+/** История заказов вошедшего пользователя — страница «Мои заказы». Своей
+ * сессией: чужих заказов отсюда не прочитать. */
 export async function getMyOrderHistory(locale: Locale): Promise<OrderHistory> {
   const supabase = await createClient();
   const user = await getAuthIdentity(supabase);
   if (!user) return { orders: [], canDelete: false };
-  const userId = user.id;
+  return readOrderHistory(supabase, user.id, locale);
+}
 
+/**
+ * История заказов одного заказчика. Покупатель читает свою (своей сессией),
+ * админ или старший продавец — любого покупателя серверным ключом, из окна
+ * «Корзина покупателя», где историю можно и очистить.
+ *
+ * canDelete — колонка hidden_by_customer_at есть (SQL выполнен), то есть
+ * скрывать заказы из истории технически можно. Кто именно может — решает
+ * вызывающий: покупателю это не разрешено.
+ */
+export async function readOrderHistory(
+  supabase: SupabaseClient,
+  userId: string,
+  locale: Locale
+): Promise<OrderHistory> {
   async function readAll(filterHidden: boolean): Promise<{ rows: Row[]; error: string | null }> {
     const rows: Row[] = [];
     for (let from = 0; ; from += 1000) {

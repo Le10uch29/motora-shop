@@ -28,6 +28,7 @@ export type CustomerRow = {
 export default function CustomerListClient({
   locale,
   dict,
+  cartDict,
   isAdmin,
   customers,
   emptyMessage,
@@ -35,6 +36,8 @@ export default function CustomerListClient({
 }: {
   locale: Locale;
   dict: Dictionary["admin"];
+  /** Тексты корзины — для истории заказов в окне «Корзина покупателя». */
+  cartDict: Dictionary["cart"];
   /** Нет — старший продавец: добавляет покупателей и меняет пароль, но не
    * правит, не удаляет и не оформляет заказ вместо покупателя. */
   isAdmin: boolean;
@@ -209,6 +212,7 @@ export default function CustomerListClient({
         <CustomerCartModal
           locale={locale}
           dict={dict}
+          cartDict={cartDict}
           customer={{ id: cartFor.id, name: `${cartFor.firstName} ${cartFor.lastName}`.trim() }}
           onClose={() => setCartFor(null)}
         />

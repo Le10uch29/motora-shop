@@ -54,7 +54,7 @@ export async function getOverview(period: DashboardPeriod): Promise<Overview> {
       countOf(supabase.from("products").select("*", EXACT).gt("stock", 0)),
       countOf(supabase.from("products").select("*", EXACT).lte("stock", 0)),
       countOf(
-        supabase.from("products").select("*", EXACT).gt("stock", 0).lte("stock", LOW_STOCK_THRESHOLD)
+        supabase.from("products").select("*", EXACT).gt("stock", 0).lt("stock", LOW_STOCK_THRESHOLD)
       ),
       countOf(
         supabase.from("categories").select("*", EXACT).is("parent_id", null).eq("is_active", true)
@@ -152,7 +152,7 @@ export const getAttentionCounts = cache(async (): Promise<AttentionCounts> => {
     await Promise.all([
       countOf(supabase.from("products").select("*", EXACT).lte("stock", 0)),
       countOf(
-        supabase.from("products").select("*", EXACT).gt("stock", 0).lte("stock", LOW_STOCK_THRESHOLD)
+        supabase.from("products").select("*", EXACT).gt("stock", 0).lt("stock", LOW_STOCK_THRESHOLD)
       ),
       // `images` — массив; пустой массив и есть «фото нет».
       countOf(supabase.from("products").select("*", EXACT).eq("images", "{}")),

@@ -10,6 +10,9 @@ import { normalizePhone, normalizePhoneForAuth } from "@/lib/phone";
 import { isPhoneAliasEmail, phoneAliasEmail } from "@/lib/phoneLogin";
 import type { Locale } from "@/i18n/locales";
 import { isLocale } from "@/i18n/locales";
+import { readOrderHistory, type OrderHistory } from "@/lib/orderHistory";
+
+const UUID = /^[0-9a-f-]{36}$/i;
 
 /** Подпись для журнала: «вместо покупателя». Запись в журнал делается один
  * раз и хранится строкой, поэтому язык берётся тот, на котором работал
@@ -353,6 +356,66 @@ export async function getCustomerCartAction(
     };
   });
   return { error: null, lines };
+}
+
+/**
+ * История заказов покупателя — для окна «Корзина покупателя». Админ или
+ * старший продавец; читается серверным ключом (у сотрудника нет доступа к
+ * чужим заказам своей сессией) после проверки прав.
+ */
+export async function getCustomerOrderHistoryAction(
+  locale: Locale,
+  customerId: string
+): Promise<{ error: string | null; history: OrderHistory }> {
+  await requireCustomerManager(locale);
+  if (!UUID.test(customerId)) return { error: "not_found", history: { orders: [], canDelete: false } };
+  try {
+    return { error: null, history: await readOrderHistory(createAdminClient(), customerId, locale) };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : String(error),
+      history: { orders: [], canDelete: false },
+    };
+  }
+}
+
+/**
+ * Убирает заказ (или все заказы, если orderNumber = null) из истории
+ * покупателя — «Мои заказы» на сайте. Сам покупатель этого сделать не может;
+ * только админ или старший продавец.
+ *
+ * Заказ из базы НЕ удаляется: ставится orders.hidden_by_customer_at, и
+ * история покупателя его больше не показывает. В разделе «Заказы», аналитике
+ * и графиках заказ остаётся как был.
+ */
+export async function hideCustomerOrderHistoryAction(
+  locale: Locale,
+  customerId: string,
+  orderNumber: number | null
+): Promise<{ error: string | null }> {
+  const actor = await requireCustomerManager(locale);
+  if (!UUID.test(customerId)) return { error: "not_found" };
+  if (orderNumber !== null && !Number.isInteger(orderNumber)) return { error: "bad_order" };
+
+  const admin = createAdminClient();
+  let query = admin
+    .from("orders")
+    .update({ hidden_by_customer_at: new Date().toISOString() })
+    .eq("customer_id", customerId)
+    .is("hidden_by_customer_at", null);
+  if (orderNumber !== null) query = query.eq("order_number", orderNumber);
+  const { error } = await query;
+  if (error) return { error: error.message };
+
+  await logAction(
+    actor,
+    "update",
+    "customer",
+    orderNumber === null ? "История заказов очищена" : `Заказ №${orderNumber} убран из истории`,
+    { entityId: customerId }
+  );
+  revalidatePath(`/${locale}/orders`);
+  return { error: null };
 }
 
 export async function changeCustomerPasswordAction(

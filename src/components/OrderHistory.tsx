@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { useConfirm } from "@/context/ConfirmContext";
-import { hideOrderHistoryAction } from "@/app/[locale]/(public)/cart/actions";
+import { hideCustomerOrderHistoryAction } from "@/app/[locale]/admin/(dashboard)/customers/actions";
 import type { OrderHistory as OrderHistoryData } from "@/lib/orderHistory";
 import { formatGel } from "@/lib/currency";
 import { productImageUrl } from "@/lib/productImageUrl";
@@ -33,29 +32,43 @@ function StatusBadge({ status, label }: { status: string | null; label: string }
   );
 }
 
-/** История заказов покупателя под корзиной: список заказов, по «Подробнее» —
- * что именно в нём заказано; удалить из истории один заказ или все. */
+/**
+ * История заказов: список заказов, по «Подробнее» — что именно в нём
+ * заказано.
+ *
+ * Покупатель (страница «Мои заказы») видит её только для чтения — удалить из
+ * истории он ничего не может. Удалять (один заказ или всю историю) может
+ * админ или старший продавец: для них компонент открывается в окне «Корзина
+ * покупателя» с `manage` — id покупателя и что сделать после удаления.
+ */
 export default function OrderHistory({
   locale,
   dict,
   history,
   statusLabels,
+  manage,
+  embedded = false,
 }: {
   locale: Locale;
   dict: Dictionary["cart"];
   history: OrderHistoryData;
   statusLabels: Record<string, string>;
+  /** Только в админке: история этого покупателя, удалять можно. */
+  manage?: { customerId: string; onChanged: () => void };
+  /** Внутри окна — без отступов и рамки страницы. */
+  embedded?: boolean;
 }) {
   const [openNumber, setOpenNumber] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const confirm = useConfirm();
-  const router = useRouter();
+  const canDelete = Boolean(manage) && history.canDelete;
 
   const statusLabel = (status: string | null) =>
     status ? statusLabels[status] ?? status : dict.historyStatusMixed;
 
   async function handleDelete(orderNumber: number | null) {
+    if (!manage) return;
     const ok = await confirm({
       message: orderNumber === null ? dict.historyConfirmDeleteAll : dict.historyConfirmDelete,
       details:
@@ -67,18 +80,24 @@ export default function OrderHistory({
     if (!ok) return;
     setError(null);
     startTransition(async () => {
-      const result = await hideOrderHistoryAction(locale, orderNumber);
+      const result = await hideCustomerOrderHistoryAction(locale, manage.customerId, orderNumber);
       if (result.error) {
         setError(result.error);
         return;
       }
       if (orderNumber === null || orderNumber === openNumber) setOpenNumber(null);
-      router.refresh();
+      manage.onChanged();
     });
   }
 
   return (
-    <section className="mx-auto flex w-full max-w-4xl flex-col gap-4 border-t border-zinc-200 px-2 pb-12 pt-6 dark:border-zinc-800">
+    <section
+      className={
+        embedded
+          ? "flex w-full flex-col gap-4"
+          : "mx-auto flex w-full max-w-4xl flex-col gap-4 px-2 pb-12 pt-6"
+      }
+    >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">
           {dict.historyTitle}
@@ -86,7 +105,7 @@ export default function OrderHistory({
             <span className="ml-2 text-base font-medium text-zinc-400">{history.orders.length}</span>
           )}
         </h2>
-        {history.canDelete && history.orders.length > 0 && (
+        {canDelete && history.orders.length > 0 && (
           <button
             type="button"
             disabled={pending}
@@ -140,7 +159,7 @@ export default function OrderHistory({
                   >
                     {open ? dict.historyCollapse : dict.historyDetails}
                   </button>
-                  {history.canDelete && (
+                  {canDelete && (
                     <button
                       type="button"
                       disabled={pending}

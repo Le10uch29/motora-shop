@@ -8,6 +8,7 @@ export type Dictionary = {
     products: string;
     contacts: string;
     menuAriaLabel: string;
+    myOrders: string;
     closeMenuAriaLabel: string;
     themeToggleAriaLabel: string;
     languageSwitcherAriaLabel: string;
@@ -790,6 +791,10 @@ export type Dictionary = {
     orderPlaced: string;
     orderError: string;
     availableOnly: string;
+    selectAll: string;
+    selectedCount: string;
+    selectItemAria: string;
+    nothingSelected: string;
     stockChanged: string;
     productCodeLabel: string;
     quantityLabel: string;

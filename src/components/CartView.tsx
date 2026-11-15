@@ -22,6 +22,7 @@ const ORDER_ERROR_CODES = new Set(["empty_cart", "not_authenticated", "products_
 // raw DB error message, shown as-is so it's actually diagnosable.
 function orderErrorText(code: string, dict: Dictionary["cart"]): string {
   if (code === "stock_changed") return dict.stockChanged;
+  if (code === "nothing_selected") return dict.nothingSelected;
   return ORDER_ERROR_CODES.has(code) ? dict.orderError : code;
 }
 
@@ -76,7 +77,27 @@ export default function CartView({
         Boolean(row.product) && row.product!.stock > 0
     );
 
-  const totalPrice = rows.reduce((sum, { item, product }) => sum + product.price * item.quantity, 0);
+  // Какие товары оформить сейчас. Хранится, что СНЯТО, а не что отмечено:
+  // новый товар в корзине сразу отмечен, и по умолчанию оформляется всё.
+  // Неотмеченное остаётся в корзине до следующего раза.
+  const [deselected, setDeselected] = useState<Set<string>>(new Set());
+  const selectedRows = rows.filter(({ item }) => !deselected.has(item.productId));
+  const allSelected = rows.length > 0 && selectedRows.length === rows.length;
+
+  function toggleSelected(productId: string) {
+    setDeselected((prev) => {
+      const next = new Set(prev);
+      if (next.has(productId)) next.delete(productId);
+      else next.add(productId);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    setDeselected(allSelected ? new Set(rows.map(({ item }) => item.productId)) : new Set());
+  }
+
+  const totalPrice = selectedRows.reduce((sum, { item, product }) => sum + product.price * item.quantity, 0);
 
   // A product can sell out or get deleted after it was added to the cart —
   // drop it from the stored cart too, not just this render, so the header
@@ -91,8 +112,13 @@ export default function CartView({
 
   function handleCheckout() {
     setOrderError(null);
+    if (selectedRows.length === 0) {
+      setOrderError(dict.nothingSelected);
+      return;
+    }
+    const ids = selectedRows.map(({ item }) => item.productId);
     startTransition(async () => {
-      const result = await placeOrderAction();
+      const result = await placeOrderAction(ids);
       if (result.error) {
         setOrderError(orderErrorText(result.error, dict));
         // Количество в корзине уменьшено до доступного — показываем новое.
@@ -103,7 +129,10 @@ export default function CartView({
         return;
       }
       markOrdered();
-      // Новый заказ сразу появляется в «Истории заказов» под корзиной.
+      // Оставшиеся в корзине товары снова отмечены — их можно оформить
+      // следующим заказом.
+      setDeselected(new Set());
+      // Новый заказ сразу появляется на странице «Мои заказы».
       router.refresh();
     });
   }
@@ -157,12 +186,42 @@ export default function CartView({
         </p>
       ) : (
         <>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <label className="flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              <input
+                type="checkbox"
+                checked={allSelected}
+                ref={(el) => {
+                  if (el) el.indeterminate = selectedRows.length > 0 && !allSelected;
+                }}
+                onChange={toggleAll}
+                className="h-4 w-4 rounded border-zinc-300 accent-orange-600"
+              />
+              {dict.selectAll}
+            </label>
+            <span className="text-sm text-zinc-500">
+              {dict.selectedCount} {selectedRows.length} / {rows.length}
+            </span>
+          </div>
           <ul className="flex flex-col gap-4">
-            {rows.map(({ item, product }) => (
+            {rows.map(({ item, product }) => {
+              const isSelected = !deselected.has(item.productId);
+              return (
               <li
                 key={item.productId}
-                className="flex items-center gap-4 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+                className={`flex items-center gap-4 rounded-xl border bg-white p-4 transition-colors dark:bg-zinc-900 ${
+                  isSelected
+                    ? "border-zinc-200 dark:border-zinc-800"
+                    : "border-dashed border-zinc-300 opacity-60 dark:border-zinc-700"
+                }`}
               >
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => toggleSelected(item.productId)}
+                  aria-label={`${dict.selectItemAria}: ${product.name[locale]}`}
+                  className="h-5 w-5 shrink-0 rounded border-zinc-300 accent-orange-600"
+                />
                 <Link
                   href={`/${locale}/catalog/${product.slug}`}
                   className="h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800"
@@ -197,10 +256,6 @@ export default function CartView({
                   )}
                   <span className="text-sm text-zinc-500">{formatGel(product.price, locale)}</span>
                 </div>
-                {/* Потолка здесь нет намеренно: корзина и раньше позволяла заказать
-                    больше, чем лежит на складе — это оптовый магазин, недостающее
-                    довозят. Ограничение появилось бы только из-за поля ввода, а
-                    менять правила заказа ради него незачем. */}
                 <div className="flex flex-col items-center gap-1">
                   <QuantityField
                     value={item.quantity}
@@ -232,7 +287,8 @@ export default function CartView({
                   ✕
                 </button>
               </li>
-            ))}
+              );
+            })}
           </ul>
 
           <div className="flex flex-col items-end gap-4 border-t border-zinc-200 pt-6 dark:border-zinc-800">
@@ -252,17 +308,16 @@ export default function CartView({
               >
                 {dict.clear}
               </button>
+              {/* Оформляются только отмеченные товары; после оформления
+                  неотмеченные остаются и их можно оформить сразу же. */}
               <button
                 type="button"
                 onClick={handleCheckout}
-                disabled={pending || orderPlaced}
-                className={
-                  orderPlaced
-                    ? "cursor-default rounded-full bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white"
-                    : "rounded-full bg-orange-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-orange-500 disabled:opacity-60"
-                }
+                disabled={pending || selectedRows.length === 0}
+                className="rounded-full bg-orange-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-orange-500 disabled:opacity-60"
               >
-                {orderPlaced ? dict.orderPlaced : dict.checkout}
+                {dict.checkout}
+                {selectedRows.length < rows.length && ` (${selectedRows.length})`}
               </button>
             </div>
           </div>

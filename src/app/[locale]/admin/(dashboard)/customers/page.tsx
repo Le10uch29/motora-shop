@@ -28,6 +28,7 @@ export default async function CustomersPage({
       <CustomerListClient
         locale={locale}
         dict={dict.admin}
+        cartDict={dict.cart}
         isAdmin={staff.role === "admin"}
         customers={rows}
         emptyMessage={query ? dict.admin.noResults : dict.admin.emptyCustomers}
