@@ -1,11 +1,14 @@
 /*
- * Экспорт остатков в CSV для Excel — чистые функции, без базы (их проверяют
- * тесты). Сбор данных и права — в stockExportActions.ts.
+ * Экспорт остатков для Excel — чистые функции, без базы (их проверяют тесты).
+ * Сбор данных и права — в stockExportActions.ts, сборка файла — в модалке.
  *
- * Формат под Excel с русской/азербайджанской/грузинской раскладкой: UTF-8 с
- * BOM (иначе кириллица превращается в «кракозябры»), разделитель «;», дробная
- * часть через запятую.
+ * Файл — .xlsx (buildStockTable + lib/xlsxWriter): в CSV Excel угадывал
+ * кодировку по настройкам Windows, и названия местами превращались в
+ * «иероглифы», а фото там могли быть только ссылками. CSV-функции ниже
+ * остались для совместимости и тестов.
  */
+
+import type { XlsxCell, XlsxColumn } from "@/lib/xlsxWriter";
 
 /** Все колонки в том порядке, в каком они идут в файле. */
 export const STOCK_EXPORT_COLUMNS = [
@@ -39,6 +42,8 @@ export const STOCK_EXPORT_SCOPES = ["all", "in_stock", "out_of_stock", "low_stoc
 export type StockExportScope = (typeof STOCK_EXPORT_SCOPES)[number];
 
 export type StockExportProduct = {
+  /** id товара — по нему подгружаются фото для файла. */
+  id?: string;
   productCode: string;
   originCode: string;
   name: string;
@@ -114,6 +119,58 @@ function cellValue(
     default:
       return product[column];
   }
+}
+
+/** Ширина колонки в файле (в символах Excel) и тип значения в ней. */
+const XLSX_COLUMN: Record<StockExportColumn, Omit<XlsxColumn, "header">> = {
+  productCode: { width: 16, kind: "text" },
+  originCode: { width: 18, kind: "text" },
+  name: { width: 45, kind: "text" },
+  brand: { width: 16, kind: "text" },
+  make: { width: 18, kind: "text" },
+  model: { width: 22, kind: "text" },
+  years: { width: 12, kind: "text" },
+  stock: { width: 10, kind: "int" },
+  status: { width: 14, kind: "text" },
+  price: { width: 12, kind: "money" },
+  oldPrice: { width: 12, kind: "money" },
+  // В ячейке — сама картинка (её кладёт модалка), не ссылка.
+  photo: { width: 13, kind: "text" },
+};
+
+/** Высота строки, когда в файле есть фото: картинка ~72px. */
+export const STOCK_EXPORT_PHOTO_ROW_HEIGHT = 60;
+
+/**
+ * Таблица для .xlsx: колонки, строки в порядке orderForExport и id товаров —
+ * по ним модалка подгружает фото. Ячейка «Фото» остаётся пустой: картинку
+ * кладут поверх неё, а ссылки в файле не нужны.
+ *
+ * Коды остаются текстом, и Excel их не переделывает в числа и даты; текст,
+ * похожий на формулу, тоже просто текст — в .xlsx он не выполняется.
+ */
+export function buildStockTable(
+  products: StockExportProduct[],
+  columns: readonly StockExportColumn[],
+  labels: Record<StockExportColumn, string>,
+  status: { inStock: string; outOfStock: string }
+): {
+  columns: XlsxColumn[];
+  rows: XlsxCell[][];
+  /** По строке: id товара, если у него есть фото, иначе null. */
+  photoIds: (string | null)[];
+  /** Номер колонки «Фото» или -1, если её не выбрали. */
+  photoCol: number;
+} {
+  const ordered = orderForExport(products);
+  return {
+    columns: columns.map((column) => ({ header: labels[column], ...XLSX_COLUMN[column] })),
+    rows: ordered.map((product) =>
+      columns.map((column) => (column === "photo" ? null : cellValue(product, column, status)))
+    ),
+    photoIds: ordered.map((product) => (product.photo && product.id ? product.id : null)),
+    photoCol: columns.indexOf("photo"),
+  };
 }
 
 /** Готовый текст файла: BOM, строка заголовков, по строке на товар. */

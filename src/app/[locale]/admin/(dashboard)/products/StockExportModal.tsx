@@ -5,13 +5,26 @@ import { createPortal } from "react-dom";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import type { Locale } from "@/i18n/locales";
 import type { Dictionary } from "@/i18n/dictionary";
-import { exportStockCsvAction } from "./stockExportActions";
+import { exportStockAction, getStockExportPhotosAction } from "./stockExportActions";
 import {
   STOCK_EXPORT_OPTIONAL,
+  STOCK_EXPORT_PHOTO_ROW_HEIGHT,
   STOCK_EXPORT_REQUIRED,
   type StockExportColumn,
   type StockExportScope,
 } from "./stockExport";
+import { buildXlsx, type XlsxImage } from "@/lib/xlsxWriter";
+
+/** Сколько фото просить за раз и сколько таких запросов держать в полёте. */
+const PHOTO_BATCH = 20;
+const PHOTO_PARALLEL = 3;
+
+function base64ToBytes(value: string): Uint8Array {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
 
 /** Окно «Экспорт остатков»: какие товары, какой бренд, какие колонки. */
 export default function StockExportModal({
@@ -32,6 +45,8 @@ export default function StockExportModal({
   const [brandId, setBrandId] = useState(initialBrandId ?? "");
   const [optional, setOptional] = useState<Set<StockExportColumn>>(new Set(["status"]));
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  /** «Загружаю фото: 40 / 300» — пока фото собираются для файла. */
+  const [progress, setProgress] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   useEscapeKey(onClose);
 
@@ -62,7 +77,7 @@ export default function StockExportModal({
   function download() {
     setMessage(null);
     startTransition(async () => {
-      const result = await exportStockCsvAction(locale, {
+      const result = await exportStockAction(locale, {
         columns: Array.from(optional),
         scope,
         brandId: brandId || null,
@@ -75,7 +90,61 @@ export default function StockExportModal({
         setMessage({ ok: false, text: dict.stockExportEmpty });
         return;
       }
-      const url = URL.createObjectURL(new Blob([result.csv], { type: "text/csv;charset=utf-8" }));
+
+      // Фото — пачками с сервера, по нескольку пачек сразу. Не скачавшееся
+      // фото просто остаётся пустой ячейкой.
+      const images: XlsxImage[] = [];
+      if (result.photoCol >= 0) {
+        const wanted = result.photoIds
+          .map((id, row) => (id ? { id, row } : null))
+          .filter((item): item is { id: string; row: number } => item !== null);
+        const rowById = new Map(wanted.map((item) => [item.id, item.row]));
+        const batches: string[][] = [];
+        for (let i = 0; i < wanted.length; i += PHOTO_BATCH) {
+          batches.push(wanted.slice(i, i + PHOTO_BATCH).map((item) => item.id));
+        }
+        let done = 0;
+        setProgress(`${dict.stockExportPhotos} 0 / ${wanted.length}`);
+        let next = 0;
+        const worker = async () => {
+          while (next < batches.length) {
+            const batch = batches[next++];
+            try {
+              const photos = await getStockExportPhotosAction(locale, batch);
+              for (const photo of photos) {
+                const row = rowById.get(photo.id);
+                if (row === undefined) continue;
+                images.push({
+                  row,
+                  col: result.photoCol,
+                  data: base64ToBytes(photo.jpeg),
+                  width: photo.width,
+                  height: photo.height,
+                });
+              }
+            } catch {
+              // Пачка не пришла — эти фото останутся пустыми.
+            }
+            done += batch.length;
+            setProgress(`${dict.stockExportPhotos} ${done} / ${wanted.length}`);
+          }
+        };
+        await Promise.all(Array.from({ length: PHOTO_PARALLEL }, worker));
+        setProgress(null);
+      }
+
+      const bytes = buildXlsx({
+        name: result.sheetName,
+        columns: result.columns,
+        rows: result.rows,
+        images,
+        rowHeight: result.photoCol >= 0 ? STOCK_EXPORT_PHOTO_ROW_HEIGHT : undefined,
+      });
+      const url = URL.createObjectURL(
+        new Blob([bytes as BlobPart], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        })
+      );
       const link = document.createElement("a");
       link.href = url;
       link.download = result.filename;
@@ -165,6 +234,11 @@ export default function StockExportModal({
           </div>
         </fieldset>
 
+        {progress && (
+          <p role="status" className="text-sm text-zinc-500">
+            {progress}
+          </p>
+        )}
         {message && (
           <p role="status" className={`text-sm ${message.ok ? "text-emerald-600" : "text-red-600"}`}>
             {message.text}

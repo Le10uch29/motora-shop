@@ -164,6 +164,11 @@ export type Dictionary = {
     orderForCustomerDoneText: string;
     orderForCustomerNotFound: string;
     orderForCustomerNoProducts: string;
+    orderForCustomerFound: string;
+    orderForCustomerContinue: string;
+    orderForCustomerSoldOut: string;
+    orderForCustomerCatalogEmpty: string;
+    orderForCustomerOpenCart: string;
     orderAddItemsButton: string;
     orderAddItemsTitle: string;
     orderAddItemsSubmit: string;
@@ -474,6 +479,8 @@ export type Dictionary = {
     stockExportEmpty: string;
     stockExportError: string;
     stockExportClose: string;
+    stockExportSheetName: string;
+    stockExportPhotos: string;
     returnButton: string;
     returnTitle: string;
     returnHint: string;

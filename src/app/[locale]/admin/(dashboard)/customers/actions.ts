@@ -470,7 +470,8 @@ export async function placeOrderForCustomerAction(
   customerId: string,
   items: OrderForCustomerItem[]
 ): Promise<{ error: string | null; orderNumber: number | null }> {
-  const actor = await requireAdmin(locale);
+  // Админ или старший продавец — те же, кому открыт раздел «Покупатели».
+  const actor = await requireCustomerManager(locale);
   if (items.length === 0) return { error: "empty_cart", orderNumber: null };
 
   const admin = createAdminClient();

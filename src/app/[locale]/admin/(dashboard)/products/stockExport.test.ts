@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildStockCsv,
+  buildStockTable,
   csvCell,
   csvCodeCell,
   orderForExport,
@@ -88,6 +89,38 @@ describe("csvCodeCell", () => {
     expect(csvCodeCell("12-05")).toBe('"=""12-05"""');
     expect(csvCodeCell("BLT-08")).toBe("BLT-08");
     expect(csvCodeCell("")).toBe("");
+  });
+});
+
+describe("buildStockTable", () => {
+  it("orders rows like the file, leaves the photo cell empty and lists photo ids", () => {
+    const table = buildStockTable(
+      [
+        product({ id: "a", productCode: "Z", stock: 0, photo: "" }),
+        product({ id: "b", productCode: "403.730", stock: 7 }),
+      ],
+      ["productCode", "stock", "status", "price", "photo"],
+      labels,
+      status
+    );
+    expect(table.columns.map((c) => [c.header, c.kind])).toEqual([
+      ["productCode", "text"],
+      ["stock", "int"],
+      ["status", "text"],
+      ["price", "money"],
+      ["photo", "text"],
+    ]);
+    expect(table.rows).toEqual([
+      ["403.730", 7, "Есть", 12.5, null],
+      ["Z", 0, "Нет", 12.5, null],
+    ]);
+    expect(table.photoIds).toEqual(["b", null]);
+    expect(table.photoCol).toBe(4);
+  });
+
+  it("has no photo column unless it was chosen", () => {
+    const table = buildStockTable([product({ id: "b" })], ["productCode"], labels, status);
+    expect(table.photoCol).toBe(-1);
   });
 });
 

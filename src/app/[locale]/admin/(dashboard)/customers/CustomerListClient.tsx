@@ -119,11 +119,11 @@ export default function CustomerListClient({
               {customers.map((row) => (
                 <tr key={row.id}>
                   {/* На месте бывшего аватара — кнопки рядом с именем:
-                      «заказать вместо покупателя» (только админ) и «товары в
-                      корзине покупателя» (админ и старший продавец). */}
+                      «заказать вместо покупателя» и «товары в корзине
+                      покупателя» — админу и старшему продавцу (раздел
+                      «Покупатели» другим ролям закрыт). */}
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                    {isAdmin && (
                     <button
                       type="button"
                       title={dict.orderForCustomerButton}
@@ -145,7 +145,6 @@ export default function CustomerListClient({
                         <path d="M3 4h2l2.2 10.4a1.5 1.5 0 0 0 1.5 1.2h7.9a1.5 1.5 0 0 0 1.5-1.2L20 8H6" />
                       </svg>
                     </button>
-                    )}
                     <button
                       type="button"
                       title={dict.customerCartButton}
