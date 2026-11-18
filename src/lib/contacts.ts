@@ -1,6 +1,6 @@
 export const SHOP_CONTACTS = {
   phone: "+995577466611",
-  email: "arazmotors@gmail.com",
+  email: "arazmotors.2026@gmail.com",
   /** Идентификационный номер организации. */
   organizationIdNumber: "434195006",
 } as const;
