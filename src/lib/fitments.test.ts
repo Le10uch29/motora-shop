@@ -181,6 +181,27 @@ describe("fitmentsFromForm", () => {
   it("does not split a form model on '/' — a single model name may contain one", () => {
     expect(fitmentsFromForm({ make: "MERCEDES-BENZ", model: "C/E", years: "" })[0].model).toBe("C/E");
   });
+
+  it("reads makes and models pasted in the price-list notation", () => {
+    expect(fitmentsFromForm({ make: "FORD/MAZDA", model: "FIESTA//DEMIO", years: "2002-2012" })).toEqual([
+      { make: "FORD", model: "FIESTA", yearFrom: 2002, yearTo: 2012 },
+      { make: "MAZDA", model: "DEMIO", yearFrom: 2002, yearTo: 2012 },
+    ]);
+    expect(
+      fitmentsFromForm({ make: "LEXUS/TOYOTA", model: "RX//CAMRY/RAV4", years: "" }).map((f) => [f.make, f.model])
+    ).toEqual([
+      ["LEXUS", "RX"],
+      ["TOYOTA", "CAMRY"],
+      ["TOYOTA", "RAV4"],
+    ]);
+  });
+
+  it("splits a slash make even when the models have no '//'", () => {
+    expect(fitmentsFromForm({ make: "LEXUS/TOYOTA", model: "", years: "" }).map((f) => f.make)).toEqual([
+      "LEXUS",
+      "TOYOTA",
+    ]);
+  });
 });
 
 describe("fitmentColumns", () => {

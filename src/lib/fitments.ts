@@ -260,10 +260,24 @@ export function fitmentsFromImport(raw: {
   );
 }
 
+/** Марка через «/» или модели через «//» — запись из прайса, а не формы. */
+function usesImportNotation(raw: { make: string; model: string }): boolean {
+  return raw.make.includes("/") || /\/{2,}/.test(raw.model);
+}
+
 /** Vehicles from the admin form, whose one year field holds a range per
  * vehicle: "2010-2015; 2016+". Год можно не указывать. Модель пишется с
- * двигателями в скобках: "F10 (4,4/4,8)". */
+ * двигателями в скобках: "F10 (4,4/4,8)".
+ *
+ * Запись как в прайсе тоже понимается: в форму часто вставляют ячейки из
+ * Excel — «FORD/MAZDA» и «FIESTA//DEMIO». Раньше форма делила только по «;»,
+ * и такая марка сохранялась одной — «FORD/MAZDA» в фильтре марок вместо FORD
+ * и MAZDA. Марка с «/» в названии не бывает, поэтому «/» в марке — всегда
+ * разделитель; «/» в модели одной марки («C/E») остаётся частью модели. */
 export function fitmentsFromForm(raw: { make: string; model: string; years: string }): Fitment[] {
+  if (usesImportNotation(raw)) {
+    return fitmentsFromImport({ make: raw.make, model: raw.model, years: raw.years });
+  }
   const ranges = splitList(raw.years).map(parseYearRange);
   return assemble(
     splitList(raw.make),
